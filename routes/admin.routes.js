@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs').promises;
 const postgresService = require('../services/database/postgres.service');
 // const contentService = require('../services/content.service'); // Disabled - has dependency issues
 const authMiddleware = require('../middleware/auth.middleware');
@@ -172,13 +173,36 @@ router.post('/modules/:moduleId/content',
 
       const contentRecord = result.rows[0];
 
-      // TODO: Process file in background (extract text, create embeddings, store in ChromaDB)
-      // For now, just acknowledge upload
-      logger.info(`File uploaded: ${req.file.originalname} for module ${moduleId}`);
+      // Process file immediately (read text content)
+      try {
+        let textContent = '';
+
+        if (req.file.mimetype === 'text/plain' || path.extname(req.file.originalname) === '.txt') {
+          // Read text file
+          textContent = await fs.readFile(req.file.path, 'utf-8');
+        }
+        // TODO: Add PDF and DOCX extraction later
+
+        if (textContent) {
+          // Update database with extracted text and mark as processed
+          await postgresService.pool.query(`
+            UPDATE module_content
+            SET content_text = $1, processed = true, processed_at = NOW(), chunk_count = 1
+            WHERE id = $2
+          `, [textContent, contentRecord.id]);
+
+          logger.info(`File processed successfully: ${req.file.originalname}`);
+        } else {
+          logger.warn(`File type not yet supported for processing: ${req.file.mimetype}`);
+        }
+      } catch (processError) {
+        logger.error('Error processing file:', processError);
+        // Don't fail the upload, just log the error
+      }
 
       res.json({
         success: true,
-        message: 'File uploaded successfully. Processing will happen in background.',
+        message: 'File uploaded successfully.',
         data: contentRecord
       });
 
