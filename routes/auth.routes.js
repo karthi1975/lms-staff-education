@@ -82,65 +82,7 @@ router.post('/admin/refresh', async (req, res) => {
   }
 });
 
-/**
- * GET /api/admin/users
- * Get all WhatsApp users (admin only)
- */
-router.get('/admin/users', authenticateToken, async (req, res) => {
-  try {
-    const { page = 1, limit = 20, search, module_id } = req.query;
-
-    const result = await UserModel.findAll({
-      page: parseInt(page),
-      limit: parseInt(limit),
-      search,
-      module_id: module_id ? parseInt(module_id) : null
-    });
-
-    // Return data in expected format for frontend
-    res.json({
-      success: true,
-      data: result.users || [],
-      pagination: result.pagination
-    });
-  } catch (error) {
-    console.error('Get users error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to get users'
-    });
-  }
-});
-
-/**
- * GET /api/admin/users/:userId
- * Get specific user details with progress
- */
-router.get('/admin/users/:userId', authenticateToken, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    const user = await UserModel.getUserProgress(parseInt(userId));
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      user
-    });
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to get user'
-    });
-  }
-});
+// Note: /api/admin/users routes moved to admin.routes.js to avoid conflicts
 
 /**
  * POST /api/users/identify

@@ -154,9 +154,29 @@ router.delete('/content/:contentId',
  */
 router.get('/users', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const users = await contentService.getAllUsersProgress();
-    // Return in expected format with data property
-    res.json({ success: true, data: users || [] });
+    const postgresService = require('../services/database/postgres.service');
+
+    // Query users with aggregated progress stats
+    const result = await postgresService.pool.query(`
+      SELECT
+        u.id,
+        u.name,
+        u.whatsapp_id,
+        u.created_at,
+        u.last_active_at,
+        COUNT(DISTINCT CASE WHEN up.status = 'completed' THEN up.module_id END) as modules_completed,
+        COUNT(DISTINCT CASE WHEN up.status = 'in_progress' THEN up.module_id END) as modules_in_progress,
+        COUNT(DISTINCT CASE WHEN qa.passed = true THEN qa.module_id END) as quizzes_passed,
+        COALESCE(SUM(up.time_spent_minutes), 0) as total_time_spent_minutes
+      FROM users u
+      LEFT JOIN user_progress up ON u.id = up.user_id
+      LEFT JOIN quiz_attempts qa ON u.id = qa.user_id
+      WHERE u.is_active = true
+      GROUP BY u.id, u.name, u.whatsapp_id, u.created_at, u.last_active_at
+      ORDER BY u.last_active_at DESC NULLS LAST, u.created_at DESC
+    `);
+
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     logger.error('Error fetching users:', error);
     res.status(500).json({ success: false, error: error.message });

@@ -12,6 +12,7 @@ require('dotenv').config();
 // Existing Services
 const orchestratorService = require('./services/orchestrator.service');
 const whatsappService = require('./services/whatsapp.service');
+const whatsappHandler = require('./services/whatsapp-handler.service');
 const chromaService = require('./services/chroma.service');
 const neo4jService = require('./services/neo4j.service');
 const vertexAIService = require('./services/vertexai.service');
@@ -116,18 +117,19 @@ app.post('/webhook', async (req, res) => {
   try {
     console.log('Webhook received:', JSON.stringify(req.body, null, 2));
     logger.info('Webhook received');
-    
+
     // Acknowledge receipt immediately
     res.sendStatus(200);
-    
+
     // Process message asynchronously
     const messageData = whatsappService.extractMessage(req.body);
     console.log('Extracted message:', messageData);
     logger.info('Extracted message:', messageData);
-    
+
     if (messageData) {
       console.log('Processing WhatsApp message...');
-      await orchestratorService.processWhatsAppMessage(messageData);
+      // Use new WhatsApp handler for quiz and module flow
+      await whatsappHandler.handleMessage(messageData);
       console.log('Message processed successfully');
     } else {
       console.log('No message data extracted from webhook');
