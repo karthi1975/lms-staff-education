@@ -1,0 +1,389 @@
+# Kubernetes Deployment Configuration for Teachers Training System
+# Optimized for 20,000+ concurrent users on GCP
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: production
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  LOG_LEVEL: "info"
+  CACHE_TTL_GRAPH: "300"
+  CACHE_TTL_VECTOR: "600"
+  CACHE_TTL_RESPONSE: "120"
+  MAX_POOL_SIZE: "10"
+  BATCH_SIZE: "10"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: production
+type: Opaque
+stringData:
+  database-url: "postgresql://app_user:CHANGE_ME@10.0.0.3:5432/teachers_training?sslmode=require"
+  redis-url: "redis://:CHANGE_ME@10.0.0.4:6379"
+  jwt-secret: "CHANGE_ME_SECURE_RANDOM_STRING"
+  whatsapp-token: "CHANGE_ME_WHATSAPP_TOKEN"
+  vertex-api-key: "CHANGE_ME_VERTEX_KEY"
+  neo4j-auth: "neo4j/CHANGE_ME_NEO4J_PASSWORD"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teachers-training-app
+  namespace: production
+  labels:
+    app: teachers-training
+    version: v1
+spec:
+  replicas: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: teachers-training
+  template:
+    metadata:
+      labels:
+        app: teachers-training
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - teachers-training
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: app
+        image: gcr.io/teachers-training-prod/app:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: PORT
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: redis-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: WHATSAPP_VERIFY_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: whatsapp-token
+        - name: VERTEX_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: vertex-api-key
+        - name: NEO4J_URI
+          value: "bolt://neo4j-service:7687"
+        - name: NEO4J_USER
+          value: "neo4j"
+        - name: NEO4J_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: neo4j-auth
+        - name: CHROMADB_URL
+          value: "http://chromadb-service:8000"
+        - name: CACHE_TTL_GRAPH
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: CACHE_TTL_GRAPH
+        - name: CACHE_TTL_VECTOR
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: CACHE_TTL_VECTOR
+        - name: CACHE_TTL_RESPONSE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: CACHE_TTL_RESPONSE
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+            ephemeral-storage: "2Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 30
+        volumeMounts:
+        - name: cache-volume
+          mountPath: /app/cache
+        - name: tmp-volume
+          mountPath: /tmp
+      volumes:
+      - name: cache-volume
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: tmp-volume
+        emptyDir:
+          sizeLimit: 500Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teachers-training-service
+  namespace: production
+  labels:
+    app: teachers-training
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"default": "backend-config"}'
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 600
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  selector:
+    app: teachers-training
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: teachers-training-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: teachers-training-app
+  minReplicas: 10
+  maxReplicas: 100
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Pods
+    pods:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      - type: Pods
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+      - type: Pods
+        value: 5
+        periodSeconds: 60
+      selectPolicy: Min
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: teachers-training-pdb
+  namespace: production
+spec:
+  minAvailable: 5
+  selector:
+    matchLabels:
+      app: teachers-training
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: backend-config
+  namespace: production
+spec:
+  cdn:
+    enabled: true
+    cachePolicy:
+      includeHost: true
+      includeProtocol: true
+      includeQueryString: false
+      negativeCaching: true
+      negativeCachingPolicy:
+      - code: 404
+        ttl: 120
+      - code: 500
+        ttl: 10
+  connectionDraining:
+    drainingTimeoutSec: 60
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 5
+    healthyThreshold: 2
+    unhealthyThreshold: 3
+    type: HTTP
+    requestPath: /health
+    port: 3000
+  sessionAffinity:
+    affinityType: "CLIENT_IP"
+    affinityCookieTtlSec: 600
+  timeoutSec: 30
+  customRequestHeaders:
+    headers:
+    - "X-Client-Region:{client_region}"
+    - "X-Client-City:{client_city}"
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: teachers-training-ingress
+  namespace: production
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "teachers-training-ip"
+    networking.gke.io/managed-certificates: "teachers-training-cert"
+    cloud.google.com/backend-config: '{"default": "backend-config"}'
+    cloud.google.com/armor-config: '{"rule": "teachers-training-armor"}'
+spec:
+  rules:
+  - host: api.teachers-training.com
+    http:
+      paths:
+      - path: /api/*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: teachers-training-service
+            port:
+              number: 80
+      - path: /webhook
+        pathType: Exact
+        backend:
+          service:
+            name: teachers-training-service
+            port:
+              number: 80
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: teachers-training-service
+            port:
+              number: 80
+  - host: admin.teachers-training.com
+    http:
+      paths:
+      - path: /*
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: teachers-training-service
+            port:
+              number: 80
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: teachers-training-cert
+  namespace: production
+spec:
+  domains:
+  - api.teachers-training.com
+  - admin.teachers-training.com

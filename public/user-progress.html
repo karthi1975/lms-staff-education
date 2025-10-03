@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Progress - Teachers Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .user-details h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .user-meta {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .btn-logout {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .overview-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .overview-card {
+            background: rgba(255,255,255,0.15);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .card-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: -30px auto 40px;
+            padding: 0 20px;
+        }
+
+        .modules-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .section-header h2 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .module-card {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .module-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .module-card.completed {
+            border-left-color: #10b981;
+        }
+
+        .module-card.in-progress {
+            border-left-color: #f59e0b;
+        }
+
+        .module-card.not-started {
+            border-left-color: #e5e7eb;
+        }
+
+        .module-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .module-title-section {
+            flex: 1;
+        }
+
+        .module-number {
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .module-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .module-description {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-in-progress {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-not-started {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .progress-section {
+            margin: 20px 0;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .progress-label {
+            color: #666;
+        }
+
+        .progress-percentage {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .progress-bar-container {
+            background: #e5e7eb;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+        }
+
+        .module-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .quiz-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .quiz-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .quiz-attempts {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quiz-attempt {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            min-width: 120px;
+        }
+
+        .attempt-label {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .attempt-score {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .attempt-score.passed {
+            color: #10b981;
+        }
+
+        .attempt-score.failed {
+            color: #ef4444;
+        }
+
+        .attempt-result {
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .no-attempts {
+            color: #666;
+            font-size: 14px;
+            font-style: italic;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="user-info">
+                <div class="user-details">
+                    <h1 id="userName">Loading...</h1>
+                    <div class="user-meta" id="userMeta"></div>
+                </div>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+
+            <div class="overview-cards" id="overviewCards">
+                <!-- Stats will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="modules-section">
+            <div class="section-header">
+                <h2>📚 My Training Modules</h2>
+                <div class="legend">
+                    <div class="legend-item">
+                        <span>✅</span> Completed
+                    </div>
+                    <div class="legend-item">
+                        <span>🔄</span> In Progress
+                    </div>
+                    <div class="legend-item">
+                        <span>⚪</span> Not Started
+                    </div>
+                </div>
+            </div>
+
+            <div id="modulesContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading your progress...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        const userId = localStorage.getItem('userId');
+        const userName = localStorage.getItem('userName');
+        const whatsappId = localStorage.getItem('userWhatsappId');
+
+        // Check if logged in
+        if (!userId) {
+            window.location.href = '/user-login.html';
+        }
+
+        // Set user info
+        document.getElementById('userName').textContent = userName;
+        document.getElementById('userMeta').textContent = whatsappId;
+
+        // Load progress
+        loadProgress();
+
+        async function loadProgress() {
+            try {
+                const response = await fetch(`${API_BASE}/users/${userId}/progress`, {
+                    headers: {
+                        'Authorization': `Bearer guest-token-${userId}` // Simplified for user view
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load progress');
+                }
+
+                const result = await response.json();
+                displayProgress(result.data);
+            } catch (error) {
+                console.error('Error loading progress:', error);
+                document.getElementById('modulesContent').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h3>Unable to load progress</h3>
+                        <p>Please try again later or contact support.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayProgress(modules) {
+            if (!modules || modules.length === 0) {
+                document.getElementById('modulesContent').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📚</div>
+                        <h3>No training modules yet</h3>
+                        <p>Start your learning journey via WhatsApp!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Calculate overview stats
+            const completed = modules.filter(m => m.status === 'completed').length;
+            const inProgress = modules.filter(m => m.status === 'in_progress').length;
+            const totalTime = modules.reduce((sum, m) => sum + (m.time_spent_minutes || 0), 0);
+            const quizzesPassed = modules.reduce((sum, m) => {
+                if (m.quiz_attempts) {
+                    return sum + m.quiz_attempts.filter(a => a.passed).length;
+                }
+                return sum;
+            }, 0);
+
+            // Display overview cards
+            document.getElementById('overviewCards').innerHTML = `
+                <div class="overview-card">
+                    <div class="card-value">${completed}</div>
+                    <div class="card-label">Completed</div>
+                </div>
+                <div class="overview-card">
+                    <div class="card-value">${inProgress}</div>
+                    <div class="card-label">In Progress</div>
+                </div>
+                <div class="overview-card">
+                    <div class="card-value">${quizzesPassed}</div>
+                    <div class="card-label">Quizzes Passed</div>
+                </div>
+                <div class="overview-card">
+                    <div class="card-value">${formatMinutes(totalTime)}</div>
+                    <div class="card-label">Total Time</div>
+                </div>
+            `;
+
+            // Display modules
+            const statusEmoji = {
+                'completed': '✅',
+                'in_progress': '🔄',
+                'not_started': '⚪'
+            };
+
+            document.getElementById('modulesContent').innerHTML = modules.map((module, index) => `
+                <div class="module-card ${module.status}">
+                    <div class="module-header">
+                        <div class="module-title-section">
+                            <div class="module-number">Module ${module.sequence_order}</div>
+                            <div class="module-title">${module.title}</div>
+                            <div class="module-description">${module.description || ''}</div>
+                        </div>
+                        <span class="status-badge status-${module.status}">
+                            ${statusEmoji[module.status]} ${formatStatus(module.status)}
+                        </span>
+                    </div>
+
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <span class="progress-label">Progress</span>
+                            <span class="progress-percentage">${module.progress_percentage}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${module.progress_percentage}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="module-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Time Spent</div>
+                            <div class="stat-value">${formatMinutes(module.time_spent_minutes || 0)}</div>
+                        </div>
+                        ${module.started_at ? `
+                            <div class="stat-item">
+                                <div class="stat-label">Started</div>
+                                <div class="stat-value">${new Date(module.started_at).toLocaleDateString()}</div>
+                            </div>
+                        ` : ''}
+                        ${module.completed_at ? `
+                            <div class="stat-item">
+                                <div class="stat-label">Completed</div>
+                                <div class="stat-value">${new Date(module.completed_at).toLocaleDateString()}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    ${module.quiz_attempts && module.quiz_attempts.length > 0 ? `
+                        <div class="quiz-section">
+                            <div class="quiz-title">Quiz Attempts</div>
+                            <div class="quiz-attempts">
+                                ${module.quiz_attempts.map(attempt => `
+                                    <div class="quiz-attempt">
+                                        <div class="attempt-label">Attempt ${attempt.attempt_number}</div>
+                                        <div class="attempt-score ${attempt.passed ? 'passed' : 'failed'}">
+                                            ${attempt.score}/${attempt.total_questions}
+                                        </div>
+                                        <div class="attempt-result" style="color: ${attempt.passed ? '#10b981' : '#ef4444'}">
+                                            ${attempt.passed ? '✓ Passed' : '✗ Failed'}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : module.status !== 'not_started' ? `
+                        <div class="quiz-section">
+                            <div class="no-attempts">No quiz attempts yet</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function formatStatus(status) {
+            return status.split('_').map(word =>
+                word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+        }
+
+        function formatMinutes(minutes) {
+            if (!minutes) return '0m';
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (hours > 0) {
+                return `${hours}h ${mins}m`;
+            }
+            return `${mins}m`;
+        }
+
+        function logout() {
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userName');
+            localStorage.removeItem('userWhatsappId');
+            window.location.href = '/user-login.html';
+        }
+    </script>
+</body>
+</html>

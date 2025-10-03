@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Progress Tracking - Teachers Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .search-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .users-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 13px;
+            border-bottom: 2px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #374151;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .whatsapp {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: #111827;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .module-card {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .module-card h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #111827;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #10b981;
+            transition: width 0.3s;
+        }
+
+        .module-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            color: #6b7280;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #111827;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>👥 User Progress Tracking</h1>
+            <div class="header-actions">
+                <a href="/admin/modules.html" class="btn btn-secondary">Manage Modules</a>
+                <button class="btn btn-secondary" onclick="handleLogout()">Logout</button>
+            </div>
+        </header>
+
+        <div id="errorContainer"></div>
+
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search users by name or WhatsApp number..." onkeyup="filterUsers()">
+        </div>
+
+        <div class="users-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>WhatsApp</th>
+                        <th>Modules Completed</th>
+                        <th>In Progress</th>
+                        <th>Quizzes Passed</th>
+                        <th>Time Spent</th>
+                        <th>Last Active</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="7" class="loading">Loading users...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Progress Modal -->
+    <div class="modal" id="progressModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalUserName">User Progress</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let allUsers = [];
+        let authToken = '';
+
+        // Check authentication
+        window.addEventListener('load', function() {
+            authToken = localStorage.getItem('adminToken');
+            if (!authToken) {
+                window.location.href = '/admin/login.html';
+                return;
+            }
+            loadUsers();
+        });
+
+        function handleLogout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminRefreshToken');
+            localStorage.removeItem('adminUser');
+            window.location.href = '/admin/login.html';
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    handleLogout();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to load users');
+                }
+
+                const result = await response.json();
+                console.log('Users response:', result);
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load users');
+                }
+
+                allUsers = result.data || [];
+                displayUsers(allUsers);
+
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showError(error.message);
+                document.getElementById('usersTableBody').innerHTML = `
+                    <tr><td colspan="7" class="error">Error: ${error.message}</td></tr>
+                `;
+            }
+        }
+
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">No users found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => `
+                <tr onclick="viewUserProgress(${user.id}, '${user.name}')">
+                    <td>
+                        <div class="user-name">${user.name || 'Unknown'}</div>
+                    </td>
+                    <td class="whatsapp">${user.whatsapp_id || 'N/A'}</td>
+                    <td>
+                        <span class="badge badge-success">${user.modules_completed || 0}</span>
+                    </td>
+                    <td>
+                        <span class="badge badge-warning">${user.modules_in_progress || 0}</span>
+                    </td>
+                    <td>
+                        <span class="badge badge-info">${user.quizzes_passed || 0}</span>
+                    </td>
+                    <td>${formatTime(user.total_time_spent_minutes || 0)}</td>
+                    <td>${formatDate(user.last_active_at)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function filterUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allUsers.filter(user => {
+                const name = (user.name || '').toLowerCase();
+                const whatsapp = (user.whatsapp_id || '').toLowerCase();
+                return name.includes(searchTerm) || whatsapp.includes(searchTerm);
+            });
+            displayUsers(filtered);
+        }
+
+        async function viewUserProgress(userId, userName) {
+            const modal = document.getElementById('progressModal');
+            const modalBody = document.getElementById('modalBody');
+            document.getElementById('modalUserName').textContent = `${userName}'s Progress`;
+
+            modal.classList.add('active');
+            modalBody.innerHTML = '<div class="loading">Loading progress...</div>';
+
+            try {
+                // Query user progress from PostgreSQL via admin API
+                const response = await fetch(`${API_BASE}/user-progress/${userId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load progress');
+                }
+
+                const result = await response.json();
+                console.log('Progress response:', result);
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load progress');
+                }
+
+                displayProgress(result.modules || []);
+
+            } catch (error) {
+                console.error('Error loading progress:', error);
+                modalBody.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function displayProgress(modules) {
+            const modalBody = document.getElementById('modalBody');
+
+            if (!modules || modules.length === 0) {
+                modalBody.innerHTML = '<div class="no-data">No progress data available</div>';
+                return;
+            }
+
+            modalBody.innerHTML = modules.map(module => {
+                const status = module.status || 'not_started';
+                const progress = module.progress_percentage || 0;
+                const statusBadge = {
+                    'completed': '<span class="badge badge-success">✅ Completed</span>',
+                    'in_progress': '<span class="badge badge-warning">🔄 In Progress</span>',
+                    'not_started': '<span class="badge badge-info">⚪ Not Started</span>'
+                };
+
+                return `
+                    <div class="module-card">
+                        <h3>${module.module_title || `Module ${module.module_id}`}</h3>
+                        ${statusBadge[status] || statusBadge['not_started']}
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="module-stats">
+                            <div class="stat-item">
+                                <span>Progress:</span>
+                                <span class="stat-value">${progress}%</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Time Spent:</span>
+                                <span class="stat-value">${formatTime(module.time_spent_minutes || 0)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Started:</span>
+                                <span class="stat-value">${formatDate(module.started_at)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Completed:</span>
+                                <span class="stat-value">${formatDate(module.completed_at)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function closeModal() {
+            document.getElementById('progressModal').classList.remove('active');
+        }
+
+        function formatTime(minutes) {
+            if (!minutes || minutes === 0) return '0m';
+            if (minutes < 60) return `${minutes}m`;
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}m`;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'Never';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function showError(message) {
+            const container = document.getElementById('errorContainer');
+            container.innerHTML = `<div class="error">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        // Close modal on outside click
+        document.getElementById('progressModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
