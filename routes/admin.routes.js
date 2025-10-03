@@ -4,6 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const postgresService = require('../services/database/postgres.service');
+const documentProcessor = require('../services/document-processor.service');
+const chromaService = require('../services/chroma.service');
 // const contentService = require('../services/content.service'); // Disabled - has dependency issues
 const authMiddleware = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
@@ -173,36 +175,70 @@ router.post('/modules/:moduleId/content',
 
       const contentRecord = result.rows[0];
 
-      // Process file immediately (read text content)
-      try {
-        let textContent = '';
+      // Process file in background (don't wait for completion)
+      setImmediate(async () => {
+        try {
+          logger.info(`Starting background processing for: ${req.file.originalname}`);
 
-        if (req.file.mimetype === 'text/plain' || path.extname(req.file.originalname) === '.txt') {
-          // Read text file
-          textContent = await fs.readFile(req.file.path, 'utf-8');
-        }
-        // TODO: Add PDF and DOCX extraction later
+          // Prepare metadata for chunking
+          const baseMetadata = {
+            module_id: parseInt(moduleId),
+            content_id: contentRecord.id,
+            filename: req.file.originalname,
+            uploadedAt: new Date().toISOString()
+          };
 
-        if (textContent) {
-          // Update database with extracted text and mark as processed
+          // Process document into chunks
+          const chunks = await documentProcessor.processDocument(req.file.path, baseMetadata);
+
+          if (chunks.length === 0) {
+            logger.warn(`No chunks created for ${req.file.originalname}`);
+            return;
+          }
+
+          logger.info(`Created ${chunks.length} chunks for ${req.file.originalname}`);
+
+          // Store chunks in ChromaDB
+          let storedCount = 0;
+          for (const chunk of chunks) {
+            try {
+              await chromaService.addDocument(chunk.content, chunk.metadata);
+              storedCount++;
+            } catch (error) {
+              logger.error(`Error storing chunk in ChromaDB:`, error);
+            }
+          }
+
+          logger.info(`Stored ${storedCount}/${chunks.length} chunks in ChromaDB`);
+
+          // Update database - mark as processed and update chunk count
           await postgresService.pool.query(`
             UPDATE module_content
-            SET content_text = $1, processed = true, processed_at = NOW(), chunk_count = 1
+            SET processed = true, processed_at = NOW(), chunk_count = $1
             WHERE id = $2
-          `, [textContent, contentRecord.id]);
+          `, [chunks.length, contentRecord.id]);
 
-          logger.info(`File processed successfully: ${req.file.originalname}`);
-        } else {
-          logger.warn(`File type not yet supported for processing: ${req.file.mimetype}`);
+          logger.info(`File processed successfully: ${req.file.originalname} (${chunks.length} chunks)`);
+
+        } catch (processError) {
+          logger.error('Error in background processing:', processError);
+
+          // Mark as failed in database
+          await postgresService.pool.query(`
+            UPDATE module_content
+            SET processed = false, metadata = jsonb_set(
+              COALESCE(metadata, '{}'::jsonb),
+              '{processing_error}',
+              to_jsonb($1::text)
+            )
+            WHERE id = $2
+          `, [processError.message, contentRecord.id]);
         }
-      } catch (processError) {
-        logger.error('Error processing file:', processError);
-        // Don't fail the upload, just log the error
-      }
+      });
 
       res.json({
         success: true,
-        message: 'File uploaded successfully.',
+        message: 'File uploaded successfully. Processing in background.',
         data: contentRecord
       });
 
