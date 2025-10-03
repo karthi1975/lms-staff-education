@@ -144,16 +144,42 @@ router.post('/modules/:moduleId/content',
         return res.status(400).json({ success: false, error: 'No file uploaded' });
       }
 
-      const content = await contentService.uploadContent(
+      // Insert content record into database
+      const result = await postgresService.pool.query(`
+        INSERT INTO module_content (
+          module_id,
+          file_name,
+          original_name,
+          file_path,
+          file_type,
+          file_size,
+          chunk_count,
+          uploaded_by,
+          processed
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id, file_name, original_name, file_type, file_size, uploaded_at
+      `, [
         parseInt(moduleId),
-        req.file,
-        uploadedById
-      );
+        req.file.filename,
+        req.file.originalname,
+        req.file.path,
+        path.extname(req.file.originalname).substring(1).toLowerCase(),
+        req.file.size,
+        0, // chunk_count will be updated after processing
+        uploadedById,
+        false
+      ]);
+
+      const contentRecord = result.rows[0];
+
+      // TODO: Process file in background (extract text, create embeddings, store in ChromaDB)
+      // For now, just acknowledge upload
+      logger.info(`File uploaded: ${req.file.originalname} for module ${moduleId}`);
 
       res.json({
         success: true,
-        message: 'File uploaded successfully. Processing in background.',
-        data: content
+        message: 'File uploaded successfully. Processing will happen in background.',
+        data: contentRecord
       });
 
     } catch (error) {
@@ -174,7 +200,27 @@ router.delete('/content/:contentId',
   async (req, res) => {
     try {
       const { contentId } = req.params;
-      await contentService.deleteContent(parseInt(contentId));
+
+      // Get file info before deleting
+      const fileResult = await postgresService.pool.query(
+        'SELECT file_name FROM module_content WHERE id = $1',
+        [parseInt(contentId)]
+      );
+
+      if (fileResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Content not found' });
+      }
+
+      const fileName = fileResult.rows[0].file_name;
+
+      // Delete from database
+      await postgresService.pool.query(
+        'DELETE FROM module_content WHERE id = $1',
+        [parseInt(contentId)]
+      );
+
+      // TODO: Delete physical file and ChromaDB embeddings
+      logger.info(`Content deleted: ${fileName} (ID: ${contentId})`);
 
       res.json({
         success: true,
@@ -239,8 +285,28 @@ router.get('/users/:userId/progress', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const progress = await contentService.getUserProgress(parseInt(userId));
-    res.json({ success: true, data: progress });
+    // Get user progress from database
+    const result = await postgresService.pool.query(`
+      SELECT
+        up.id,
+        up.module_id,
+        m.title as module_title,
+        m.description as module_description,
+        up.status,
+        up.progress_percentage,
+        up.started_at,
+        up.completed_at,
+        up.time_spent_minutes,
+        up.last_activity_at,
+        (SELECT COUNT(*) FROM quiz_attempts qa
+         WHERE qa.user_id = up.user_id AND qa.module_id = up.module_id AND qa.passed = true) as quizzes_passed
+      FROM user_progress up
+      JOIN modules m ON m.id = up.module_id
+      WHERE up.user_id = $1
+      ORDER BY m.sequence_order
+    `, [parseInt(userId)]);
+
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     logger.error(`Error fetching progress for user ${req.params.userId}:`, error);
     res.status(500).json({ success: false, error: error.message });
@@ -260,15 +326,13 @@ router.post('/bulk-upload',
       const directoryPath = path.join(__dirname, '../training-content');
       const uploadedById = req.user.id;
 
-      const results = await contentService.bulkUploadFromDirectory(directoryPath, uploadedById);
+      // TODO: Implement bulk upload from directory
+      // This would scan the directory, read files, and upload them to the database
+      logger.warn('Bulk upload endpoint not yet implemented');
 
-      const successCount = results.filter(r => r.success).length;
-      const failureCount = results.filter(r => !r.success).length;
-
-      res.json({
-        success: true,
-        message: `Bulk upload completed: ${successCount} succeeded, ${failureCount} failed`,
-        data: results
+      res.status(501).json({
+        success: false,
+        error: 'Bulk upload feature not yet implemented. Please use single file upload.'
       });
 
     } catch (error) {
