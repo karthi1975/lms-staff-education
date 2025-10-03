@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '86400'; // 24 hours
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'; // 24 hours (or 86400s)
 
 class JWTUtil {
   /**

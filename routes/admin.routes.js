@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const postgresService = require('../services/database/postgres.service');
 // const contentService = require('../services/content.service'); // Disabled - has dependency issues
 const authMiddleware = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
@@ -41,8 +42,21 @@ const upload = multer({
  */
 router.get('/modules', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const modules = await contentService.getModules();
-    res.json({ success: true, data: modules });
+    const result = await postgresService.pool.query(`
+      SELECT
+        id,
+        title,
+        description,
+        sequence_order,
+        is_active,
+        created_at,
+        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = modules.id) as content_count
+      FROM modules
+      WHERE is_active = true
+      ORDER BY sequence_order
+    `);
+
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     logger.error('Error fetching modules:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -57,13 +71,24 @@ router.get('/modules', authMiddleware.authenticateToken, async (req, res) => {
 router.get('/modules/:moduleId', authMiddleware.authenticateToken, async (req, res) => {
   try {
     const { moduleId } = req.params;
-    const module = await contentService.getModuleById(moduleId);
 
-    if (!module) {
+    const result = await postgresService.pool.query(`
+      SELECT
+        id,
+        title,
+        description,
+        sequence_order,
+        is_active,
+        created_at
+      FROM modules
+      WHERE id = $1 AND is_active = true
+    `, [parseInt(moduleId)]);
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Module not found' });
     }
 
-    res.json({ success: true, data: module });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     logger.error(`Error fetching module ${req.params.moduleId}:`, error);
     res.status(500).json({ success: false, error: error.message });
@@ -78,8 +103,24 @@ router.get('/modules/:moduleId', authMiddleware.authenticateToken, async (req, r
 router.get('/modules/:moduleId/content', authMiddleware.authenticateToken, async (req, res) => {
   try {
     const { moduleId } = req.params;
-    const content = await contentService.getModuleContent(moduleId);
-    res.json({ success: true, data: content });
+
+    const result = await postgresService.pool.query(`
+      SELECT
+        mc.id,
+        mc.file_name,
+        mc.original_name,
+        mc.file_type,
+        mc.chunk_count,
+        mc.uploaded_at,
+        mc.processed,
+        au.name as uploaded_by_name
+      FROM module_content mc
+      LEFT JOIN admin_users au ON mc.uploaded_by = au.id
+      WHERE mc.module_id = $1
+      ORDER BY mc.uploaded_at DESC
+    `, [parseInt(moduleId)]);
+
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     logger.error(`Error fetching content for module ${req.params.moduleId}:`, error);
     res.status(500).json({ success: false, error: error.message });
