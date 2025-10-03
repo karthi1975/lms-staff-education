@@ -263,7 +263,7 @@ router.delete('/content/:contentId',
 
       // Get file info before deleting
       const fileResult = await postgresService.pool.query(
-        'SELECT file_name FROM module_content WHERE id = $1',
+        'SELECT file_name, file_path FROM module_content WHERE id = $1',
         [parseInt(contentId)]
       );
 
@@ -271,7 +271,25 @@ router.delete('/content/:contentId',
         return res.status(404).json({ success: false, error: 'Content not found' });
       }
 
-      const fileName = fileResult.rows[0].file_name;
+      const { file_name: fileName, file_path: filePath } = fileResult.rows[0];
+
+      // Delete chunks from ChromaDB vector store
+      try {
+        await chromaService.deleteByMetadata({ content_id: parseInt(contentId) });
+        logger.info(`Deleted vector embeddings for content ID: ${contentId}`);
+      } catch (chromaError) {
+        logger.error('Error deleting from ChromaDB:', chromaError);
+        // Continue with deletion even if ChromaDB fails
+      }
+
+      // Delete physical file
+      try {
+        await fs.unlink(filePath);
+        logger.info(`Deleted physical file: ${filePath}`);
+      } catch (fileError) {
+        logger.error('Error deleting physical file:', fileError);
+        // Continue with deletion even if file doesn't exist
+      }
 
       // Delete from database
       await postgresService.pool.query(
@@ -279,12 +297,11 @@ router.delete('/content/:contentId',
         [parseInt(contentId)]
       );
 
-      // TODO: Delete physical file and ChromaDB embeddings
-      logger.info(`Content deleted: ${fileName} (ID: ${contentId})`);
+      logger.info(`Content fully deleted: ${fileName} (ID: ${contentId})`);
 
       res.json({
         success: true,
-        message: 'Content deleted successfully'
+        message: 'Content and all related data deleted successfully'
       });
 
     } catch (error) {

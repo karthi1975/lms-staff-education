@@ -173,6 +173,22 @@ class ChromaService {
     }
   }
 
+  /**
+   * Delete all documents matching metadata filter
+   */
+  async deleteByMetadata(whereFilter) {
+    try {
+      await this.collection.delete({
+        where: whereFilter
+      });
+      logger.info(`Documents deleted with filter:`, whereFilter);
+      return true;
+    } catch (error) {
+      logger.error('Error deleting documents by metadata:', error);
+      throw error;
+    }
+  }
+
   async getStats() {
     try {
       const count = await this.collection.count();
