@@ -36,7 +36,9 @@ class Neo4jService {
       const constraints = [
         'CREATE CONSTRAINT user_id IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE',
         'CREATE CONSTRAINT module_id IF NOT EXISTS FOR (m:Module) REQUIRE m.id IS UNIQUE',
-        'CREATE CONSTRAINT quiz_id IF NOT EXISTS FOR (q:Quiz) REQUIRE q.id IS UNIQUE'
+        'CREATE CONSTRAINT quiz_id IF NOT EXISTS FOR (q:Quiz) REQUIRE q.id IS UNIQUE',
+        'CREATE CONSTRAINT session_id IF NOT EXISTS FOR (s:Session) REQUIRE s.id IS UNIQUE',
+        'CREATE CONSTRAINT event_id IF NOT EXISTS FOR (e:Event) REQUIRE e.id IS UNIQUE'
       ];
 
       for (const constraint of constraints) {
@@ -44,6 +46,21 @@ class Neo4jService {
           await session.run(constraint);
         } catch (e) {
           // Constraint might already exist
+        }
+      }
+
+      // Create indexes for performance
+      const indexes = [
+        'CREATE INDEX user_phone IF NOT EXISTS FOR (u:User) ON (u.phone)',
+        'CREATE INDEX session_active IF NOT EXISTS FOR (s:Session) ON (s.is_active)',
+        'CREATE INDEX event_timestamp IF NOT EXISTS FOR (e:Event) ON (e.timestamp)'
+      ];
+
+      for (const index of indexes) {
+        try {
+          await session.run(index);
+        } catch (e) {
+          // Index might already exist
         }
       }
 
@@ -267,6 +284,288 @@ class Neo4jService {
         }]->(c)`,
         { userId, contentId, interactionType }
       );
+    } finally {
+      await session.close();
+    }
+  }
+
+  // ========================================
+  // SESSION MEMORY & STATE MANAGEMENT
+  // ========================================
+
+  async createOrUpdateSession(userId, sessionData) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {id: $userId})
+        MERGE (s:Session {id: $sessionId})
+        ON CREATE SET
+          s.started_at = datetime(),
+          s.context = $context,
+          s.current_module_id = $currentModuleId,
+          s.current_state = $currentState,
+          s.is_active = true,
+          s.last_activity = datetime()
+        ON MATCH SET
+          s.context = $context,
+          s.current_module_id = $currentModuleId,
+          s.current_state = $currentState,
+          s.last_activity = datetime(),
+          s.interaction_count = COALESCE(s.interaction_count, 0) + 1
+        MERGE (u)-[:HAS_SESSION]->(s)
+        RETURN s`,
+        {
+          userId,
+          sessionId: sessionData.sessionId,
+          context: JSON.stringify(sessionData.context || {}),
+          currentModuleId: sessionData.currentModuleId || null,
+          currentState: sessionData.currentState || 'idle'
+        }
+      );
+
+      return result.records[0]?.get('s').properties;
+    } finally {
+      await session.close();
+    }
+  }
+
+  async getActiveSession(userId) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {id: $userId})-[:HAS_SESSION]->(s:Session)
+        WHERE s.is_active = true
+          AND duration.between(s.last_activity, datetime()).hours < 24
+        RETURN s
+        ORDER BY s.last_activity DESC
+        LIMIT 1`,
+        { userId }
+      );
+
+      if (result.records.length === 0) return null;
+
+      const sessionProps = result.records[0].get('s').properties;
+      return {
+        ...sessionProps,
+        context: JSON.parse(sessionProps.context || '{}')
+      };
+    } finally {
+      await session.close();
+    }
+  }
+
+  async recordEvent(userId, eventData) {
+    const session = this.driver.session();
+    try {
+      await session.run(
+        `MATCH (u:User {id: $userId})
+        CREATE (e:Event {
+          id: randomUUID(),
+          type: $type,
+          data: $data,
+          timestamp: datetime(),
+          module_id: $moduleId
+        })
+        CREATE (u)-[:TRIGGERED]->(e)
+        WITH u, e
+        OPTIONAL MATCH (u)-[:HAS_SESSION]->(s:Session {is_active: true})
+        CREATE (s)-[:CONTAINS]->(e)
+        RETURN e`,
+        {
+          userId,
+          type: eventData.type,
+          data: JSON.stringify(eventData.data || {}),
+          moduleId: eventData.moduleId || null
+        }
+      );
+    } finally {
+      await session.close();
+    }
+  }
+
+  async getSessionHistory(userId, limit = 10) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {id: $userId})-[:HAS_SESSION]->(s:Session)
+        OPTIONAL MATCH (s)-[:CONTAINS]->(e:Event)
+        WITH s, collect(e) as events
+        ORDER BY s.last_activity DESC
+        LIMIT $limit
+        RETURN s, events`,
+        { userId, limit }
+      );
+
+      return result.records.map(record => ({
+        session: record.get('s').properties,
+        events: record.get('events').map(e => e.properties)
+      }));
+    } finally {
+      await session.close();
+    }
+  }
+
+  // ========================================
+  // COACHING & NUDGING ENGINE
+  // ========================================
+
+  async trackLearningBehavior(userId, behavior) {
+    const session = this.driver.session();
+    try {
+      await session.run(
+        `MATCH (u:User {id: $userId})
+        MERGE (u)-[b:BEHAVIOR]->(pattern:LearningPattern {type: $type})
+        ON CREATE SET
+          b.frequency = 1,
+          b.first_seen = datetime(),
+          b.last_seen = datetime()
+        ON MATCH SET
+          b.frequency = b.frequency + 1,
+          b.last_seen = datetime()
+        SET b.metadata = $metadata`,
+        {
+          userId,
+          type: behavior.type,
+          metadata: JSON.stringify(behavior.metadata || {})
+        }
+      );
+    } finally {
+      await session.close();
+    }
+  }
+
+  async shouldNudgeUser(userId) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {id: $userId})
+        OPTIONAL MATCH (u)-[:HAS_SESSION]->(s:Session)
+        WHERE s.is_active = true
+        WITH u, s
+        ORDER BY s.last_activity DESC
+        LIMIT 1
+
+        // Check last activity
+        WITH u, s,
+          duration.between(COALESCE(s.last_activity, datetime() - duration({hours: 48})), datetime()) as inactivity
+
+        // Check incomplete modules
+        OPTIONAL MATCH (u)-[p:PROGRESS]->(m:Module)
+        WHERE p.status = 'in_progress'
+
+        RETURN {
+          should_nudge: inactivity.hours > 48 OR count(p) > 0,
+          reason: CASE
+            WHEN inactivity.hours > 48 THEN 'inactivity'
+            WHEN count(p) > 0 THEN 'incomplete_modules'
+            ELSE 'none'
+          END,
+          inactivity_hours: inactivity.hours,
+          incomplete_count: count(p)
+        } as nudge_data`,
+        { userId }
+      );
+
+      return result.records[0]?.get('nudge_data') || { should_nudge: false };
+    } finally {
+      await session.close();
+    }
+  }
+
+  async getPersonalizedRecommendations(userId) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {id: $userId})
+
+        // Find current progress
+        OPTIONAL MATCH (u)-[p:PROGRESS]->(completed:Module)
+        WHERE p.status = 'completed'
+
+        // Find next recommended modules
+        MATCH (next:Module)
+        WHERE NOT exists((u)-[:PROGRESS {status: 'completed'}]->(next))
+        OPTIONAL MATCH (prereq:Module)-[:PREREQUISITE_FOR]->(next)
+        WHERE NOT exists((u)-[:PROGRESS {status: 'completed'}]->(prereq))
+
+        WITH u, next, count(prereq) as missing_prereqs
+        WHERE missing_prereqs = 0
+
+        // Consider learning behavior
+        OPTIONAL MATCH (u)-[b:BEHAVIOR]->(lp:LearningPattern)
+
+        RETURN next {
+          .*,
+          recommended: true,
+          priority: CASE
+            WHEN next.order_index = (SELECT min(m.order_index) FROM Module m
+              WHERE NOT exists((u)-[:PROGRESS {status: 'completed'}]->(m)))
+            THEN 'high'
+            ELSE 'medium'
+          END
+        } as recommendation
+        ORDER BY next.order_index
+        LIMIT 3`,
+        { userId }
+      );
+
+      return result.records.map(r => r.get('recommendation'));
+    } finally {
+      await session.close();
+    }
+  }
+
+  async recordNudge(userId, nudgeData) {
+    const session = this.driver.session();
+    try {
+      await session.run(
+        `MATCH (u:User {id: $userId})
+        CREATE (n:Nudge {
+          id: randomUUID(),
+          type: $type,
+          message: $message,
+          sent_at: datetime(),
+          trigger_reason: $reason
+        })
+        CREATE (u)-[:RECEIVED]->(n)`,
+        {
+          userId,
+          type: nudgeData.type,
+          message: nudgeData.message,
+          reason: nudgeData.reason
+        }
+      );
+    } finally {
+      await session.close();
+    }
+  }
+
+  async getUserEngagementScore(userId) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {id: $userId})
+        OPTIONAL MATCH (u)-[:HAS_SESSION]->(s:Session)
+        OPTIONAL MATCH (u)-[:PROGRESS]->(m:Module)
+        OPTIONAL MATCH (u)-[:TOOK]->(q:Quiz)
+
+        WITH u,
+          count(DISTINCT s) as session_count,
+          count(DISTINCT m) as modules_touched,
+          count(DISTINCT q) as quiz_attempts,
+          avg(CASE WHEN m IS NOT NULL THEN m.completion_percentage ELSE 0 END) as avg_completion
+
+        RETURN {
+          engagement_score: (session_count * 2 + modules_touched * 5 + quiz_attempts * 3) / 100.0,
+          session_count: session_count,
+          modules_touched: modules_touched,
+          quiz_attempts: quiz_attempts,
+          avg_completion: avg_completion
+        } as score`,
+        { userId }
+      );
+
+      return result.records[0]?.get('score') || { engagement_score: 0 };
     } finally {
       await session.close();
     }

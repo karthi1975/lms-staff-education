@@ -362,6 +362,7 @@
         <div class="header-content">
             <h1>📚 Module Management</h1>
             <div class="header-actions">
+                <button class="btn btn-primary" onclick="window.location.href='chat.html'">💬 Module Chat</button>
                 <button class="btn btn-primary" onclick="window.location.href='users.html'">View Users</button>
                 <button class="btn btn-secondary" onclick="logout()">Logout</button>
             </div>
@@ -369,6 +370,12 @@
     </div>
 
     <div class="container">
+        <div style="background: white; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <a href="lms-dashboard.html" style="color: #667eea; text-decoration: none;">🏠 Home</a>
+            <span style="color: #999;"> / </span>
+            <span style="color: #333; font-weight: 500;">Module Management</span>
+        </div>
+
         <div id="alertContainer"></div>
 
         <div class="modules-grid" id="modulesGrid">
@@ -381,7 +388,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Upload Content</h2>
-                <button class="close-modal" onclick="closeModal()">&times;</button>
+                <button class="close-modal" onclick="closeUploadModal()">&times;</button>
             </div>
 
             <div id="uploadAlert"></div>
@@ -399,6 +406,22 @@
             </div>
 
             <div class="content-list" id="contentList">
+                <!-- Content items will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- View Content Modal -->
+    <div class="modal" id="viewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="viewModalTitle">View Content</h2>
+                <button class="close-modal" onclick="closeViewModal()">&times;</button>
+            </div>
+
+            <div id="viewAlert"></div>
+
+            <div class="content-list" id="viewContentList">
                 <!-- Content items will be loaded here -->
             </div>
         </div>
@@ -460,6 +483,10 @@
                             <div class="stat-value" id="chunkCount${module.id}">-</div>
                             <div class="stat-label">Chunks</div>
                         </div>
+                        <div class="stat">
+                            <div class="stat-value" id="quizCount${module.id}">5</div>
+                            <div class="stat-label">Quiz Qs</div>
+                        </div>
                     </div>
                     <div class="module-actions">
                         <button class="btn btn-upload" onclick="openUploadModal(${module.id}, '${module.title}')">
@@ -467,6 +494,11 @@
                         </button>
                         <button class="btn btn-view" onclick="viewContent(${module.id})">
                             View Content
+                        </button>
+                    </div>
+                    <div class="module-actions" style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="window.location.href='quiz.html?module=${module.id}'">
+                            📝 Take Quiz
                         </button>
                     </div>
                 </div>
@@ -504,9 +536,21 @@
             loadContentList(moduleId);
         }
 
-        function closeModal() {
+        function closeUploadModal() {
             document.getElementById('uploadModal').classList.remove('active');
             document.getElementById('fileInput').value = '';
+            currentModuleId = null;
+        }
+
+        function openViewModal(moduleId, moduleTitle) {
+            currentModuleId = moduleId;
+            document.getElementById('viewModalTitle').textContent = `View Content - ${moduleTitle}`;
+            document.getElementById('viewModal').classList.add('active');
+            loadViewContentList(moduleId);
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewModal').classList.remove('active');
             currentModuleId = null;
         }
 
@@ -548,9 +592,6 @@
                     <span class="status-badge status-${item.processed ? 'processed' : 'processing'}">
                         ${item.processed ? 'Processed' : 'Processing...'}
                     </span>
-                    <button class="btn btn-delete" onclick="deleteContent(${item.id}, '${item.original_name}')">
-                        Delete
-                    </button>
                 </div>
             `).join('');
         }
@@ -592,8 +633,53 @@
             }
         }
 
+        async function loadViewContentList(moduleId) {
+            try {
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/content`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    displayViewContentList(result.data);
+                }
+            } catch (error) {
+                console.error('Error loading content list:', error);
+            }
+        }
+
+        function displayViewContentList(content) {
+            const list = document.getElementById('viewContentList');
+
+            if (content.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#666;">No content uploaded yet</p>';
+                return;
+            }
+
+            list.innerHTML = content.map(item => `
+                <div class="content-item">
+                    <div class="content-info">
+                        <div class="content-name">${item.original_name}</div>
+                        <div class="content-meta">
+                            Uploaded ${new Date(item.uploaded_at).toLocaleDateString()}
+                            ${item.uploaded_by_name ? `by ${item.uploaded_by_name}` : ''}
+                            • ${item.chunk_count || 0} chunks
+                        </div>
+                    </div>
+                    <span class="status-badge status-${item.processed ? 'processed' : 'processing'}">
+                        ${item.processed ? 'Processed' : 'Processing...'}
+                    </span>
+                    <button class="btn btn-delete" onclick="deleteContentFromView(${item.id}, '${item.original_name}')">
+                        Delete
+                    </button>
+                </div>
+            `).join('');
+        }
+
         async function deleteContent(contentId, fileName) {
-            if (!confirm(`Are you sure you want to delete "${fileName}"?`)) {
+            if (!confirm(`Are you sure you want to delete "${fileName}"?\n\nThis will remove:\n• The file from storage\n• All database records\n• All vector embeddings`)) {
                 return;
             }
 
@@ -606,7 +692,7 @@
                 });
 
                 if (response.ok) {
-                    showUploadAlert('Content deleted successfully', 'success');
+                    showUploadAlert('Content deleted successfully (file, database, and vectors)', 'success');
                     loadContentList(currentModuleId);
                     loadModuleStats(currentModuleId);
                 } else {
@@ -618,8 +704,46 @@
             }
         }
 
+        async function deleteContentFromView(contentId, fileName) {
+            if (!confirm(`Are you sure you want to delete "${fileName}"?\n\nThis will remove:\n• The file from storage\n• All database records\n• All vector embeddings`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/content/${contentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    showViewAlert('Content deleted successfully (file, database, and vectors)', 'success');
+                    loadViewContentList(currentModuleId);
+                    loadModuleStats(currentModuleId);
+                } else {
+                    const result = await response.json();
+                    showViewAlert('Delete failed: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showViewAlert('Delete error: ' + error.message, 'error');
+            }
+        }
+
         function viewContent(moduleId) {
-            openUploadModal(moduleId, `Module ${moduleId}`);
+            // Get module title from the displayed modules
+            const moduleCards = document.querySelectorAll('.module-card');
+            let moduleTitle = `Module ${moduleId}`;
+
+            moduleCards.forEach(card => {
+                const title = card.querySelector('.module-info h3');
+                const uploadBtn = card.querySelector('.btn-upload');
+                if (uploadBtn && uploadBtn.getAttribute('onclick').includes(`(${moduleId},`)) {
+                    moduleTitle = title.textContent;
+                }
+            });
+
+            openViewModal(moduleId, moduleTitle);
         }
 
         // Drag and drop
@@ -668,6 +792,19 @@
 
         function showUploadAlert(message, type) {
             const container = document.getElementById('uploadAlert');
+            container.innerHTML = `
+                <div class="alert alert-${type} active">
+                    ${message}
+                </div>
+            `;
+
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function showViewAlert(message, type) {
+            const container = document.getElementById('viewAlert');
             container.innerHTML = `
                 <div class="alert alert-${type} active">
                     ${message}

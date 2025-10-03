@@ -157,12 +157,20 @@ class OrchestratorService {
 
   async handleUserInput(userId, input, userProgress, session) {
     const lowerInput = input.toLowerCase().trim();
-    
+
+    // Handle greetings (first time users)
+    if (lowerInput.match(/^(hello|hi|hey|start|hola|habari)/)) {
+      return {
+        type: 'text',
+        content: `👋 Welcome to Teachers Training!\n\nI'm your AI learning assistant. I can help you with:\n\n📚 Module 1: Introduction to Teaching\n📚 Module 2: Classroom Management\n📚 Module 3: Lesson Planning\n📚 Module 4: Assessment Strategies\n📚 Module 5: Technology in Education\n\nCommands:\n• Type "module 1" to start\n• Type "progress" to see your progress\n• Type "quiz 1" to take a quiz\n• Ask me any teaching questions!\n\nLet's get started! 🚀`
+      };
+    }
+
     // Handle special commands
     if (lowerInput === 'menu' || lowerInput === 'help') {
       return this.getMainMenu(userProgress);
     }
-    
+
     if (lowerInput === 'progress') {
       return this.getProgressReport(userProgress);
     }
@@ -374,30 +382,31 @@ class OrchestratorService {
 
   async getMainMenu(userProgress) {
     const modules = userProgress?.modules || [];
-    const menuSections = [{
-      title: '📚 Learning Modules',
-      rows: this.modules.map(m => {
-        const progress = modules.find(p => p.id === m.id);
-        const status = progress?.progress?.status || 'locked';
-        const icon = status === 'completed' ? '✅' : status === 'in_progress' ? '📖' : status === 'unlocked' ? '🔓' : '🔒';
-        return {
-          id: `module_${m.order}`,
-          title: `${icon} ${m.name}`,
-          description: `Module ${m.order} - ${status}`
-        };
-      })
-    }];
-    
+
+    let menuText = `📚 *Teachers Training Menu*\n\n`;
+    menuText += `*Available Modules:*\n\n`;
+
+    this.modules.forEach(m => {
+      const progress = modules.find(p => p.id === m.id);
+      const status = progress?.progress?.status || 'locked';
+      const icon = status === 'completed' ? '✅' : status === 'in_progress' ? '📖' : status === 'unlocked' ? '🔓' : '🔒';
+      const percentage = progress?.progress?.completion_percentage || 0;
+
+      menuText += `${icon} *Module ${m.order}*: ${m.name}\n`;
+      menuText += `   Status: ${status}`;
+      if (percentage > 0) menuText += ` (${percentage}%)`;
+      menuText += `\n\n`;
+    });
+
+    menuText += `\n*Commands:*\n`;
+    menuText += `• Type "module 1" to start a module\n`;
+    menuText += `• Type "quiz 1" to take a quiz\n`;
+    menuText += `• Type "progress" to see details\n`;
+    menuText += `• Ask me any teaching questions!\n`;
+
     return {
-      type: 'menu',
-      headerText: '📚 Teachers Training',
-      bodyText: 'Welcome to the Teachers Training Program! Select a module to begin or continue learning.',
-      buttonText: 'Choose Module',
-      sections: menuSections,
-      additionalOptions: [
-        { id: 'progress', title: '📊 My Progress' },
-        { id: 'help', title: '❓ Help' }
-      ]
+      type: 'text',
+      content: menuText
     };
   }
 

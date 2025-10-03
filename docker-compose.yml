@@ -75,6 +75,8 @@ services:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
       - ./public:/app/public
+      - ./services:/app/services
+      - ./routes:/app/routes
       - ~/.config/gcloud:/home/nodejs/.config/gcloud:ro
     networks:
       - teachers-network

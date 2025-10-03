@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teachers Training Admin Dashboard</title>
+    <script>
+        // Redirect to new LMS-style dashboard
+        window.location.href = 'lms-dashboard.html';
+    </script>
     <style>
         * {
             margin: 0;
@@ -446,6 +450,22 @@
         </div>
 
         <div id="alertContainer"></div>
+
+        <!-- Quick Actions -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h2>⚡ Quick Actions</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="user-management.html" class="btn-primary" style="text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+                    👥 Manage Users
+                </a>
+                <a href="users.html" class="btn-primary" style="text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+                    📊 View User Progress
+                </a>
+                <a href="modules.html" class="btn-primary" style="text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+                    📚 Manage Modules
+                </a>
+            </div>
+        </div>
 
         <div class="main-content">
             <!-- Chat Interface for Testing Documents - Moved to top for visibility -->

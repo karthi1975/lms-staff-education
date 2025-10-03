@@ -126,14 +126,48 @@ class WhatsAppHandlerService {
   async handleCommand(from, messageBody, session) {
     const command = messageBody.toLowerCase().trim();
 
+    // Greetings - show welcome message
+    if (command.match(/^(hello|hi|hey|start|hola|habari|test)$/)) {
+      await this.sendMainMenu(from, session);
+      return;
+    }
+
+    // Handle old button clicks (from cached messages)
+    if (command === 'continue training') {
+      await this.handleModuleRequest(from, session.currentModule, session);
+      return;
+    }
+
+    if (command === 'view progress') {
+      await this.sendProgressUpdate(from, session.userId);
+      return;
+    }
+
     // Module selection
     if (command.includes('module 2') || command.includes('module2')) {
       await this.handleModuleRequest(from, 2, session);
       return;
     }
 
-    // Start quiz command
-    if (command.includes('quiz') || command.includes('test') || command.includes('start quiz')) {
+    if (command.includes('module 1') || command.includes('module1')) {
+      await this.handleModuleRequest(from, 1, session);
+      return;
+    }
+
+    // Structured learning command
+    if (command.includes('teach me') || command.includes('teach') || command === 'learn') {
+      await this.startStructuredLearning(from, session);
+      return;
+    }
+
+    // Examples request
+    if (command.includes('example') || command.includes('scenario')) {
+      await this.sendPracticalExamples(from, session.currentModule);
+      return;
+    }
+
+    // Start quiz command - only when user asks
+    if (command.includes('quiz') || command.includes('test') || command === 'start quiz') {
       await this.startModuleQuiz(from, session.currentModule, session);
       return;
     }
@@ -150,8 +184,9 @@ class WhatsAppHandlerService {
       return;
     }
 
-    // Default: show menu
-    await this.sendMainMenu(from, session);
+    // Default: Conversational learning using RAG
+    // User is asking questions about module content
+    await this.handleLearningQuestion(from, messageBody, session);
   }
 
   /**
@@ -191,16 +226,77 @@ class WhatsAppHandlerService {
 
       session.currentModule = moduleId;
 
-      // Send module info and quiz option
-      let message = `*📚 Module 2: Classroom Management*\n\n`;
-      message += `Welcome to Module 2! This module covers effective classroom management strategies.\n\n`;
-      message += `Topics covered:\n`;
-      message += `• Setting clear expectations\n`;
-      message += `• Prevention strategies\n`;
-      message += `• Non-verbal interventions\n`;
-      message += `• Positive reinforcement\n`;
-      message += `• Handling disruptions\n\n`;
-      message += `When you're ready to test your knowledge, type *"start quiz"* to begin the assessment.`;
+      // Module content mapping
+      const moduleContent = {
+        1: {
+          title: 'Introduction to Teaching',
+          description: 'This module introduces fundamental teaching principles and methodologies.',
+          topics: [
+            'Understanding learning theories',
+            'Building rapport with students',
+            'Creating inclusive classrooms',
+            'Effective communication techniques',
+            'Professional ethics and responsibilities'
+          ]
+        },
+        2: {
+          title: 'Classroom Management',
+          description: 'This module covers effective classroom management strategies.',
+          topics: [
+            'Setting clear expectations',
+            'Prevention strategies',
+            'Non-verbal interventions',
+            'Positive reinforcement',
+            'Handling disruptions'
+          ]
+        },
+        3: {
+          title: 'Lesson Planning',
+          description: 'Learn to design effective and engaging lesson plans.',
+          topics: [
+            'Learning objectives and outcomes',
+            'Instructional strategies',
+            'Time management',
+            'Assessment integration',
+            'Differentiation techniques'
+          ]
+        },
+        4: {
+          title: 'Assessment Strategies',
+          description: 'Master various assessment techniques and evaluation methods.',
+          topics: [
+            'Formative vs summative assessment',
+            'Rubric design',
+            'Feedback strategies',
+            'Student self-assessment',
+            'Data-driven instruction'
+          ]
+        },
+        5: {
+          title: 'Technology in Education',
+          description: 'Integrate technology effectively into your teaching practice.',
+          topics: [
+            'Digital learning tools',
+            'Online collaboration',
+            'Educational apps and platforms',
+            'Digital citizenship',
+            'Blended learning approaches'
+          ]
+        }
+      };
+
+      const content = moduleContent[moduleId];
+      let message = `*📚 Module ${moduleId}: ${content.title}*\n\n`;
+      message += `${content.description}\n\n`;
+      message += `*Topics we'll cover:*\n`;
+      content.topics.forEach(topic => {
+        message += `• ${topic}\n`;
+      });
+      message += `\n💬 *Let's start learning!*\n`;
+      message += `Ask me questions about any topic, or type:\n`;
+      message += `• *"teach me"* to begin structured lessons\n`;
+      message += `• *"quiz"* when ready to test yourself\n`;
+      message += `• *"examples"* for practical scenarios`;
 
       await whatsappService.sendMessage(from, message);
 
@@ -384,14 +480,173 @@ class WhatsAppHandlerService {
    * Send main menu
    */
   async sendMainMenu(from, session) {
-    await whatsappService.sendButtons(from,
-      `Welcome! What would you like to do?`,
-      [
-        { id: 'continue', title: 'Continue Training' },
-        { id: 'progress', title: 'View Progress' },
-        { id: 'help', title: 'Help' }
+    let message = `👋 *Welcome to Teachers Training!*\n\n`;
+    message += `I'm your AI learning assistant. Here's what you can do:\n\n`;
+    message += `*📚 Training Modules:*\n`;
+    message += `1️⃣ Introduction to Teaching\n`;
+    message += `2️⃣ Classroom Management\n`;
+    message += `3️⃣ Lesson Planning\n`;
+    message += `4️⃣ Assessment Strategies\n`;
+    message += `5️⃣ Technology in Education\n\n`;
+    message += `*Commands:*\n`;
+    message += `• Type *"module 1"* to start learning\n`;
+    message += `• Ask me any teaching questions\n`;
+    message += `• Type *"progress"* to see your progress\n`;
+    message += `• Type *"help"* for more options\n\n`;
+    message += `Let's get started! 🚀`;
+
+    await whatsappService.sendMessage(from, message);
+  }
+
+  /**
+   * Handle conversational learning questions
+   */
+  async handleLearningQuestion(from, question, session) {
+    try {
+      // Use orchestrator service for RAG-powered responses
+      const orchestratorService = require('./orchestrator.service');
+
+      // Process question with RAG pipeline
+      const response = await orchestratorService.processContentQuery(
+        session.userId,
+        question,
+        `module_${session.currentModule}`
+      );
+
+      await whatsappService.sendMessage(from, response.content);
+
+      // Track learning interaction in progress
+      await postgresService.query(
+        `UPDATE user_progress
+         SET progress_percentage = LEAST(progress_percentage + 5, 90),
+             last_activity_at = NOW()
+         WHERE user_id = $1 AND module_id = $2`,
+        [session.userId, session.currentModule]
+      );
+
+    } catch (error) {
+      logger.error('Error handling learning question:', error);
+      await whatsappService.sendMessage(from,
+        "I'm having trouble accessing the learning materials right now. Please try:\n" +
+        "• Asking a different question\n" +
+        "• Typing *'teach me'* for structured lessons\n" +
+        "• Typing *'help'* for options"
+      );
+    }
+  }
+
+  /**
+   * Start structured learning (step-by-step lessons)
+   */
+  async startStructuredLearning(from, session) {
+    const moduleId = session.currentModule;
+
+    const lessons = {
+      1: [
+        {
+          title: 'Understanding Learning Theories',
+          content: 'Learning theories help us understand how students acquire knowledge.\n\n' +
+                   '🧠 *Behaviorism*: Learning through reinforcement (rewards and consequences)\n' +
+                   '🤔 *Cognitivism*: Learning as mental processing (thinking and problem-solving)\n' +
+                   '🔨 *Constructivism*: Learning through experience (hands-on discovery)\n\n' +
+                   'As a teacher, you\'ll use all three! For example:\n' +
+                   '• Praise for good behavior (Behaviorism)\n' +
+                   '• Teaching problem-solving steps (Cognitivism)\n' +
+                   '• Science experiments (Constructivism)\n\n' +
+                   '💬 Ask me: "How do I use behaviorism in class?"'
+        },
+        {
+          title: 'Building Rapport with Students',
+          content: '🤝 Building strong relationships is the foundation of effective teaching.\n\n' +
+                   '*Key Strategies:*\n' +
+                   '• Learn and use students\' names\n' +
+                   '• Show genuine interest in their lives\n' +
+                   '• Be consistent and reliable\n' +
+                   '• Create a safe space for questions\n' +
+                   '• Celebrate small wins\n\n' +
+                   'Students learn best when they feel valued and understood.\n\n' +
+                   '💬 Ask me: "Give me examples of building rapport"'
+        }
+      ],
+      2: [
+        {
+          title: 'Setting Clear Expectations',
+          content: '📋 Clear expectations prevent 90% of classroom issues.\n\n' +
+                   '*How to set expectations:*\n' +
+                   '1. Create simple, specific rules (3-5 max)\n' +
+                   '2. Explain WHY each rule matters\n' +
+                   '3. Practice the rules together\n' +
+                   '4. Post them visibly in classroom\n' +
+                   '5. Review regularly\n\n' +
+                   '*Example Rules:*\n' +
+                   '✅ "Raise your hand before speaking"\n' +
+                   '✅ "Respect others\' learning time"\n' +
+                   '✅ "Come prepared with materials"\n\n' +
+                   '💬 Ask me: "How do I enforce rules fairly?"'
+        }
       ]
+    };
+
+    const moduleTopics = lessons[moduleId] || [];
+
+    if (moduleTopics.length === 0) {
+      await whatsappService.sendMessage(from,
+        `📚 Module ${moduleId} content coming soon!\n\n` +
+        `For now, ask me any questions about teaching and I'll help you learn.`
+      );
+      return;
+    }
+
+    // Send first lesson
+    const firstLesson = moduleTopics[0];
+    let message = `📖 *Lesson: ${firstLesson.title}*\n\n`;
+    message += firstLesson.content;
+
+    await whatsappService.sendMessage(from, message);
+
+    // Update progress
+    await postgresService.query(
+      `UPDATE user_progress
+       SET progress_percentage = LEAST(progress_percentage + 15, 90),
+           last_activity_at = NOW()
+       WHERE user_id = $1 AND module_id = $2`,
+      [session.userId, session.currentModule]
     );
+  }
+
+  /**
+   * Send practical examples
+   */
+  async sendPracticalExamples(from, moduleId) {
+    const examples = {
+      1: `📝 *Practical Example: First Day of Class*\n\n` +
+         `*Scenario:* You're meeting 30 new students for the first time.\n\n` +
+         `*What to do:*\n` +
+         `1. Greet students at the door (Rapport)\n` +
+         `2. Name game activity (Learn names)\n` +
+         `3. Share your teaching style (Expectations)\n` +
+         `4. Ask about their learning preferences (Inclusive)\n` +
+         `5. Do a fun icebreaker (Engagement)\n\n` +
+         `*Result:* Students feel welcome and excited to learn!\n\n` +
+         `💬 Want more examples? Ask: "Give me a classroom management example"`,
+
+      2: `📝 *Practical Example: Handling Disruption*\n\n` +
+         `*Scenario:* Two students are talking during your lesson.\n\n` +
+         `*Wrong Approach:* ❌ "Stop talking NOW!"\n\n` +
+         `*Better Approach:* ✅\n` +
+         `1. Use proximity (walk near them)\n` +
+         `2. Make eye contact (non-verbal)\n` +
+         `3. Pause briefly (wait for attention)\n` +
+         `4. If continues: "Sam and Alex, I need your attention"\n` +
+         `5. After class: Private conversation about expectations\n\n` +
+         `*Result:* Issue resolved without disrupting whole class!\n\n` +
+         `💬 Ask me: "What if the disruption continues?"`
+    };
+
+    const example = examples[moduleId] ||
+      `💡 Examples for Module ${moduleId} coming soon!\n\nAsk me specific questions and I'll provide practical scenarios.`;
+
+    await whatsappService.sendMessage(from, example);
   }
 }
 

@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Quiz - Teachers Training System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .header-content {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px 40px;
+        }
+
+        .quiz-header {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .quiz-header h2 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .quiz-info {
+            display: flex;
+            gap: 30px;
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .quiz-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .question-card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .question-number {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .question-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            background: #f9fafb;
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: #eef2ff;
+        }
+
+        .option input[type="radio"] {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .option label {
+            flex: 1;
+            cursor: pointer;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .difficulty-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .difficulty-easy {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .difficulty-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .difficulty-hard {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .submit-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .btn-submit {
+            background: #667eea;
+            color: white;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-submit:hover {
+            background: #5568d3;
+        }
+
+        .btn-submit:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .results {
+            background: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .results.hidden {
+            display: none;
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+        }
+
+        .score-circle.passed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .score-circle.failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .results h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .results p {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .results-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>📝 Module Quiz</h1>
+            <button class="btn btn-secondary" onclick="window.location.href='modules.html'">← Back to Modules</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div style="background: white; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <a href="lms-dashboard.html" style="color: #667eea; text-decoration: none;">🏠 Home</a>
+            <span style="color: #999;"> / </span>
+            <a href="modules.html" style="color: #667eea; text-decoration: none;">Modules</a>
+            <span style="color: #999;"> / </span>
+            <span style="color: #333; font-weight: 500;">Quiz</span>
+        </div>
+
+        <div id="quizContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading quiz...</p>
+            </div>
+        </div>
+
+        <div id="resultsContainer" class="results hidden">
+            <!-- Results will be displayed here -->
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let authToken = localStorage.getItem('adminToken');
+        let moduleId = null;
+        let questions = [];
+        let answers = {};
+
+        // Check authentication
+        if (!authToken) {
+            window.location.href = 'login.html';
+        }
+
+        // Get module ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        moduleId = urlParams.get('module');
+
+        if (!moduleId) {
+            alert('No module specified');
+            window.location.href = 'modules.html';
+        }
+
+        // Load quiz on page load
+        document.addEventListener('DOMContentLoaded', loadQuiz);
+
+        async function loadQuiz() {
+            try {
+                const response = await fetch(`${API_BASE}/quiz/${moduleId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('adminToken');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    throw new Error('Failed to load quiz');
+                }
+
+                const result = await response.json();
+                questions = result.questions;
+
+                if (questions.length === 0) {
+                    document.getElementById('quizContainer').innerHTML = `
+                        <div class="quiz-header">
+                            <h2>No Quiz Available</h2>
+                            <p>This module doesn't have any quiz questions yet.</p>
+                            <button class="btn btn-primary" onclick="window.location.href='modules.html'">
+                                Back to Modules
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                displayQuiz();
+            } catch (error) {
+                console.error('Error loading quiz:', error);
+                document.getElementById('quizContainer').innerHTML = `
+                    <div class="quiz-header">
+                        <h2>Error Loading Quiz</h2>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayQuiz() {
+            const container = document.getElementById('quizContainer');
+            const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
+
+            let html = `
+                <div class="quiz-header">
+                    <h2>Module ${moduleId} Quiz</h2>
+                    <div class="quiz-info">
+                        <div class="quiz-info-item">
+                            <span>📊</span>
+                            <span>${questions.length} Questions</span>
+                        </div>
+                        <div class="quiz-info-item">
+                            <span>⭐</span>
+                            <span>${totalPoints} Points</span>
+                        </div>
+                        <div class="quiz-info-item">
+                            <span>✅</span>
+                            <span>70% to Pass</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            questions.forEach((question, index) => {
+                const options = JSON.parse(question.options);
+                html += `
+                    <div class="question-card">
+                        <div class="question-number">
+                            Question ${index + 1} of ${questions.length}
+                            <span class="difficulty-badge difficulty-${question.difficulty}">${question.difficulty}</span>
+                        </div>
+                        <div class="question-text">${question.question_text}</div>
+                        <div class="options">
+                            ${options.map((option, optIndex) => `
+                                <div class="option" onclick="selectOption(${question.id}, '${escapeHtml(option)}', this)">
+                                    <input type="radio" name="question_${question.id}" id="q${question.id}_opt${optIndex}" value="${escapeHtml(option)}">
+                                    <label for="q${question.id}_opt${optIndex}">${option}</label>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                <div class="submit-container">
+                    <button class="btn btn-submit" onclick="submitQuiz()" id="submitBtn" disabled>
+                        Submit Quiz
+                    </button>
+                    <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                        Answer all questions to submit
+                    </p>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function selectOption(questionId, answer, element) {
+            // Update answers
+            answers[questionId] = answer;
+
+            // Update UI
+            const parent = element.parentElement;
+            parent.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+
+            // Enable submit if all answered
+            if (Object.keys(answers).length === questions.length) {
+                document.getElementById('submitBtn').disabled = false;
+            }
+        }
+
+        async function submitQuiz() {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            try {
+                const response = await fetch(`${API_BASE}/quiz/${moduleId}/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ answers })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to submit quiz');
+                }
+
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                console.error('Error submitting quiz:', error);
+                alert('Error submitting quiz. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Quiz';
+            }
+        }
+
+        function displayResults(result) {
+            document.getElementById('quizContainer').style.display = 'none';
+            const resultsContainer = document.getElementById('resultsContainer');
+            resultsContainer.classList.remove('hidden');
+
+            const passedClass = result.passed ? 'passed' : 'failed';
+            const passedText = result.passed ? 'Passed! 🎉' : 'Not Passed';
+            const message = result.passed
+                ? 'Congratulations! You have successfully completed this quiz.'
+                : 'Keep studying and try again. You need 70% to pass.';
+
+            resultsContainer.innerHTML = `
+                <div class="score-circle ${passedClass}">
+                    ${result.score}%
+                </div>
+                <h2>${passedText}</h2>
+                <p>${message}</p>
+                <p style="margin-bottom: 30px;">
+                    Score: ${result.points_earned} / ${result.total_points} points<br>
+                    Attempt: ${result.attempt_number}
+                </p>
+                <div class="results-actions">
+                    <button class="btn btn-primary" onclick="window.location.href='modules.html'">
+                        Back to Modules
+                    </button>
+                    ${!result.passed ? `
+                        <button class="btn btn-secondary" onclick="window.location.reload()">
+                            Try Again
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/'/g, '&#39;');
+        }
+    </script>
+</body>
+</html>

@@ -456,4 +456,186 @@ router.get('/user-progress/:userId', authMiddleware.authenticateToken, async (re
   }
 });
 
+/**
+ * @route POST /api/admin/chat
+ * @desc Chat with module content using RAG
+ * @access Admin
+ */
+router.post('/chat', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { module_id, message } = req.body;
+
+    if (!module_id || !message) {
+      return res.status(400).json({
+        success: false,
+        error: 'module_id and message are required'
+      });
+    }
+
+    // Query ChromaDB for relevant content
+    const relevantDocs = await chromaService.query(message, {
+      module_id: parseInt(module_id),
+      n_results: 3
+    });
+
+    let context = '';
+    let sources = [];
+
+    if (relevantDocs && relevantDocs.length > 0) {
+      context = relevantDocs.map(doc => doc.content).join('\n\n');
+      sources = relevantDocs.map(doc => doc.metadata?.filename || 'Training Content');
+      // Remove duplicates
+      sources = [...new Set(sources)];
+    }
+
+    // Build prompt for AI
+    const prompt = `You are a helpful teaching assistant for a teacher training program.
+You are answering questions about training content.
+
+${context ? `CONTEXT FROM TRAINING MATERIALS:
+${context}
+
+` : ''}USER QUESTION: ${message}
+
+Provide a clear, helpful answer based on the training materials${context ? '' : ' (note: no specific content was found, so provide general teaching guidance)'}. Be concise but informative.`;
+
+    // Call Vertex AI for response
+    const vertexAI = require('../services/vertexai.service');
+    const aiResponse = await vertexAI.generateText(prompt);
+
+    res.json({
+      success: true,
+      response: aiResponse,
+      sources: sources,
+      has_context: relevantDocs.length > 0
+    });
+
+  } catch (error) {
+    logger.error('Error in chat endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process chat message',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/quiz/:moduleId
+ * @desc Get quiz questions for a module
+ * @access Admin
+ */
+router.get('/quiz/:moduleId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+
+    const result = await postgresService.pool.query(`
+      SELECT
+        id,
+        question_text,
+        question_type,
+        options,
+        difficulty,
+        points,
+        sequence_order
+      FROM quiz_questions
+      WHERE module_id = $1 AND is_active = true
+      ORDER BY sequence_order
+    `, [parseInt(moduleId)]);
+
+    res.json({
+      success: true,
+      questions: result.rows
+    });
+  } catch (error) {
+    logger.error(`Error fetching quiz for module ${req.params.moduleId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/quiz/:moduleId/submit
+ * @desc Submit quiz answers
+ * @access Admin (for testing) or User
+ */
+router.post('/quiz/:moduleId/submit', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const { answers } = req.body; // { questionId: userAnswer }
+    const userId = req.user.id;
+
+    if (!answers || typeof answers !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'Answers object is required'
+      });
+    }
+
+    // Get correct answers
+    const questionsResult = await postgresService.pool.query(`
+      SELECT id, correct_answer, points
+      FROM quiz_questions
+      WHERE module_id = $1 AND is_active = true
+    `, [parseInt(moduleId)]);
+
+    const questions = questionsResult.rows;
+    let score = 0;
+    let totalPoints = 0;
+
+    // Calculate score
+    questions.forEach(q => {
+      totalPoints += q.points;
+      if (answers[q.id] && answers[q.id].trim() === q.correct_answer.trim()) {
+        score += q.points;
+      }
+    });
+
+    const percentage = Math.round((score / totalPoints) * 100);
+    const passed = percentage >= 70; // 70% pass threshold
+
+    // Get attempt number
+    const attemptsResult = await postgresService.pool.query(`
+      SELECT COUNT(*) as count
+      FROM quiz_attempts
+      WHERE user_id = $1 AND module_id = $2
+    `, [userId, parseInt(moduleId)]);
+
+    const attemptNumber = parseInt(attemptsResult.rows[0].count) + 1;
+
+    // Save attempt
+    await postgresService.pool.query(`
+      INSERT INTO quiz_attempts (
+        user_id,
+        module_id,
+        attempt_number,
+        score,
+        total_questions,
+        passed,
+        answers
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      userId,
+      parseInt(moduleId),
+      attemptNumber,
+      percentage,
+      questions.length,
+      passed,
+      JSON.stringify(answers)
+    ]);
+
+    res.json({
+      success: true,
+      score: percentage,
+      passed: passed,
+      attempt_number: attemptNumber,
+      points_earned: score,
+      total_points: totalPoints
+    });
+
+  } catch (error) {
+    logger.error('Error submitting quiz:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
