@@ -21,9 +21,9 @@ class RAGService {
       }
 
       // Query ChromaDB for relevant content
-      const relevantDocs = await chromaService.query(query, {
-        ...metadata,
-        n_results: limit
+      const relevantDocs = await chromaService.searchSimilar(query, {
+        module: moduleId ? `module_${moduleId}` : null,
+        nResults: limit
       });
 
       let context = '';
@@ -36,11 +36,8 @@ class RAGService {
         sources = [...new Set(sources)];
       }
 
-      // Build prompt for AI
-      const prompt = this.buildPrompt(query, context, moduleId);
-
-      // Get AI response
-      const aiResponse = await vertexAI.generateText(prompt);
+      // Get AI response using educational response generator
+      const aiResponse = await vertexAI.generateEducationalResponse(query, context, 'english');
 
       return {
         answer: aiResponse,

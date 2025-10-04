@@ -473,9 +473,9 @@ router.post('/chat', authMiddleware.authenticateToken, async (req, res) => {
     }
 
     // Query ChromaDB for relevant content
-    const relevantDocs = await chromaService.query(message, {
-      module_id: parseInt(module_id),
-      n_results: 3
+    const relevantDocs = await chromaService.searchSimilar(message, {
+      module: `module_${module_id}`,
+      nResults: 3
     });
 
     let context = '';
@@ -501,7 +501,7 @@ Provide a clear, helpful answer based on the training materials${context ? '' : 
 
     // Call Vertex AI for response
     const vertexAI = require('../services/vertexai.service');
-    const aiResponse = await vertexAI.generateText(prompt);
+    const aiResponse = await vertexAI.generateEducationalResponse(message, context, 'english');
 
     res.json({
       success: true,
