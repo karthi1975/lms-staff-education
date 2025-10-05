@@ -408,7 +408,7 @@
             `;
 
             questions.forEach((question, index) => {
-                const options = JSON.parse(question.options);
+                const options = typeof question.options === 'string' ? JSON.parse(question.options) : question.options;
                 html += `
                     <div class="question-card">
                         <div class="question-number">

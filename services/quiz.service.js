@@ -73,7 +73,7 @@ class QuizService {
     ];
 
     this.QUIZ_PASS_THRESHOLD = 0.7; // 70% = 4 out of 5 correct
-    this.MAX_ATTEMPTS = 2;
+    this.MAX_ATTEMPTS = 999; // Unlimited attempts for WhatsApp users
   }
 
   /**
@@ -92,25 +92,62 @@ class QuizService {
         };
       }
 
-      // Return quiz questions (for module 2)
-      if (moduleId === 2) {
+      // Fetch quiz questions from PostgreSQL
+      const questionsResult = await postgresService.query(`
+        SELECT id, question_text, question_type, options, correct_answer, explanation
+        FROM quiz_questions
+        WHERE module_id = $1
+        ORDER BY sequence_order
+      `, [moduleId]);
+
+      if (questionsResult.rows.length === 0) {
+        // Fallback to hardcoded Module 2 questions
+        if (moduleId === 2) {
+          return {
+            success: true,
+            questions: this.module2Questions.map(q => ({
+              id: q.id,
+              question: q.question,
+              options: q.options
+            })),
+            totalQuestions: this.module2Questions.length,
+            passThreshold: this.QUIZ_PASS_THRESHOLD,
+            attemptsUsed: attempts.length,
+            attemptsRemaining: this.MAX_ATTEMPTS - attempts.length
+          };
+        }
+
         return {
-          success: true,
-          questions: this.module2Questions.map(q => ({
-            id: q.id,
-            question: q.question,
-            options: q.options
-          })),
-          totalQuestions: this.module2Questions.length,
-          passThreshold: this.QUIZ_PASS_THRESHOLD,
-          attemptsUsed: attempts.length,
-          attemptsRemaining: this.MAX_ATTEMPTS - attempts.length
+          success: false,
+          message: 'Quiz not available for this module yet.'
         };
       }
 
+      // Format questions from database
+      const questions = questionsResult.rows.map(q => {
+        // PostgreSQL returns JSON columns as objects/arrays, not strings
+        const optionsArray = Array.isArray(q.options) ? q.options : [];
+
+        // Format options with A, B, C, D letters
+        const options = optionsArray.map((opt, idx) => `${String.fromCharCode(65 + idx)}) ${opt}`);
+
+        return {
+          id: q.id,
+          question: q.question_text,
+          options: options,
+          questionType: q.question_type,
+          correctAnswer: q.correct_answer,
+          explanation: q.explanation
+        };
+      });
+
       return {
-        success: false,
-        message: 'Quiz not available for this module yet.'
+        success: true,
+        questions: questions,
+        totalQuestions: questions.length,
+        passThreshold: this.QUIZ_PASS_THRESHOLD,
+        attemptsUsed: attempts.length,
+        attemptsRemaining: this.MAX_ATTEMPTS - attempts.length
       };
     } catch (error) {
       logger.error('Error starting quiz:', error);
@@ -121,17 +158,24 @@ class QuizService {
   /**
    * Grade quiz answers
    */
-  gradeQuiz(moduleId, answers) {
-    if (moduleId !== 2) {
-      return null;
-    }
-
+  async gradeQuiz(moduleId, answers, questions) {
     const results = [];
     let correctCount = 0;
 
-    this.module2Questions.forEach((question, index) => {
+    questions.forEach((question, index) => {
       const userAnswer = answers[index];
-      const isCorrect = userAnswer === question.correctAnswer;
+      let isCorrect = false;
+
+      // Check answer based on question type
+      if (question.questionType === 'true_false') {
+        // For true/false, correct_answer is 'True' or 'False', user answers 'A' or 'B'
+        const correctLetter = question.correctAnswer.toLowerCase() === 'true' ? 'A' : 'B';
+        isCorrect = userAnswer === correctLetter;
+      } else {
+        // For multiple choice, correct_answer is the index (0, 1, 2, 3)
+        const correctLetter = String.fromCharCode(65 + parseInt(question.correctAnswer));
+        isCorrect = userAnswer === correctLetter;
+      }
 
       if (isCorrect) {
         correctCount++;
@@ -143,12 +187,12 @@ class QuizService {
         userAnswer,
         correctAnswer: question.correctAnswer,
         isCorrect,
-        explanation: question.explanation
+        explanation: question.explanation || ''
       });
     });
 
     const score = correctCount;
-    const totalQuestions = this.module2Questions.length;
+    const totalQuestions = questions.length;
     const percentage = correctCount / totalQuestions;
     const passed = percentage >= this.QUIZ_PASS_THRESHOLD;
 
@@ -164,10 +208,10 @@ class QuizService {
   /**
    * Submit quiz and save results
    */
-  async submitQuiz(userId, moduleId, answers) {
+  async submitQuiz(userId, moduleId, answers, questions) {
     try {
       // Grade the quiz
-      const gradeResult = this.gradeQuiz(moduleId, answers);
+      const gradeResult = await this.gradeQuiz(moduleId, answers, questions);
 
       if (!gradeResult) {
         throw new Error('Unable to grade quiz for this module');

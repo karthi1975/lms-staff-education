@@ -46,3 +46,46 @@ temp/
 CLAUDE.md
 .specify/
 .claude/
+
+# Test and development scripts
+scripts/test_*.js
+scripts/check_*.js
+scripts/clear_*.js
+scripts/force_*.js
+scripts/fresh_*.js
+scripts/import_*.js
+scripts/sync_*.js
+scripts/create_*.js
+
+# H5P conversion temporary files
+h5p-conversion/*.py
+!h5p-conversion/quiz_complete_working.py
+h5p-conversion/*.sh
+h5p-conversion/*.txt
+h5p-conversion/*.json
+h5p-conversion/*.cypher
+h5p-conversion/*.gift
+h5p-conversion/__pycache__/
+h5p-conversion/generated/
+h5p-conversion/*.md
+!h5p-conversion/WHATSAPP_MOODLE_INTEGRATION_COMPLETE.md
+
+# Temporary documentation
+MODULE*_*.md
+MOODLE_*.md
+!MOODLE_SYNC_README.md
+SETUP_*.md
+
+# Database temporary files
+database/fresh_start.sql
+database/reset_content.sql
+
+# Training content temporary files
+training-content/*.json
+
+# Public temporary files
+public/clear-cache.html
+public/admin/courses.html
+
+# Routes temporary files
+routes/course.routes.js
