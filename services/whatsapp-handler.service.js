@@ -6,6 +6,7 @@
 const whatsappService = require('./whatsapp.service');
 const quizService = require('./quiz.service');
 const postgresService = require('./database/postgres.service');
+const moodleSyncService = require('./moodle-sync.service');
 const logger = require('../utils/logger');
 
 class WhatsAppHandlerService {
@@ -387,10 +388,10 @@ class WhatsAppHandlerService {
    */
   async completeQuiz(from, session) {
     try {
-      const { moduleId, answers } = session.quizState;
+      const { moduleId, answers, questions } = session.quizState;
 
       // Submit quiz
-      const results = await quizService.submitQuiz(session.userId, moduleId, answers);
+      const results = await quizService.submitQuiz(session.userId, moduleId, answers, questions);
 
       // Clear quiz state
       session.quizState = null;
@@ -399,6 +400,24 @@ class WhatsAppHandlerService {
       // Send results
       const resultMessage = quizService.formatResultsForWhatsApp(results);
       await whatsappService.sendMessage(from, resultMessage);
+
+      // Sync to Moodle (async, don't wait)
+      moodleSyncService.syncQuizResultToMoodle(
+        session.userId,
+        moduleId,
+        answers,
+        questions,
+        results.score,
+        results.totalQuestions
+      ).then(syncResult => {
+        if (syncResult.success) {
+          logger.info(`✅ Quiz synced to Moodle: Attempt ${syncResult.moodleAttemptId} for ${syncResult.whatsappUser}`);
+        } else {
+          logger.warn(`⚠️ Failed to sync quiz to Moodle: ${syncResult.message}`);
+        }
+      }).catch(err => {
+        logger.error('Error syncing to Moodle:', err);
+      });
 
       // If passed, offer next module
       if (results.passed) {
