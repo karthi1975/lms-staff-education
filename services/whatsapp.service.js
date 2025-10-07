@@ -30,21 +30,50 @@ class WhatsAppService {
   // Extract message from WhatsApp webhook payload
   extractMessage(body) {
     try {
-      if (body.entry && 
-          body.entry[0].changes && 
+      if (body.entry &&
+          body.entry[0].changes &&
           body.entry[0].changes[0].value.messages) {
-        
+
         const message = body.entry[0].changes[0].value.messages[0];
         const from = message.from;
-        const messageBody = message.text?.body || '';
         const messageType = message.type;
-        
+
+        let messageBody = '';
+        let interactive = null;
+
+        // Handle different message types
+        if (messageType === 'text') {
+          messageBody = message.text?.body || '';
+        } else if (messageType === 'interactive') {
+          // Handle interactive list/button responses
+          if (message.interactive?.type === 'list_reply') {
+            interactive = {
+              type: 'list_reply',
+              list_reply: {
+                id: message.interactive.list_reply.id,
+                title: message.interactive.list_reply.title
+              }
+            };
+            messageBody = message.interactive.list_reply.title; // Fallback text
+          } else if (message.interactive?.type === 'button_reply') {
+            interactive = {
+              type: 'button_reply',
+              button_reply: {
+                id: message.interactive.button_reply.id,
+                title: message.interactive.button_reply.title
+              }
+            };
+            messageBody = message.interactive.button_reply.title;
+          }
+        }
+
         return {
           from,
           messageBody,
           messageType,
           messageId: message.id,
-          timestamp: message.timestamp
+          timestamp: message.timestamp,
+          interactive
         };
       }
     } catch (error) {

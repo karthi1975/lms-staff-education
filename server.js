@@ -28,6 +28,7 @@ const authRoutes = require('./routes/auth.routes');
 const enhancedRAGRoutes = require('./routes/enhanced-rag.routes');
 const adminRoutes = require('./routes/admin.routes');
 const userRoutes = require('./routes/user.routes');
+const certificateRoutes = require('./routes/certificate.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -65,6 +66,9 @@ app.use('/api/admin', adminRoutes);
 
 // Add user routes
 app.use('/api', userRoutes);
+
+// Add certificate routes
+app.use('/api', certificateRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
@@ -525,6 +529,10 @@ async function startServer() {
     
     // Initialize orchestrator (which initializes other services)
     await orchestratorService.initialize();
+
+    // Initialize Moodle orchestrator (loads quiz questions)
+    const moodleOrchestrator = require('./services/moodle-orchestrator.service');
+    await moodleOrchestrator.initialize();
     
     app.listen(PORT, () => {
       logger.info(`🚀 Teachers Training Server running on port ${PORT}`);

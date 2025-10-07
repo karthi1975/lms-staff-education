@@ -19,7 +19,7 @@ class WhatsAppHandlerService {
    * Process incoming WhatsApp message
    */
   async handleMessage(messageData) {
-    const { from, messageBody, messageId } = messageData;
+    const { from, messageBody, messageId, interactive } = messageData;
 
     try {
       // Mark as read
@@ -28,12 +28,25 @@ class WhatsAppHandlerService {
       // Get or create session
       const session = await this.getOrCreateSession(from);
 
-      // Process message based on session state
-      if (session.quizState) {
-        await this.handleQuizAnswer(from, messageBody, session);
-      } else {
-        await this.handleCommand(from, messageBody, session);
+      // Use Moodle Orchestrator for new flow
+      const moodleOrchestrator = require('./moodle-orchestrator.service');
+
+      // Handle interactive list and button responses
+      let processedMessage = messageBody;
+      if (interactive && interactive.list_reply) {
+        processedMessage = interactive.list_reply.id; // e.g., "course_1", "module_1"
+      } else if (interactive && interactive.button_reply) {
+        processedMessage = interactive.button_reply.id; // e.g., "answer_A", "answer_B"
       }
+
+      const response = await moodleOrchestrator.handleMessage(
+        session.userId,
+        from,
+        processedMessage
+      );
+
+      // Send response
+      await this.sendResponse(from, response);
 
     } catch (error) {
       logger.error('Error handling WhatsApp message:', error);
@@ -41,6 +54,72 @@ class WhatsAppHandlerService {
         "Sorry, something went wrong. Please try again or type 'help' for assistance."
       );
     }
+  }
+
+  /**
+   * Send response (handles text, list, buttons, quiz questions, etc.)
+   */
+  async sendResponse(to, response) {
+    if (!response) return;
+
+    // Handle different response types
+    if (response.type === 'list') {
+      await whatsappService.sendInteractiveList(
+        to,
+        'Select an Option',
+        response.text,
+        response.buttonText || 'Select',
+        response.sections
+      );
+    } else if (response.type === 'quiz_intro') {
+      // Send intro message first
+      await whatsappService.sendMessage(to, response.text);
+
+      // Then send first question
+      const questionFormatted = this.formatQuizQuestion(response.question, response.questionNum, response.totalQuestions);
+      await this.sendQuizQuestion(to, questionFormatted);
+    } else if (response.type === 'buttons' || response.question?.type === 'buttons') {
+      // Send answer confirmation if provided
+      if (response.text) {
+        await whatsappService.sendMessage(to, response.text);
+      }
+
+      // Send button question
+      const question = response.question || response;
+      await whatsappService.sendButtons(to, question.bodyText, question.buttons);
+    } else if (response.type === 'text' || response.question?.type === 'text') {
+      // Text-based question (for 4+ options)
+      if (response.text && response.question?.text) {
+        // Separate messages for answer confirmation and next question
+        await whatsappService.sendMessage(to, response.text);
+        await whatsappService.sendMessage(to, response.question.text);
+      } else {
+        const fullText = response.text || response.question?.text || response.text;
+        await whatsappService.sendMessage(to, fullText);
+      }
+    } else {
+      // Default: plain text
+      await whatsappService.sendMessage(to, response.text || response.content || 'No response');
+    }
+  }
+
+  /**
+   * Helper to format and send quiz question
+   */
+  async sendQuizQuestion(to, questionData) {
+    if (questionData.type === 'buttons') {
+      await whatsappService.sendButtons(to, questionData.bodyText, questionData.buttons);
+    } else {
+      await whatsappService.sendMessage(to, questionData.text);
+    }
+  }
+
+  /**
+   * Format quiz question
+   */
+  formatQuizQuestion(question, currentNum, total) {
+    const moodleOrchestrator = require('./moodle-orchestrator.service');
+    return moodleOrchestrator.formatQuestionForWhatsApp(question, currentNum, total);
   }
 
   /**
@@ -331,7 +410,7 @@ class WhatsAppHandlerService {
       this.userSessions.set(from, session);
 
       // Send first question
-      await this.sendQuizQuestion(from, session);
+      await this.sendQuizQuestionLegacy(from, session);
 
     } catch (error) {
       logger.error('Error starting quiz:', error);
@@ -340,9 +419,14 @@ class WhatsAppHandlerService {
   }
 
   /**
-   * Send quiz question
+   * Send quiz question (OLD - for legacy quiz service, not used with moodle-orchestrator)
    */
-  async sendQuizQuestion(from, session) {
+  async sendQuizQuestionLegacy(from, session) {
+    if (!session.quizState) {
+      logger.warn('sendQuizQuestionLegacy called but session.quizState is undefined');
+      return;
+    }
+
     const { questions, currentQuestionIndex } = session.quizState;
     const question = questions[currentQuestionIndex];
 
@@ -376,7 +460,7 @@ class WhatsAppHandlerService {
     // Check if more questions remain
     if (session.quizState.currentQuestionIndex < session.quizState.questions.length) {
       // Send next question
-      await this.sendQuizQuestion(from, session);
+      await this.sendQuizQuestionLegacy(from, session);
     } else {
       // Quiz complete - grade and send results
       await this.completeQuiz(from, session);

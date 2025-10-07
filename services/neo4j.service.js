@@ -8,9 +8,16 @@ class Neo4jService {
 
   async initialize() {
     try {
-      const uri = process.env.NEO4J_URI || 'bolt://localhost:7687';
+      // Use localhost for scripts running outside Docker
+      let uri = process.env.NEO4J_URI || 'bolt://localhost:7687';
+      if (uri.includes('neo4j:')) {
+        uri = uri.replace('neo4j:', 'localhost:');
+      }
+
       const user = process.env.NEO4J_USER || 'neo4j';
       const password = process.env.NEO4J_PASSWORD || 'password';
+
+      logger.info(`Connecting to Neo4j at: ${uri}`);
 
       this.driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
       

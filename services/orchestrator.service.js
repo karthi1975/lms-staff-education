@@ -21,7 +21,14 @@ class OrchestratorService {
   async initialize() {
     try {
       await chromaService.initialize();
-      await neo4jService.initialize();
+
+      // Neo4j is optional - continue if it fails
+      try {
+        await neo4jService.initialize();
+      } catch (neo4jError) {
+        logger.warn('Neo4j not available, continuing without graph features:', neo4jError.message);
+      }
+
       await this.setupModules();
       logger.info('Orchestrator initialized successfully');
     } catch (error) {

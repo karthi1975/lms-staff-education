@@ -12,8 +12,13 @@ class ChromaService {
   async initialize() {
     try {
       // Initialize ChromaDB client
+      // Use localhost for scripts running outside Docker, chromadb hostname for inside Docker
+      const chromaUrl = process.env.CHROMA_URL || 'http://localhost:8000';
+
+      logger.info(`Connecting to ChromaDB at: ${chromaUrl}`);
+
       this.client = new ChromaClient({
-        path: process.env.CHROMA_URL || 'http://localhost:8000'
+        path: chromaUrl
       });
 
       // Try to get existing collection first

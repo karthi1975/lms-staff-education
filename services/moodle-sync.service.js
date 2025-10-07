@@ -138,16 +138,18 @@ class MoodleSyncService {
   /**
    * Choose the correct radio option by matching answer text
    * Removes letter prefixes like "A) ", "B) ", etc.
+   * Uses the HTML value attribute from Moodle
    */
   chooseOption(choices, answerText) {
     // Remove letter prefix (e.g., "A) Facilitator" → "Facilitator")
     let cleanText = (answerText || '').replace(/^[A-D]\)\s*/, '');
     const normalized = this.normalizeText(cleanText);
 
-    // Try exact text match first
+    // Try exact text match first - use actual HTML value attribute
     for (const choice of choices) {
       const choiceLabel = this.normalizeText(choice.label);
       if (normalized && choiceLabel.includes(normalized)) {
+        // Use the actual value attribute from Moodle HTML
         return { name: choice.name, value: choice.value };
       }
     }
@@ -233,11 +235,14 @@ class MoodleSyncService {
    * Submit WhatsApp quiz result to Moodle
    * Uses HTML parsing with multi-page support
    */
-  async syncQuizResultToMoodle(userId, moduleId, answers, questions, score, totalQuestions) {
+  async syncQuizResultToMoodle(userId, moduleId, answers, questions, score, totalQuestions, quizId = null) {
     if (!this.enabled) {
       logger.info('Moodle sync disabled');
       return { success: false, message: 'Moodle sync disabled' };
     }
+
+    // Use provided quizId or fall back to default
+    const targetQuizId = quizId || MOODLE_QUIZ_ID;
 
     try {
       // Get WhatsApp user info
@@ -254,6 +259,7 @@ class MoodleSyncService {
 
       // Log sync attempt
       logger.info(`🔄 Syncing quiz to Moodle for ${user.name} (${user.whatsapp_id})`);
+      logger.info(`   Quiz ID: ${targetQuizId}`);
       logger.info(`   Score: ${score}/${totalQuestions} (${Math.round(score/totalQuestions*100)}%)`);
 
       // Build WhatsApp answers with text for matching
@@ -291,16 +297,16 @@ class MoodleSyncService {
       const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
       // Step 1: View quiz
-      await this.moodleApiCall('mod_quiz_view_quiz', { quizid: MOODLE_QUIZ_ID });
+      await this.moodleApiCall('mod_quiz_view_quiz', { quizid: targetQuizId });
       await delay(500);
 
       // Step 2: Clear any blocking attempts
-      await this.clearInProgressAttempts(MOODLE_QUIZ_ID);
+      await this.clearInProgressAttempts(targetQuizId);
       await delay(1000); // Wait longer after clearing attempts
 
       // Step 3: Start attempt
       const started = await this.moodleApiCall('mod_quiz_start_attempt', {
-        quizid: MOODLE_QUIZ_ID
+        quizid: targetQuizId
       });
       await delay(500);
 
@@ -340,6 +346,9 @@ class MoodleSyncService {
             if (seqName && seqValue) {
               allPairs.push({ name: seqName, value: seqValue });
             }
+
+            // Debug: log all choices
+            logger.info(`   Q${q.slot} choices:`, choices.map(c => `${c.label.substring(0,30)}=${c.value}`).join(', '));
 
             // Choose correct option
             const selected = this.chooseOption(choices, matched.answerText);
