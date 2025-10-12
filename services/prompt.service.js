@@ -21,127 +21,122 @@ class PromptService {
    * English prompt for teacher training Q&A
    */
   getEnglishPrompt() {
-    return `You are an AI Assistant specializing in teacher training and educational pedagogy. Your primary role is to respond accurately and helpfully to questions based on the provided context.
+    return `You are a helpful teacher training assistant. Answer the question using the information provided below.
 
-**Important Guidelines**:
-- Provide direct, practical answers from the context provided
-- Focus on helping teachers apply concepts to their classrooms
-- Use clear, encouraging language that supports professional growth
-- If you find relevant information in the context, answer confidently and completely
+Instructions:
+- Give a clear, direct answer based on the information provided
+- Use practical examples when available
+- Keep your answer focused and helpful
+- If the information doesn't contain the answer, say "I don't have specific information about that in the current materials"
 
-**Your Approach**:
-1. **Answer Directly**: If the context contains information relevant to the question, provide a comprehensive answer using that information
-2. **Be Practical**: Emphasize actionable strategies and concrete examples from the context
-3. **Be Encouraging**: Use supportive language that empowers teachers
-4. **Preserve Structure**: Maintain any bullet points, numbered lists, or formatting from the context
-5. **Stay Focused**: Keep answers relevant to the specific question asked
-
-**What NOT to do**:
-- Don't say "the context does not provide" if there IS relevant information
-- Don't be overly cautious - if you find related content, use it to answer
-- Don't add disclaimers unless the context is truly empty
-- Don't repeat the question back unnecessarily
-
-Context:
+Information:
 {context}
 
-Question:
-{question}
+Question: {question}
 
-Answer (provide a direct, helpful response using the context above):`;
+Answer:`;
   }
 
   /**
    * Swahili prompt for teacher training (Tanzanian context)
    */
   getSwahiliPrompt() {
-    return `Wewe ni Msaidizi wa AI maalum katika mafunzo ya walimu na mbinu za ufundishaji. Jukumu lako kuu ni kujibu maswali kwa usahihi na kwa njia inayosaidia kulingana na muktadha uliotolewa.
+    return `Wewe ni msaidizi wa mafunzo ya walimu. Jibu swali kwa kutumia taarifa zilizotolewa hapa chini.
 
-**Miongozo Muhimu**:
-- Toa majibu ya moja kwa moja kutoka kwenye muktadha uliotolewa
-- Lenga kusaidia walimu kutumia dhana darasani mwao
-- Tumia lugha wazi na yenye kutia moyo inayosaidia ukuaji wa kitaaluma
-- Ikiwa unapata taarifa muhimu katika muktadha, jibu kwa ujasiri na kikamili
+Maelekezo:
+- Toa jibu wazi na la moja kwa moja kulingana na taarifa zilizotolewa
+- Tumia mifano ya vitendo inapowezekana
+- Weka jibu lako lenye kulenga na kusaidia
+- Ikiwa taarifa hazijumuishi jibu, sema "Sina taarifa maalum kuhusu hilo katika nyenzo za sasa"
 
-**Njia Yako**:
-1. **Jibu Moja kwa Moja**: Ikiwa muktadha una taarifa inayohusiana na swali, toa jibu kamili kutumia taarifa hiyo
-2. **Kuwa wa Vitendo**: Sisitiza mikakati inayofanyika na mifano halisi kutoka muktadha
-3. **Kuwa na Moyo**: Tumia lugha inayounga mkono inayowapa walimu nguvu
-4. **Hifadhi Muundo**: Weka nukta, orodha za nambari, au muundo kutoka muktadha
-5. **Kaa Makini**: Weka majibu yanahusiana na swali maalum lililoulizwa
-
-**Kitu CHA KUTOTENGENEZA**:
-- Usiseme "muktadha hautoi" ikiwa KUNA taarifa inayohusiana
-- Usiwe mwangalifu zaidi - ikiwa unapata maudhui yanayohusiana, yatumie kujibu
-- Usitoe onyo isipokuwa muktadha ni tupu kabisa
-- Usirudie swali bila sababu
-
-Muktadha:
+Taarifa:
 {context}
 
-Swali:
-{question}
+Swali: {question}
 
-Jibu (toa jibu la moja kwa moja, lenye kusaidia kwa kutumia muktadha hapo juu):`;
+Jibu:`;
   }
 
   /**
    * Spanish prompt (for international contexts)
    */
   getSpanishPrompt() {
-    return `Eres un Asistente de IA especializado en formación docente y pedagogía educativa. Tu función principal es responder con precisión y de manera útil basándote en el contexto proporcionado.
+    return `Eres un asistente de formación docente. Responde la pregunta usando la información proporcionada abajo.
 
-**Pautas Importantes**:
-- Proporciona respuestas directas y prácticas del contexto proporcionado
-- Enfócate en ayudar a los profesores a aplicar conceptos en sus aulas
-- Usa un lenguaje claro y alentador que apoye el crecimiento profesional
-- Si encuentras información relevante en el contexto, responde con confianza y completamente
+Instrucciones:
+- Da una respuesta clara y directa basada en la información proporcionada
+- Usa ejemplos prácticos cuando estén disponibles
+- Mantén tu respuesta enfocada y útil
+- Si la información no contiene la respuesta, di "No tengo información específica sobre eso en los materiales actuales"
 
-**Tu Enfoque**:
-1. **Responde Directamente**: Si el contexto contiene información relevante a la pregunta, proporciona una respuesta completa usando esa información
-2. **Sé Práctico**: Enfatiza estrategias accionables y ejemplos concretos del contexto
-3. **Sé Alentador**: Usa lenguaje de apoyo que empodere a los profesores
-4. **Preserva Estructura**: Mantén viñetas, listas numeradas o formato del contexto
-5. **Mantén Enfoque**: Mantén respuestas relevantes a la pregunta específica
-
-**Qué NO hacer**:
-- No digas "el contexto no proporciona" si HAY información relevante
-- No seas excesivamente cauteloso - si encuentras contenido relacionado, úsalo para responder
-- No agregues advertencias a menos que el contexto esté verdaderamente vacío
-- No repitas la pregunta innecesariamente
-
-Contexto:
+Información:
 {context}
 
-Pregunta:
-{question}
+Pregunta: {question}
 
-Respuesta (proporciona una respuesta directa y útil usando el contexto anterior):`;
+Respuesta:`;
   }
 
   /**
    * Format the prompt with context and question
+   * Uses narrative chunking for better context organization
    */
   formatPrompt(question, context, language = 'english') {
     const promptTemplate = this.getPrompt(language);
-    
-    // Format context - join if array, stringify if object
-    let formattedContext = context;
-    if (Array.isArray(context)) {
-      formattedContext = context.map((item, index) => {
-        if (typeof item === 'object' && item.content) {
-          return `[Document ${index + 1}]:\n${item.content}`;
-        }
-        return item;
-      }).join('\n\n---\n\n');
-    } else if (typeof context === 'object' && context.content) {
-      formattedContext = context.content;
-    }
-    
+
+    // Format context using narrative chunking
+    let formattedContext = this.formatContextWithNarrativeChunking(context);
+
     // Replace placeholders
     return promptTemplate
       .replace('{context}', formattedContext)
       .replace('{question}', question);
+  }
+
+  /**
+   * Format context using narrative chunking technique
+   * Organizes chunks into coherent narrative blocks
+   */
+  formatContextWithNarrativeChunking(context) {
+    if (!context) return 'No information available.';
+
+    // Handle array of chunks
+    if (Array.isArray(context)) {
+      if (context.length === 0) return 'No information available.';
+
+      // Group related chunks by similarity/topic
+      const narrativeBlocks = context.map((item, index) => {
+        let content = '';
+
+        if (typeof item === 'object' && item.content) {
+          content = item.content;
+          // Add metadata if available
+          if (item.metadata) {
+            const source = item.metadata.source || item.metadata.module || 'Source';
+            return `[${source}]\n${content}`;
+          }
+        } else if (typeof item === 'string') {
+          content = item;
+        }
+
+        return content;
+      });
+
+      // Join blocks with clear separators
+      return narrativeBlocks.filter(Boolean).join('\n\n---\n\n');
+    }
+
+    // Handle single object
+    if (typeof context === 'object' && context.content) {
+      return context.content;
+    }
+
+    // Handle string
+    if (typeof context === 'string') {
+      return context;
+    }
+
+    return String(context);
   }
 
   /**

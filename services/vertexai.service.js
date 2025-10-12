@@ -100,7 +100,9 @@ class VertexAIService {
         stream: options.stream || false,
         max_tokens: options.maxTokens || 1000,
         temperature: options.temperature || 0.7,
-        top_p: options.topP || 0.95
+        top_p: options.topP || 0.95,
+        frequency_penalty: options.frequencyPenalty || 0.3,  // Penalize repeated tokens
+        presence_penalty: options.presencePenalty || 0.2     // Encourage topic diversity
       };
 
       const response = await axios.post(this.apiUrl, requestData, {
@@ -238,8 +240,8 @@ class VertexAIService {
     // Use prompt service to format the prompt in the specified language
     const formattedPrompt = promptService.formatPrompt(query, context, language);
 
-    // Get system prompt for teacher trainer role
-    const systemPrompt = promptService.getSystemPrompt('teacher_trainer');
+    // Simpler system prompt to avoid confusion
+    const systemPrompt = "You are a helpful educational assistant. Provide clear, concise answers based on the information given.";
 
     const messages = [
       {
@@ -253,8 +255,10 @@ class VertexAIService {
     ];
 
     return await this.generateCompletion(messages, {
-      temperature: 0.7,
-      maxTokens: 800,  // Increased for Swahili responses
+      temperature: 0.5,  // Lower temperature for more focused responses
+      maxTokens: 500,    // Shorter responses to prevent rambling
+      frequencyPenalty: 0.5,  // Strong penalty against repetition
+      presencePenalty: 0.3,   // Encourage diverse vocabulary
       language: language  // Pass language for fallback
     });
   }
