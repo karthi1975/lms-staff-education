@@ -275,6 +275,57 @@
             border-color: #0c5aa1;
         }
 
+        .btn-danger {
+            background: transparent;
+            color: #ea4335;
+            border: 1px solid #ea4335;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-danger:hover {
+            background: #ea4335;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(234, 67, 53, 0.3);
+        }
+
+        .btn-danger:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(234, 67, 53, 0.3);
+        }
+
+        /* Icon buttons - Material style */
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 18px;
+        }
+
+        .btn-icon:hover {
+            background: rgba(0,0,0,0.04);
+        }
+
+        .btn-icon-danger:hover {
+            background: rgba(234, 67, 53, 0.08);
+            color: #ea4335;
+        }
+
         .section-body {
             padding: 20px;
         }
@@ -305,78 +356,116 @@
             background: #f9f9f9;
         }
 
-        /* Module Cards */
+        /* Module Cards - Google Material Design */
         .modules-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 24px;
         }
 
         .module-card {
             background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            border: none;
+            border-radius: 12px;
             overflow: hidden;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.06);
         }
 
         .module-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
+            transform: translateY(-4px);
         }
 
         .module-card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
+            background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+            padding: 24px;
             color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .module-card-header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            transform: translate(30%, -30%);
         }
 
         .module-number {
-            font-size: 14px;
+            font-size: 12px;
             opacity: 0.9;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .module-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            line-height: 1.3;
         }
 
         .module-description {
-            font-size: 13px;
-            opacity: 0.9;
+            font-size: 14px;
+            opacity: 0.95;
+            line-height: 1.5;
         }
 
         .module-card-body {
-            padding: 20px;
+            padding: 24px;
         }
 
         .module-stats {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
         }
 
         .module-stat {
             text-align: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .module-stat:hover {
+            background: #e8f0fe;
+            transform: scale(1.05);
         }
 
         .module-stat-value {
             font-size: 24px;
             font-weight: 700;
-            color: #0f6cbf;
+            color: #1a73e8;
         }
 
         .module-stat-label {
             font-size: 11px;
-            color: #666;
+            color: #5f6368;
             margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .module-actions {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
+        }
+
+        .module-actions button {
+            flex: 1;
+            min-width: 100px;
         }
 
         /* Badge Styles */
@@ -780,9 +869,8 @@
 
             <div class="nav-tabs">
                 <a href="#" class="nav-tab active" onclick="showTab('dashboard'); return false;">Dashboard</a>
-                <a href="#" class="nav-tab" onclick="showTab('modules'); return false;">Modules</a>
+                <a href="#" class="nav-tab" onclick="showTab('courses'); return false;">Courses</a>
                 <a href="user-management.html" class="nav-tab">👥 Manage Users</a>
-                <a href="chat.html" class="nav-tab">AI Assistant</a>
             </div>
 
             <div class="user-menu">
@@ -871,13 +959,29 @@
             </div>
         </div>
 
+        <!-- Courses Tab -->
+        <div id="coursesTab" class="tab-content">
+            <div class="content-section">
+                <div class="section-header">
+                    <div class="section-title">📚 Courses</div>
+                    <div class="section-actions">
+                        <button class="btn-primary-moodle" onclick="openAddCourseModal()">+ Add Course</button>
+                    </div>
+                </div>
+                <div class="section-body">
+                    <div id="coursesGrid" class="modules-grid">
+                        <!-- Courses will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Modules Tab -->
         <div id="modulesTab" class="tab-content">
             <div class="content-section">
                 <div class="section-header">
                     <div class="section-title">Training Modules</div>
                     <div class="section-actions">
-                        <button class="btn-moodle" onclick="window.location.href='chat.html'">💬 AI Assistant</button>
                         <button class="btn-primary-moodle" onclick="alert('Module creation coming soon')">+ Add Module</button>
                     </div>
                 </div>
@@ -908,6 +1012,237 @@
         </div>
     </div>
 
+    <!-- Add Course Modal - Selection Screen -->
+    <div class="chat-modal" id="addCourseModal">
+        <div class="chat-modal-content" style="max-width: 800px;">
+            <div class="chat-modal-header">
+                <div class="chat-modal-title">Create New Course</div>
+                <button class="chat-modal-close" onclick="closeAddCourseModal()">×</button>
+            </div>
+            <div style="padding: 40px;">
+                <div style="text-align:center; margin-bottom:30px; color:#666;">
+                    <h3 style="margin-bottom:10px; color:#333;">Choose how you want to create your course</h3>
+                    <p>Select one of the options below to get started</p>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                    <!-- Option 1: Manual Create -->
+                    <div onclick="showManualCourseForm()" style="border:2px solid #e0e0e0; border-radius:12px; padding:30px; cursor:pointer; transition:all 0.3s; text-align:center;"
+                         onmouseover="this.style.borderColor='#667eea'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.2)'"
+                         onmouseout="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
+                        <div style="font-size:48px; margin-bottom:15px;">📝</div>
+                        <h3 style="margin-bottom:10px; color:#333;">Create Manually</h3>
+                        <p style="color:#666; font-size:14px; margin-bottom:15px;">Build your course from scratch with local content upload</p>
+                        <ul style="text-align:left; color:#666; font-size:13px; list-style:none; padding:0;">
+                            <li style="margin-bottom:8px;">✓ Create course details</li>
+                            <li style="margin-bottom:8px;">✓ Add modules</li>
+                            <li style="margin-bottom:8px;">✓ Upload PDF, DOCX, TXT files</li>
+                            <li style="margin-bottom:8px;">✓ Generate quizzes from content</li>
+                        </ul>
+                    </div>
+
+                    <!-- Option 2: Import from Moodle -->
+                    <div onclick="showMoodleImportForm()" style="border:2px solid #e0e0e0; border-radius:12px; padding:30px; cursor:pointer; transition:all 0.3s; text-align:center;"
+                         onmouseover="this.style.borderColor='#f98012'; this.style.boxShadow='0 4px 12px rgba(249,128,18,0.2)'"
+                         onmouseout="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
+                        <div style="font-size:48px; margin-bottom:15px;">🔗</div>
+                        <h3 style="margin-bottom:10px; color:#333;">Import from Moodle</h3>
+                        <p style="color:#666; font-size:14px; margin-bottom:15px;">Import an existing course from your Moodle LMS</p>
+                        <ul style="text-align:left; color:#666; font-size:13px; list-style:none; padding:0;">
+                            <li style="margin-bottom:8px;">✓ Connect to Moodle instance</li>
+                            <li style="margin-bottom:8px;">✓ Select course to import</li>
+                            <li style="margin-bottom:8px;">✓ Auto-import modules</li>
+                            <li style="margin-bottom:8px;">✓ Sync quizzes and content</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Course Creation Form Modal -->
+    <div class="chat-modal" id="manualCourseModal">
+        <div class="chat-modal-content" style="max-width: 700px;">
+            <div class="chat-modal-header">
+                <div>
+                    <div class="chat-modal-title">📝 Create Course Manually</div>
+                    <div class="chat-modal-subtitle">Build your course from scratch</div>
+                </div>
+                <button class="chat-modal-close" onclick="closeManualCourseModal()">×</button>
+            </div>
+            <div style="padding: 30px;">
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Course Name *</label>
+                    <input type="text" id="manualCourseName" placeholder="e.g., Teacher Training Fundamentals" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Course Code</label>
+                    <input type="text" id="manualCourseCode" placeholder="e.g., TEACH-001" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Description</label>
+                    <textarea id="manualCourseDescription" rows="4" placeholder="Brief description of the course..." style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;"></textarea>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Category</label>
+                    <input type="text" id="manualCourseCategory" placeholder="e.g., Teacher Development" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+                </div>
+
+                <div style="background:#f0f7ff; border-left:4px solid #667eea; padding:15px; margin-bottom:20px; border-radius:6px;">
+                    <div style="font-weight:600; margin-bottom:5px; color:#333;">📚 Next Steps</div>
+                    <div style="font-size:13px; color:#666;">After creating the course, you'll be able to add modules and upload content files (PDF, DOCX, TXT).</div>
+                </div>
+
+                <div style="display:flex; gap:10px; justify-content:space-between;">
+                    <button class="btn-moodle" onclick="closeManualCourseModal(); openAddCourseModal();">← Back</button>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-moodle" onclick="closeManualCourseModal()">Cancel</button>
+                        <button class="btn-primary-moodle" onclick="createManualCourse()">Create Course</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Moodle Import Form Modal -->
+    <div class="chat-modal" id="moodleImportModal" style="z-index: 2050;">
+        <div class="chat-modal-content" style="max-width: 700px;">
+            <div class="chat-modal-header">
+                <div>
+                    <div class="chat-modal-title">🔗 Import from Moodle</div>
+                    <div class="chat-modal-subtitle">Connect to your Moodle LMS and import a course</div>
+                </div>
+                <button class="chat-modal-close" onclick="closeMoodleImportModal()">×</button>
+            </div>
+            <div style="padding: 30px;">
+                <!-- Step 1: Moodle Connection -->
+                <div id="moodleStep1">
+                    <h4 style="margin-bottom:15px; color:#333;">Step 1: Connect to Moodle</h4>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display:block; margin-bottom:8px; font-weight:600;">Moodle URL *</label>
+                        <input type="text" id="moodleUrl" placeholder="https://your-moodle.com" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+                        <div style="font-size:12px; color:#666; margin-top:5px;">Enter the full URL of your Moodle instance</div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display:block; margin-bottom:8px; font-weight:600;">API Token *</label>
+                        <input type="password" id="moodleToken" placeholder="Your Moodle web service token" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+                        <div style="font-size:12px; color:#666; margin-top:5px;">
+                            <a href="https://docs.moodle.org/en/Using_web_services" target="_blank" style="color:#667eea;">How to get your API token</a>
+                        </div>
+                    </div>
+
+                    <div style="background:#e3f2fd; border-left:4px solid #2196f3; padding:15px; margin-bottom:20px; border-radius:6px;">
+                        <div style="font-weight:600; margin-bottom:5px; color:#333;">💡 Tip</div>
+                        <div style="font-size:13px; color:#666;">
+                            Save your Moodle credentials for future use:
+                            <a href="moodle-settings.html" target="_blank" style="color:#2196f3; text-decoration:underline;">Go to Moodle Settings</a>
+                        </div>
+                    </div>
+
+                    <div style="background:#fff9e6; border-left:4px solid #f98012; padding:15px; margin-bottom:20px; border-radius:6px;">
+                        <div style="font-weight:600; margin-bottom:5px; color:#333;">⚠️ Important</div>
+                        <div style="font-size:13px; color:#666;">Make sure your Moodle web services are enabled and the token has permissions to read course data.</div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:space-between;">
+                        <button class="btn-moodle" onclick="closeMoodleImportModal(); openAddCourseModal();">← Back</button>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-moodle" onclick="closeMoodleImportModal()">Cancel</button>
+                            <button class="btn-primary-moodle" onclick="testMoodleConnection()">Test Connection & Continue</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Select Course (Hidden initially) -->
+                <div id="moodleStep2" style="display:none;">
+                    <h4 style="margin-bottom:15px; color:#333;">Step 2: Select Course to Import</h4>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display:block; margin-bottom:8px; font-weight:600;">Available Courses</label>
+                        <select id="moodleCourseSelect" size="6" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+                            <option value="">Loading courses...</option>
+                        </select>
+                        <div style="font-size:12px; color:#666; margin-top:5px;" id="courseCount">0 courses found</div>
+                    </div>
+
+                    <div style="background:#fff3cd; border-left:4px solid #ffc107; padding:15px; margin-bottom:20px; border-radius:6px;">
+                        <div style="font-weight:600; margin-bottom:10px; color:#333;">💡 Alternative: Manual Course ID</div>
+                        <div style="font-size:13px; color:#666; margin-bottom:10px;">If you know the Moodle course ID, you can enter it directly:</div>
+                        <input type="number" id="manualCourseId" placeholder="Enter course ID (e.g., 11)" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px; font-size:14px;">
+                        <div style="font-size:12px; color:#666; margin-top:5px;">Find the course ID in your Moodle course URL: .../course/view.php?id=<strong>11</strong></div>
+                    </div>
+
+                    <div id="selectedCourseInfo" style="background:#f0f7ff; border-left:4px solid #667eea; padding:15px; margin-bottom:20px; border-radius:6px; display:none;">
+                        <div style="font-weight:600; margin-bottom:5px; color:#333;">Selected Course</div>
+                        <div style="font-size:13px; color:#666;" id="selectedCourseDetails"></div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:space-between;">
+                        <button class="btn-moodle" onclick="showMoodleStep1()">← Back</button>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-moodle" onclick="closeMoodleImportModal()">Cancel</button>
+                            <button class="btn-primary-moodle" onclick="importFromMoodle()" id="importBtn" disabled>Import Course</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Module Modal -->
+    <div class="chat-modal" id="addModuleModal" style="z-index: 2100;">
+        <div class="chat-modal-content" style="max-width: 600px;">
+            <div class="chat-modal-header">
+                <div class="chat-modal-title">Add Module to Course</div>
+                <button class="chat-modal-close" onclick="closeAddModuleModal()">×</button>
+            </div>
+            <div style="padding: 30px;">
+                <input type="hidden" id="moduleCourseId">
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Module Name *</label>
+                    <input type="text" id="moduleName" placeholder="e.g., Introduction to Teaching" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Description</label>
+                    <textarea id="moduleDescription" rows="4" placeholder="Brief description of the module..." style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;"></textarea>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Sequence Order</label>
+                    <input type="number" id="moduleSequence" value="1" min="1" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
+                </div>
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn-moodle" onclick="closeAddModuleModal()">Cancel</button>
+                    <button class="btn-primary-moodle" onclick="createModule()">Add Module</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Course Modules Modal -->
+    <div class="chat-modal" id="viewCourseModal">
+        <div class="chat-modal-content" style="max-width: 900px;">
+            <div class="chat-modal-header">
+                <div>
+                    <div class="chat-modal-title" id="viewCourseTitle">Course Modules</div>
+                    <div class="chat-modal-subtitle" id="viewCourseSubtitle"></div>
+                </div>
+                <button class="chat-modal-close" onclick="closeViewCourseModal()">×</button>
+            </div>
+            <div style="padding: 30px;">
+                <input type="hidden" id="viewCourseId">
+                <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0;">Modules</h3>
+                    <button class="btn-primary-moodle" onclick="openAddModuleModalForCourse()">+ Add Module</button>
+                </div>
+                <div id="courseModulesList" style="max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
+                    <!-- Modules will be loaded here (scrollable list) -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Chat Modal -->
     <div class="chat-modal" id="chatModal">
         <div class="chat-modal-content">
@@ -916,7 +1251,10 @@
                     <div class="chat-modal-title" id="chatModalTitle">Test Module Content</div>
                     <div class="chat-modal-subtitle" id="chatModalSubtitle">Ask questions about uploaded documents</div>
                 </div>
-                <button class="chat-modal-close" onclick="closeChatModal()">×</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-module-action" onclick="clearChatModal()" style="background: #ef4444; padding: 8px 16px; font-size: 13px;" title="Clear chat history">🗑️ Clear Chat</button>
+                    <button class="chat-modal-close" onclick="closeChatModal()">×</button>
+                </div>
             </div>
 
             <div class="chat-messages-area" id="chatMessagesArea">
@@ -944,13 +1282,73 @@
         </div>
     </div>
 
+    <!-- Upload Content Modal -->
+    <div class="chat-modal" id="uploadModal">
+        <div class="chat-modal-content" style="max-width: 600px;">
+            <div class="chat-modal-header">
+                <div>
+                    <div class="chat-modal-title" id="uploadModalTitle">Upload Training Content</div>
+                    <div class="chat-modal-subtitle" id="uploadModalSubtitle">Upload PDF, DOCX, or TXT files</div>
+                </div>
+                <button class="chat-modal-close" onclick="closeUploadModal()">×</button>
+            </div>
+
+            <div style="padding: 30px;">
+                <!-- Drag and Drop Zone -->
+                <div id="dropZone" style="
+                    border: 3px dashed #667eea;
+                    border-radius: 12px;
+                    padding: 40px;
+                    text-align: center;
+                    background: #f8f9ff;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    margin-bottom: 20px;"
+                    onclick="document.getElementById('fileInput').click()"
+                    ondragover="event.preventDefault(); this.style.borderColor='#4a5fc1'; this.style.background='#e8ebff';"
+                    ondragleave="this.style.borderColor='#667eea'; this.style.background='#f8f9ff';"
+                    ondrop="handleDrop(event)">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
+                    <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 10px;">
+                        Drop files here or click to browse
+                    </div>
+                    <div style="font-size: 14px; color: #666;">
+                        Supported formats: PDF, DOCX, TXT (Max 10MB each)
+                    </div>
+                </div>
+
+                <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt" style="display: none;" onchange="handleFiles(this.files)">
+
+                <!-- Selected Files List -->
+                <div id="selectedFilesList" style="margin-bottom: 20px;"></div>
+
+                <!-- Progress Bar -->
+                <div id="uploadProgress" style="display: none; margin-bottom: 20px;">
+                    <div style="background: #e0e0e0; border-radius: 10px; height: 8px; overflow: hidden;">
+                        <div id="progressBar" style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <div id="progressText" style="text-align: center; margin-top: 8px; font-size: 14px; color: #666;"></div>
+                </div>
+
+                <!-- Upload Button -->
+                <button id="uploadBtn" class="btn-primary-moodle" onclick="uploadFiles()" style="width: 100%; padding: 15px; font-size: 16px;" disabled>
+                    📤 Upload Files
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/admin';
         let authToken = localStorage.getItem('adminToken');
         let allUsers = [];
         let allModules = [];
+        let allCourses = [];
         let currentChatModuleId = null;
         let currentChatModuleTitle = null;
+        let currentCourseId = null;
+        let currentUploadModuleId = null;
+        let selectedFiles = [];
 
         // Check authentication
         if (!authToken) {
@@ -969,6 +1367,7 @@
             loadDashboardData();
             loadModules();
             loadUsers();
+            loadCourses();
         });
 
         function showTab(tabName) {
@@ -1094,10 +1493,9 @@
                             </div>
                         </div>
                         <div class="module-actions">
-                            <button class="btn-moodle" onclick="window.location.href='modules.html#module${module.id}'">📤 Upload</button>
+                            <button class="btn-moodle" onclick="openUploadModal(${module.id}, '${module.title}')">📤 Upload</button>
                             <button class="btn-moodle" onclick="openChatModal(${module.id}, '${module.title}')">💬 Test Chat</button>
                             <button class="btn-moodle" onclick="window.location.href='quiz.html?module=${module.id}'">📝 Quiz</button>
-                            <button class="btn-primary-moodle" onclick="window.location.href='modules.html#module${module.id}'">View</button>
                         </div>
                     </div>
                 </div>
@@ -1235,6 +1633,23 @@
             currentChatModuleTitle = null;
         }
 
+        function clearChatModal() {
+            if (!currentChatModuleId || !currentChatModuleTitle) return;
+
+            if (confirm('Are you sure you want to clear this chat history?')) {
+                const messagesArea = document.getElementById('chatMessagesArea');
+                messagesArea.innerHTML = `
+                    <div class="chat-msg">
+                        <div class="chat-msg-avatar">AI</div>
+                        <div class="chat-msg-bubble">
+                            <div class="chat-msg-text">Hello! I can answer questions about the content uploaded to <strong>${currentChatModuleTitle}</strong>. Try asking me about the training materials!</div>
+                            <div class="chat-msg-time">${formatTime()}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         async function sendChatMessage() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
@@ -1269,15 +1684,17 @@
             messagesArea.scrollTop = messagesArea.scrollHeight;
 
             try {
-                const response = await fetch(`${API_BASE}/chat`, {
+                const response = await fetch(`/api/chat`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
+                        message: message,
                         module_id: currentChatModuleId,
-                        message: message
+                        useContext: true,
+                        language: 'english'
                     })
                 });
 
@@ -1291,7 +1708,11 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    addChatMessage(result.response, 'assistant', result.sources);
+                    // Extract source titles from context
+                    const sources = result.context && result.context.length > 0
+                        ? result.context.map(doc => doc.title || doc.module || 'Unknown')
+                        : null;
+                    addChatMessage(result.response, 'assistant', sources);
                 } else {
                     addChatMessage('Sorry, I encountered an error. Please try again.', 'assistant');
                 }
@@ -1348,12 +1769,1180 @@
             return div.innerHTML.replace(/\n/g, '<br>');
         }
 
+        // Upload Modal Functions
+        function openUploadModal(moduleId, moduleTitle) {
+            currentUploadModuleId = moduleId;
+            document.getElementById('uploadModalTitle').textContent = `Upload Content - ${moduleTitle}`;
+            document.getElementById('uploadModalSubtitle').textContent = `Module ${moduleId}: Upload training materials`;
+            document.getElementById('uploadModal').classList.add('active');
+
+            // Reset upload state
+            selectedFiles = [];
+            document.getElementById('selectedFilesList').innerHTML = '';
+            document.getElementById('uploadBtn').disabled = true;
+            document.getElementById('uploadProgress').style.display = 'none';
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+            currentUploadModuleId = null;
+            selectedFiles = [];
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            const dropZone = document.getElementById('dropZone');
+            dropZone.style.borderColor = '#667eea';
+            dropZone.style.background = '#f8f9ff';
+
+            const files = event.dataTransfer.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            selectedFiles = Array.from(files).filter(file => {
+                const ext = file.name.toLowerCase();
+                return ext.endsWith('.pdf') || ext.endsWith('.docx') || ext.endsWith('.txt');
+            });
+
+            displaySelectedFiles();
+            document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
+        }
+
+        function displaySelectedFiles() {
+            const container = document.getElementById('selectedFilesList');
+
+            if (selectedFiles.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = `
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 15px;">
+                    <div style="font-weight: 600; margin-bottom: 10px; color: #333;">Selected Files (${selectedFiles.length}):</div>
+                    ${selectedFiles.map((file, index) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: white; border-radius: 6px; margin-bottom: 6px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 24px;">${getFileIcon(file.name)}</span>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 500; color: #333;">${file.name}</div>
+                                    <div style="font-size: 12px; color: #666;">${(file.size / 1024).toFixed(1)} KB</div>
+                                </div>
+                            </div>
+                            <button onclick="removeFile(${index})" style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;">×</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function getFileIcon(filename) {
+            if (filename.endsWith('.pdf')) return '📕';
+            if (filename.endsWith('.docx')) return '📘';
+            if (filename.endsWith('.txt')) return '📄';
+            return '📁';
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            displaySelectedFiles();
+            document.getElementById('uploadBtn').disabled = selectedFiles.length === 0;
+        }
+
+        async function uploadFiles() {
+            if (selectedFiles.length === 0 || !currentUploadModuleId) return;
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            progressDiv.style.display = 'block';
+
+            const formData = new FormData();
+
+            try {
+                // Simulate progress
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 10;
+                    if (progress <= 90) {
+                        progressBar.style.width = progress + '%';
+                        progressText.textContent = `Uploading... ${progress}%`;
+                    }
+                }, 200);
+
+                // Upload each file individually to the correct endpoint
+                let totalChunks = 0;
+                for (const file of selectedFiles) {
+                    const fileFormData = new FormData();
+                    fileFormData.append('file', file);
+
+                    const response = await fetch(`${API_BASE}/modules/${currentUploadModuleId}/content`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: fileFormData
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Upload failed');
+                    }
+
+                    const result = await response.json();
+                    if (result.success) {
+                        totalChunks++;
+                    }
+                }
+
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                progressText.textContent = '✅ Upload complete!';
+
+                showSnackbar(`Successfully uploaded ${totalChunks} file(s)!`, 'success');
+
+                setTimeout(() => {
+                    closeUploadModal();
+                    // Reload module content
+                    if (currentCourseId) {
+                        loadCourseModules(currentCourseId);
+                    }
+                }, 1500);
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showSnackbar('Upload failed: ' + error.message, 'error');
+                progressDiv.style.display = 'none';
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '📤 Upload Files';
+            }
+        }
+
         // Close modal on background click
         document.getElementById('chatModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
                 closeChatModal();
             }
         });
+
+        document.getElementById('addCourseModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAddCourseModal();
+            }
+        });
+
+        document.getElementById('addModuleModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAddModuleModal();
+            }
+        });
+
+        document.getElementById('viewCourseModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeViewCourseModal();
+            }
+        });
+
+        document.getElementById('manualCourseModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeManualCourseModal();
+            }
+        });
+
+        document.getElementById('moodleImportModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeMoodleImportModal();
+            }
+        });
+
+        // ==================== COURSE MANAGEMENT FUNCTIONS ====================
+
+        async function loadCourses() {
+            try {
+                const response = await fetch(`${API_BASE}/courses`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load courses');
+
+                const result = await response.json();
+                allCourses = result.data || [];
+                displayCourses(allCourses);
+
+            } catch (error) {
+                console.error('Error loading courses:', error);
+            }
+        }
+
+        function displayCourses(courses) {
+            const grid = document.getElementById('coursesGrid');
+
+            if (courses.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:40px; color:#999;">No courses yet. Click "+ Add Course" to create your first course.</div>';
+                return;
+            }
+
+            grid.innerHTML = courses.map(course => `
+                <div class="module-card">
+                    <div class="module-card-header">
+                        <div class="module-number">${course.course_code || 'COURSE'}</div>
+                        <div class="module-title">${course.course_name}</div>
+                        <div class="module-description">${course.description || 'No description'}</div>
+                    </div>
+                    <div class="module-card-body">
+                        <div class="module-stats">
+                            <div class="module-stat">
+                                <div class="module-stat-value">${course.module_count || 0}</div>
+                                <div class="module-stat-label">Modules</div>
+                            </div>
+                            <div class="module-stat">
+                                <div class="module-stat-value" style="font-size:16px; color:#5f6368;">${course.category || '-'}</div>
+                                <div class="module-stat-label">Category</div>
+                            </div>
+                            <div class="module-stat">
+                                <div class="module-stat-value" style="font-size:16px; color:#5f6368;">${course.source_display || 'Portal'}</div>
+                                <div class="module-stat-label">Source</div>
+                            </div>
+                        </div>
+                        <div class="module-actions" style="display:grid; grid-template-columns:1fr auto; gap:8px;">
+                            <button class="btn-primary-moodle" onclick="viewCourseModules(${course.id}, '${course.course_name}')" style="border-radius:20px;">
+                                📋 View Modules
+                            </button>
+                            <button class="btn-icon btn-icon-danger" onclick="deleteCourse(${course.id}, '${course.course_name.replace(/'/g, "\\'")}');" title="Delete course">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Course Modal Functions
+        function openAddCourseModal() {
+            document.getElementById('addCourseModal').classList.add('active');
+        }
+
+        function closeAddCourseModal() {
+            document.getElementById('addCourseModal').classList.remove('active');
+        }
+
+        // Manual Course Creation Functions
+        function showManualCourseForm() {
+            closeAddCourseModal();
+            document.getElementById('manualCourseModal').classList.add('active');
+            // Clear fields
+            document.getElementById('manualCourseName').value = '';
+            document.getElementById('manualCourseCode').value = '';
+            document.getElementById('manualCourseDescription').value = '';
+            document.getElementById('manualCourseCategory').value = '';
+        }
+
+        function closeManualCourseModal() {
+            document.getElementById('manualCourseModal').classList.remove('active');
+        }
+
+        // Global function to handle API responses with token expiration
+        async function handleApiResponse(response) {
+            if (response.status === 401) {
+                const result = await response.json();
+                if (result.code === 'TOKEN_EXPIRED' || result.error === 'Token has expired') {
+                    alert('Your session has expired. Please login again.');
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    window.location.href = 'login.html';
+                    throw new Error('Token expired');
+                }
+            }
+            return response;
+        }
+
+        async function createManualCourse() {
+            const name = document.getElementById('manualCourseName').value.trim();
+            const code = document.getElementById('manualCourseCode').value.trim();
+            const description = document.getElementById('manualCourseDescription').value.trim();
+            const category = document.getElementById('manualCourseCategory').value.trim();
+
+            if (!name) {
+                alert('Course name is required');
+                return;
+            }
+
+            try {
+                // Get next moodle_course_id
+                const nextId = Math.max(...allCourses.map(c => c.moodle_course_id || 0), 0) + 1;
+
+                const response = await fetch(`${API_BASE}/portal/courses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        course_name: name,
+                        course_code: code || `COURSE-${nextId}`,
+                        description: description,
+                        category: category || 'General'
+                    })
+                });
+
+                await handleApiResponse(response); // Check for token expiration
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Course created successfully! You can now add modules and upload content.');
+                    closeManualCourseModal();
+                    loadCourses();
+                } else {
+                    alert(result.error || 'Failed to create course');
+                }
+            } catch (error) {
+                console.error('Error creating course:', error);
+                if (error.message !== 'Token expired') {
+                    alert('Error creating course');
+                }
+            }
+        }
+
+        // Moodle Import Functions
+        let moodleCredentials = { url: '', token: '' };
+        let moodleCourses = [];
+
+        async function showMoodleImportForm() {
+            closeAddCourseModal();
+            document.getElementById('moodleImportModal').classList.add('active');
+            showMoodleStep1();
+
+            // Load saved Moodle settings from database
+            await loadSavedMoodleSettings();
+        }
+
+        async function loadSavedMoodleSettings() {
+            try {
+                console.log('Loading saved Moodle settings...');
+                console.log('Token:', authToken ? 'Present' : 'Missing');
+
+                const response = await fetch('/api/admin/moodle-settings/config', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                console.log('Response status:', response.status);
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('API response:', result);
+                    const config = result.data;
+                    console.log('Config data:', config);
+
+                    // Pre-fill the form with saved settings
+                    if (config.url) {
+                        console.log('Setting URL:', config.url);
+                        document.getElementById('moodleUrl').value = config.url;
+                    }
+                    if (config.token) {
+                        console.log('Setting token (length):', config.token.length);
+                        document.getElementById('moodleToken').value = config.token;
+                    }
+
+                    console.log('✅ Settings loaded successfully');
+                } else {
+                    const errorText = await response.text();
+                    console.error('API error:', response.status, errorText);
+                }
+            } catch (error) {
+                console.error('Could not load saved Moodle settings:', error);
+                // Silent fail - user can still enter manually
+            }
+        }
+
+        function closeMoodleImportModal() {
+            document.getElementById('moodleImportModal').classList.remove('active');
+            moodleCredentials = { url: '', token: '' };
+            moodleCourses = [];
+        }
+
+        function showMoodleStep1() {
+            document.getElementById('moodleStep1').style.display = 'block';
+            document.getElementById('moodleStep2').style.display = 'none';
+        }
+
+        function showMoodleStep2() {
+            document.getElementById('moodleStep1').style.display = 'none';
+            document.getElementById('moodleStep2').style.display = 'block';
+        }
+
+        async function testMoodleConnection() {
+            const url = document.getElementById('moodleUrl').value.trim();
+            const token = document.getElementById('moodleToken').value.trim();
+
+            if (!url || !token) {
+                alert('Please provide both Moodle URL and API token');
+                return;
+            }
+
+            try {
+                // Test connection using Moodle settings API
+                const testBtn = event.target;
+                testBtn.disabled = true;
+                testBtn.textContent = 'Connecting...';
+
+                const response = await fetch('/api/admin/moodle-settings/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ moodle_url: url, moodle_token: token })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show success info
+                    console.log('✅ Moodle connection successful:', result.siteInfo);
+                    moodleCredentials = { url, token };
+                    await loadMoodleCourses();
+                    showMoodleStep2();
+                } else {
+                    alert(result.error || 'Failed to connect to Moodle. Please check your URL and token.');
+                    testBtn.disabled = false;
+                    testBtn.textContent = 'Test Connection & Continue';
+                }
+            } catch (error) {
+                console.error('Error connecting to Moodle:', error);
+                alert('Error connecting to Moodle. Please check your credentials and try again.');
+                event.target.disabled = false;
+                event.target.textContent = 'Test Connection & Continue';
+            }
+        }
+
+        async function loadMoodleCourses() {
+            try {
+                console.log('Loading Moodle courses with credentials:', moodleCredentials);
+
+                const response = await fetch(`${API_BASE}/moodle/courses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(moodleCredentials)
+                });
+
+                console.log('Courses response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Courses API error:', response.status, errorText);
+                    throw new Error(`API returned ${response.status}: ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log('Courses result:', result);
+
+                if (result.success) {
+                    moodleCourses = result.data || [];
+                    console.log(`Loaded ${moodleCourses.length} courses`);
+                    displayMoodleCourses();
+                } else {
+                    console.error('Failed to load courses:', result.error);
+                    document.getElementById('moodleCourseSelect').innerHTML = `<option>Failed: ${result.error || 'Unknown error'}</option>`;
+                }
+            } catch (error) {
+                console.error('Error loading Moodle courses:', error);
+                document.getElementById('moodleCourseSelect').innerHTML = `<option>Error: ${error.message}</option>`;
+            }
+        }
+
+        function displayMoodleCourses() {
+            const select = document.getElementById('moodleCourseSelect');
+
+            if (moodleCourses.length === 0) {
+                select.innerHTML = '<option>No courses found</option>';
+                document.getElementById('courseCount').textContent = '0 courses found';
+                return;
+            }
+
+            select.innerHTML = moodleCourses.map(course =>
+                `<option value="${course.id}">${course.fullname} (${course.shortname})</option>`
+            ).join('');
+
+            document.getElementById('courseCount').textContent = `${moodleCourses.length} courses found`;
+
+            // Enable selection handler
+            select.onchange = function() {
+                const selectedCourse = moodleCourses.find(c => c.id == this.value);
+                if (selectedCourse) {
+                    document.getElementById('selectedCourseInfo').style.display = 'block';
+                    document.getElementById('selectedCourseDetails').innerHTML = `
+                        <strong>${selectedCourse.fullname}</strong><br>
+                        Course Code: ${selectedCourse.shortname}<br>
+                        ID: ${selectedCourse.id}
+                    `;
+                    document.getElementById('importBtn').disabled = false;
+                } else {
+                    document.getElementById('selectedCourseInfo').style.display = 'none';
+                    document.getElementById('importBtn').disabled = true;
+                }
+            };
+        }
+
+        async function importFromMoodle() {
+            const select = document.getElementById('moodleCourseSelect');
+            const manualInput = document.getElementById('manualCourseId');
+
+            let courseId = select.value;
+            let courseName = '';
+
+            // Check if manual course ID is provided
+            if (!courseId && manualInput && manualInput.value) {
+                courseId = manualInput.value.trim();
+                courseName = `Course ID ${courseId}`;
+            } else if (courseId) {
+                const selectedCourse = moodleCourses.find(c => c.id == courseId);
+                if (!selectedCourse) {
+                    alert('Course not found');
+                    return;
+                }
+                courseName = selectedCourse.fullname;
+            } else {
+                alert('Please select a course or enter a course ID');
+                return;
+            }
+
+            if (!confirm(`Import "${courseName}" from Moodle? This will import all modules and content.`)) {
+                return;
+            }
+
+            try {
+                const importBtn = document.getElementById('importBtn');
+                importBtn.disabled = true;
+                importBtn.textContent = 'Importing...';
+
+                // Call backend API to import from Moodle
+                const response = await fetch(`${API_BASE}/moodle/import-course`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        courseId: parseInt(courseId)
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const summary = result.data;
+                    alert(`✅ Course "${courseName}" imported successfully!\n\n` +
+                          `📊 Summary:\n` +
+                          `- Course: ${summary.course?.course_name || courseName}\n` +
+                          `- Modules: ${summary.modules?.length || 0}\n` +
+                          `- Content chunks: ${summary.totalChunks || 0}\n` +
+                          `- Quizzes: ${summary.quizzes?.length || 0}\n` +
+                          `- Quiz questions: ${summary.totalQuestions || 0}`);
+                    closeMoodleImportModal();
+                    loadCourses();
+                } else {
+                    alert(result.error || 'Failed to import course');
+                    importBtn.disabled = false;
+                    importBtn.textContent = 'Import Course';
+                }
+            } catch (error) {
+                console.error('Error importing course:', error);
+                alert('Error importing course from Moodle');
+                document.getElementById('importBtn').disabled = false;
+                document.getElementById('importBtn').textContent = 'Import Course';
+            }
+        }
+
+        /**
+         * Delete course with Material Design confirmation
+         */
+        async function deleteCourse(courseId, courseName) {
+            // Create Material Design confirmation dialog
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 3000;
+                animation: fadeIn 0.2s ease-out;
+            `;
+
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    animation: slideUp 0.3s ease-out;
+                ">
+                    <div style="padding: 24px;">
+                        <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px;">
+                            <div style="
+                                width: 48px;
+                                height: 48px;
+                                border-radius: 50%;
+                                background: rgba(234, 67, 53, 0.1);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 24px;
+                            ">⚠️</div>
+                            <div style="flex:1;">
+                                <h3 style="margin:0; font-size:20px; color:#202124;">Delete course?</h3>
+                            </div>
+                        </div>
+
+                        <div style="color:#5f6368; line-height:1.6; margin-bottom:20px;">
+                            <p style="margin:0 0 12px 0;">
+                                <strong style="color:#202124;">"${courseName}"</strong> will be permanently deleted.
+                            </p>
+                            <div style="background:#fef7e0; border-left:4px solid #f9ab00; padding:12px; border-radius:4px; font-size:14px;">
+                                <strong style="color:#202124;">This will also delete:</strong><br>
+                                • All modules<br>
+                                • All quizzes and questions<br>
+                                • All content chunks<br>
+                                • Neo4j graph data<br>
+                                • ChromaDB vectors
+                            </div>
+                            <p style="margin:12px 0 0 0; font-weight:500; color:#ea4335;">
+                                ⚠️ This action cannot be undone!
+                            </p>
+                        </div>
+
+                        <div style="display:flex; gap:8px; justify-content:flex-end;">
+                            <button onclick="this.closest('div[style*=\\'z-index: 3000\\']').remove()"
+                                style="
+                                    padding: 10px 24px;
+                                    border: none;
+                                    background: transparent;
+                                    color: #1a73e8;
+                                    font-size: 14px;
+                                    font-weight: 500;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                    transition: all 0.2s;
+                                "
+                                onmouseover="this.style.background='rgba(26,115,232,0.08)'"
+                                onmouseout="this.style.background='transparent'">
+                                Cancel
+                            </button>
+                            <button onclick="confirmDeleteCourse(${courseId}, '${courseName.replace(/'/g, "\\'")}'); this.closest('div[style*=\\'z-index: 3000\\']').remove();"
+                                style="
+                                    padding: 10px 24px;
+                                    border: none;
+                                    background: #ea4335;
+                                    color: white;
+                                    font-size: 14px;
+                                    font-weight: 500;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                    transition: all 0.2s;
+                                    box-shadow: 0 1px 3px rgba(234,67,53,0.3);
+                                "
+                                onmouseover="this.style.background='#d33828'; this.style.boxShadow='0 2px 6px rgba(234,67,53,0.4)'"
+                                onmouseout="this.style.background='#ea4335'; this.style.boxShadow='0 1px 3px rgba(234,67,53,0.3)'">
+                                Delete Course
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add animations
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes slideUp {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+
+            document.body.appendChild(modal);
+
+            // Close on background click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        async function confirmDeleteCourse(courseId, courseName) {
+            try {
+                const response = await fetch(`${API_BASE}/courses/${courseId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show success snackbar
+                    showSnackbar(`✅ Course "${courseName}" deleted successfully`, 'success');
+                    loadCourses(); // Reload course list
+                } else {
+                    showSnackbar(`❌ Error: ${result.error || 'Failed to delete course'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting course:', error);
+                showSnackbar('❌ Error deleting course', 'error');
+            }
+        }
+
+        /**
+         * Show Material Design snackbar notification
+         */
+        function showSnackbar(message, type = 'info') {
+            const snackbar = document.createElement('div');
+            const bgColor = type === 'success' ? '#1a73e8' : type === 'error' ? '#ea4335' : '#323232';
+
+            snackbar.style.cssText = `
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%) translateY(100px);
+                background: ${bgColor};
+                color: white;
+                padding: 16px 24px;
+                border-radius: 4px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 4000;
+                font-size: 14px;
+                font-weight: 500;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                max-width: 400px;
+            `;
+            snackbar.textContent = message;
+
+            document.body.appendChild(snackbar);
+
+            // Slide in
+            setTimeout(() => {
+                snackbar.style.transform = 'translateX(-50%) translateY(0)';
+            }, 10);
+
+            // Slide out and remove
+            setTimeout(() => {
+                snackbar.style.transform = 'translateX(-50%) translateY(100px)';
+                setTimeout(() => snackbar.remove(), 300);
+            }, 4000);
+        }
+
+        async function viewCourseModules(courseId, courseName) {
+            currentCourseId = courseId;
+            document.getElementById('viewCourseTitle').textContent = courseName;
+            document.getElementById('viewCourseSubtitle').textContent = `Manage modules for this course`;
+            document.getElementById('viewCourseId').value = courseId;
+            document.getElementById('viewCourseModal').classList.add('active');
+
+            // Load modules for this course
+            await loadCourseModules(courseId);
+        }
+
+        function closeViewCourseModal() {
+            document.getElementById('viewCourseModal').classList.remove('active');
+            currentCourseId = null;
+        }
+
+        async function loadCourseModules(courseId) {
+            try {
+                const response = await fetch(`${API_BASE}/portal/courses/${courseId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load course modules');
+
+                const result = await response.json();
+                const modules = result.data.modules || [];
+
+                const modulesList = document.getElementById('courseModulesList');
+
+                if (modules.length === 0) {
+                    modulesList.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">No modules yet. Click "+ Add Module" to create your first module.</div>';
+                    return;
+                }
+
+                modulesList.innerHTML = modules.map(module => `
+                    <div style="border:2px solid #e0e0e0; border-radius:12px; padding:25px; background:linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%); margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                        <div style="display:flex; flex-direction:column;">
+                            <!-- Module Header -->
+                            <div style="border-bottom:2px dashed #ddd; padding-bottom:15px; margin-bottom:15px;">
+                                <div style="font-size:12px; color:#0f6cbf; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Module ${module.sequence_order}</div>
+                                <div style="font-size:22px; font-weight:700; color:#333; margin-bottom:10px; line-height:1.3;">${module.module_name}</div>
+                                <div style="font-size:14px; color:#666; line-height:1.6;">${module.description || 'No description available'}</div>
+                            </div>
+
+                            <!-- Status Badge -->
+                            <div style="margin-bottom:15px;">
+                                <span style="display:inline-block; background:#d4edda; color:#155724; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600;">
+                                    ✅ Great! You've started learning!
+                                </span>
+                            </div>
+
+                            <!-- What You'll Learn Section -->
+                            <div style="background:#f0f7ff; border-left:4px solid #667eea; padding:15px; border-radius:6px; margin-bottom:15px;">
+                                <div style="font-size:14px; font-weight:700; color:#333; margin-bottom:10px;">📚 What You'll Learn:</div>
+                                <div style="font-size:13px; color:#555; line-height:1.8; padding-left:20px;">
+                                    Learn key concepts and practical skills<br>
+                                    in <strong>${module.module_name}</strong>
+                                </div>
+                            </div>
+
+                            <!-- Content Stats -->
+                            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:15px;">
+                                <div style="text-align:center; background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;">
+                                    <div style="font-size:20px; font-weight:700; color:#0f6cbf;" id="content_files_${module.id}">-</div>
+                                    <div style="font-size:10px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px;">Files</div>
+                                </div>
+                                <div style="text-align:center; background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;">
+                                    <div style="font-size:20px; font-weight:700; color:#667eea;" id="content_chunks_${module.id}">-</div>
+                                    <div style="font-size:10px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px;">Chunks</div>
+                                </div>
+                                <div style="text-align:center; background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;">
+                                    <div style="font-size:20px; font-weight:700; color:#28a745;" id="graph_nodes_${module.id}">-</div>
+                                    <div style="font-size:10px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px;">Nodes</div>
+                                </div>
+                                <div style="text-align:center; background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;">
+                                    <div style="font-size:20px; font-weight:700; color:#f98012;" id="quiz_count_${module.id}">-</div>
+                                    <div style="font-size:10px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px;">Questions</div>
+                                </div>
+                            </div>
+
+                            <!-- Ask Me Anything Section -->
+                            <div style="background:#fff9e6; border-left:4px solid #f98012; padding:15px; border-radius:6px; margin-bottom:15px;">
+                                <div style="font-size:14px; font-weight:700; color:#333; margin-bottom:10px;">💬 Ask Me Anything!</div>
+                                <div style="font-size:13px; color:#666; line-height:1.8; padding-left:5px;">
+                                    <div style="margin-bottom:5px; color:#555;">Examples:</div>
+                                    <div style="padding-left:15px;">
+                                        • "What is ${module.module_name.toLowerCase()}?"<br>
+                                        • "Give me key concepts"<br>
+                                        • "Show me examples"
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Uploaded Files Section -->
+                            <div id="files_section_${module.id}" style="background:#f9fafb; border:1px solid #e0e0e0; border-radius:8px; padding:15px; margin-bottom:15px; display:none;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <div style="font-size:14px; font-weight:700; color:#333;">📎 Uploaded Files</div>
+                                    <div style="font-size:12px; color:#666;" id="files_count_${module.id}">0 files</div>
+                                </div>
+                                <div id="files_list_${module.id}" style="display:flex; flex-direction:column; gap:8px;">
+                                    <!-- File list will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div style="display:flex; gap:10px; border-top:2px dashed #ddd; padding-top:15px;">
+                                <button class="btn-primary-moodle" onclick="openUploadModal(${module.id}, '${module.module_name.replace(/'/g, "\\'")}')">📤 Upload Content</button>
+                                <button class="btn-moodle" onclick="openChatModal(${module.id}, '${module.module_name.replace(/'/g, "\\'")}')">💬 AI Assistant</button>
+                                <button class="btn-moodle" onclick="testModuleQuiz(${module.id})">📝 Test Quiz</button>
+                                <button class="btn-moodle" onclick="toggleFilesSection(${module.id})" id="toggle_files_${module.id}">👁️ View Files</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Load stats for each module
+                modules.forEach(m => loadModuleStats(m.id));
+
+            } catch (error) {
+                console.error('Error loading course modules:', error);
+                document.getElementById('courseModulesList').innerHTML = '<div style="text-align:center; padding:40px; color:#d32f2f;">Error loading modules</div>';
+            }
+        }
+
+        // Module Modal Functions
+        function openAddModuleModalForCourse() {
+            console.log('Opening add module modal...');
+            const courseId = document.getElementById('viewCourseId').value;
+            console.log('Course ID:', courseId);
+
+            if (!courseId) {
+                alert('No course selected');
+                return;
+            }
+
+            document.getElementById('moduleCourseId').value = courseId;
+            document.getElementById('addModuleModal').classList.add('active');
+
+            // Clear fields
+            document.getElementById('moduleName').value = '';
+            document.getElementById('moduleDescription').value = '';
+            document.getElementById('moduleSequence').value = '1';
+
+            console.log('Add module modal opened');
+        }
+
+        function closeAddModuleModal() {
+            document.getElementById('addModuleModal').classList.remove('active');
+        }
+
+        async function createModule() {
+            const courseId = document.getElementById('moduleCourseId').value;
+            const name = document.getElementById('moduleName').value.trim();
+            const description = document.getElementById('moduleDescription').value.trim();
+            const sequence = parseInt(document.getElementById('moduleSequence').value);
+
+            if (!name) {
+                alert('Module name is required');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/portal/courses/${courseId}/modules`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        module_name: name,
+                        description: description,
+                        sequence_order: sequence
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Module created successfully!');
+                    closeAddModuleModal();
+                    loadCourseModules(courseId);
+                } else {
+                    alert(result.error || 'Failed to create module');
+                }
+            } catch (error) {
+                console.error('Error creating module:', error);
+                alert('Error creating module');
+            }
+        }
+
+        /**
+         * Load module statistics: content files, RAG chunks, Neo4j nodes, quiz questions
+         */
+        async function loadModuleStats(moduleId) {
+            try {
+                // Load content stats (files + chunks)
+                const contentResponse = await fetch(`${API_BASE}/modules/${moduleId}/content`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (contentResponse.ok) {
+                    const contentResult = await contentResponse.json();
+                    const content = contentResult.data || [];
+                    const totalChunks = content.reduce((sum, item) => sum + (item.chunk_count || 0), 0);
+
+                    document.getElementById(`content_files_${moduleId}`).textContent = content.length;
+                    document.getElementById(`content_chunks_${moduleId}`).textContent = totalChunks;
+
+                    // Update files count and populate file list
+                    const filesCountElem = document.getElementById(`files_count_${moduleId}`);
+                    const filesListElem = document.getElementById(`files_list_${moduleId}`);
+
+                    if (filesCountElem) {
+                        filesCountElem.textContent = `${content.length} file${content.length !== 1 ? 's' : ''}`;
+                    }
+
+                    if (filesListElem && content.length > 0) {
+                        filesListElem.innerHTML = content.map(file => `
+                            <div style="background:white; border:1px solid #ddd; border-radius:6px; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                                <div style="flex:1;">
+                                    <div style="font-size:13px; font-weight:600; color:#333; margin-bottom:4px;">📄 ${file.original_name}</div>
+                                    <div style="font-size:11px; color:#666;">
+                                        ${file.chunk_count || 0} chunks •
+                                        Uploaded ${new Date(file.uploaded_at).toLocaleDateString()}
+                                        ${file.uploaded_by_name ? `by ${file.uploaded_by_name}` : ''}
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="display:inline-block; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; ${file.processed ? 'background:#d1fae5; color:#065f46;' : 'background:#fef3c7; color:#92400e;'}">
+                                        ${file.processed ? '✅ Processed' : '⏳ Processing'}
+                                    </span>
+                                    <button onclick="deleteModuleFile(${moduleId}, ${file.id}, '${file.original_name.replace(/'/g, "\\'")}')"
+                                            style="background:#ef4444; color:white; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:600;"
+                                            onmouseover="this.style.background='#dc2626'"
+                                            onmouseout="this.style.background='#ef4444'">
+                                        🗑️ Delete
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('');
+                    } else if (filesListElem) {
+                        filesListElem.innerHTML = '<div style="text-align:center; padding:20px; color:#999; font-size:13px;">No files uploaded yet</div>';
+                    }
+                } else {
+                    document.getElementById(`content_files_${moduleId}`).textContent = '0';
+                    document.getElementById(`content_chunks_${moduleId}`).textContent = '0';
+
+                    const filesCountElem = document.getElementById(`files_count_${moduleId}`);
+                    const filesListElem = document.getElementById(`files_list_${moduleId}`);
+
+                    if (filesCountElem) filesCountElem.textContent = '0 files';
+                    if (filesListElem) filesListElem.innerHTML = '<div style="text-align:center; padding:20px; color:#999; font-size:13px;">No files uploaded yet</div>';
+                }
+
+                // Load Neo4j graph nodes count
+                const graphResponse = await fetch(`${API_BASE}/modules/${moduleId}/graph-stats`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (graphResponse.ok) {
+                    const graphResult = await graphResponse.json();
+                    document.getElementById(`graph_nodes_${moduleId}`).textContent = graphResult.data?.nodeCount || 0;
+                } else {
+                    document.getElementById(`graph_nodes_${moduleId}`).textContent = '0';
+                }
+
+                // Load quiz questions count
+                const quizResponse = await fetch(`${API_BASE}/modules/${moduleId}/quiz`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (quizResponse.ok) {
+                    const quizResult = await quizResponse.json();
+                    const questions = quizResult.data || [];
+                    document.getElementById(`quiz_count_${moduleId}`).textContent = questions.length;
+                } else {
+                    document.getElementById(`quiz_count_${moduleId}`).textContent = '0';
+                }
+
+            } catch (error) {
+                console.error(`Error loading stats for module ${moduleId}:`, error);
+                // Set defaults on error
+                document.getElementById(`content_files_${moduleId}`).textContent = '0';
+                document.getElementById(`content_chunks_${moduleId}`).textContent = '0';
+                document.getElementById(`graph_nodes_${moduleId}`).textContent = '0';
+                document.getElementById(`quiz_count_${moduleId}`).textContent = '0';
+            }
+        }
+
+        /**
+         * Test quiz for a module (opens quiz in chat window)
+         */
+        async function testModuleQuiz(moduleId) {
+            try {
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/quiz`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) {
+                    alert('No quiz available for this module');
+                    return;
+                }
+
+                const result = await response.json();
+                const questions = result.data || [];
+
+                if (questions.length === 0) {
+                    alert('No quiz questions found. Please generate quiz first.');
+                    return;
+                }
+
+                // Open chat modal and display quiz
+                openChatModal(moduleId, `Quiz - Module ${moduleId}`);
+
+                // Add quiz questions to chat
+                const messagesArea = document.getElementById('chatMessagesArea');
+                messagesArea.innerHTML = `
+                    <div class="chat-msg">
+                        <div class="chat-msg-avatar">AI</div>
+                        <div class="chat-msg-bubble">
+                            <div class="chat-msg-text">
+                                <strong>Quiz Ready!</strong><br>
+                                ${questions.length} questions available.<br><br>
+                                Type "start quiz" to begin, or ask me any questions about the module content.
+                            </div>
+                            <div class="chat-msg-time">${formatTime()}</div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Error loading quiz:', error);
+                alert('Error loading quiz');
+            }
+        }
+
+        /**
+         * Toggle files section visibility for a module
+         */
+        function toggleFilesSection(moduleId) {
+            const filesSection = document.getElementById(`files_section_${moduleId}`);
+            const toggleBtn = document.getElementById(`toggle_files_${moduleId}`);
+
+            if (filesSection && toggleBtn) {
+                const isHidden = filesSection.style.display === 'none';
+
+                if (isHidden) {
+                    filesSection.style.display = 'block';
+                    toggleBtn.textContent = '👁️ Hide Files';
+                } else {
+                    filesSection.style.display = 'none';
+                    toggleBtn.textContent = '👁️ View Files';
+                }
+            }
+        }
+
+        /**
+         * Delete a file from a module
+         */
+        async function deleteModuleFile(moduleId, fileId, fileName) {
+            if (!confirm(`Are you sure you want to delete "${fileName}"?\n\nThis will remove:\n• The file from storage\n• All database records\n• All vector embeddings from ChromaDB\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/content/${fileId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    alert(`✅ File "${fileName}" deleted successfully!`);
+
+                    // Reload the module stats to update the file list
+                    await loadModuleStats(moduleId);
+
+                    console.log('File deleted:', result);
+                } else {
+                    alert(`❌ Failed to delete file: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert(`❌ Error deleting file: ${error.message}`);
+            }
+        }
     </script>
 </body>
 </html>

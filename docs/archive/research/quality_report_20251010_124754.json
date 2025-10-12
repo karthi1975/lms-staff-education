@@ -1,0 +1,76 @@
+{
+  "test_time": "2025-10-10T12:47:54.459038",
+  "models": [
+    "Llama-4 Maverick",
+    "Gemini 2.5 Flash"
+  ],
+  "test_count": 5,
+  "final_scores": [],
+  "detailed_results": [
+    {
+      "test": "factual",
+      "models": [
+        {
+          "model": "Llama-4 Maverick",
+          "success": false
+        },
+        {
+          "model": "Gemini 2.5 Flash",
+          "success": false
+        }
+      ]
+    },
+    {
+      "test": "practical",
+      "models": [
+        {
+          "model": "Llama-4 Maverick",
+          "success": false
+        },
+        {
+          "model": "Gemini 2.5 Flash",
+          "success": false
+        }
+      ]
+    },
+    {
+      "test": "quiz",
+      "models": [
+        {
+          "model": "Llama-4 Maverick",
+          "success": false
+        },
+        {
+          "model": "Gemini 2.5 Flash",
+          "success": false
+        }
+      ]
+    },
+    {
+      "test": "explanation",
+      "models": [
+        {
+          "model": "Llama-4 Maverick",
+          "success": false
+        },
+        {
+          "model": "Gemini 2.5 Flash",
+          "success": false
+        }
+      ]
+    },
+    {
+      "test": "strategy",
+      "models": [
+        {
+          "model": "Llama-4 Maverick",
+          "success": false
+        },
+        {
+          "model": "Gemini 2.5 Flash",
+          "success": false
+        }
+      ]
+    }
+  ]
+}

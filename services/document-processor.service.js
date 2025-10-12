@@ -2,6 +2,14 @@ const pdfParse = require('pdf-parse');
 const fs = require('fs').promises;
 const logger = require('../utils/logger');
 
+// Try to load mammoth, but make it optional
+let mammoth = null;
+try {
+  mammoth = require('mammoth');
+} catch (err) {
+  logger.warn('Mammoth not available - DOCX support disabled');
+}
+
 class DocumentProcessorService {
   constructor() {
     // Chunking configuration
@@ -51,11 +59,16 @@ class DocumentProcessorService {
     } else if (filePath.toLowerCase().endsWith('.txt') || filePath.toLowerCase().endsWith('.md')) {
       return fileContent.toString('utf-8');
     } else if (filePath.toLowerCase().endsWith('.docx')) {
-      // For DOCX support, you'd need additional library like mammoth
-      logger.warn('DOCX files not yet supported, treating as text');
-      return fileContent.toString('utf-8');
+      // Extract text from DOCX using mammoth
+      if (mammoth) {
+        const result = await mammoth.extractRawText({ buffer: fileContent });
+        return result.value;
+      } else {
+        logger.warn('DOCX file uploaded but mammoth not available - treating as text');
+        return fileContent.toString('utf-8');
+      }
     }
-    
+
     return fileContent.toString('utf-8');
   }
 

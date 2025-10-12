@@ -1,0 +1,189 @@
+
+  ---
+  📋 MANUAL COURSE CREATION GUIDE
+
+  STEP 1: Create the Course
+
+  Go to admin portal → Courses tab → Click "+ Add Course" → Select "Create Manually"
+
+  Course Name: Business Studies Teacher Training
+  Course Code: BSTT-001
+  Description: Comprehensive training for Business Studies teachers covering Form I-II
+  curriculum and PBA implementation
+  Category: Teacher Professional Development.  
+
+  Click "Create Course"
+
+  ---
+  STEP 2: Create Modules (One by One)
+
+  After creating the course, click "📋 View Modules" → Click "+ Add Module"
+
+  Module 1: Overview & Textbooks
+
+  Module Name: Overview & Textbooks
+  Description: Introduction to Business Studies curriculum, syllabus analysis, and
+  textbook navigation
+  Sequence Order: 1
+  Files to upload:
+  - BS Syllabus Analysis.pdf
+  - BS F1 Textbook.pdf
+
+
+  ---
+  Module 2: Entrepreneurship & Business Ideas
+
+  Module Name: Entrepreneurship & Business Ideas
+  Description: Teaching entrepreneurship concepts and business idea generation
+  Sequence Order: 2
+  Files to upload:
+  - BS F1 Textbook.pdf
+  - Form I-Term I_Project.pdf
+  - GUIDELINES_FOR_PROJECT_BASED_ASSESSMENT_FOR_BUSINESS_STUDIES.pdf
+
+  ---
+  Module 3: Community Needs & Resource Mapping
+
+  Module Name: Community Needs & Resource Mapping
+  Description: Teaching students to analyze local resources and community challenges
+  Sequence Order: 3
+  Files to upload:
+  - Form I-Term I_Project.pdf
+  - ASSIGNMENT OF STUDENTS INTO GROUPS FORM .docx.pdf
+
+  ---
+  Module 4: Business Idea Feasibility
+
+  Module Name: Business Idea Feasibility
+  Description: Evaluating business ideas and developing business plans
+  Sequence Order: 4
+  Files to upload:
+  - BS F1 Textbook.pdf
+  - BS Lesson Plan Book_Final_May 2025.pdf
+
+  ---
+  Module 5: Project - Mapping & Business Idea Creation
+
+  Module Name: Project - Mapping & Business Idea Creation (Form I, Term I)
+  Description: Implementing and assessing the first term project
+  Sequence Order: 5
+  Files to upload:
+  - Form I-Term I_Project.pdf
+  - BS Teachers-Project Manual_Final_May 2025.pdf
+  - PBA_IMPLEMENTATION_MANUAL_FORM_I-IV .pdf
+
+  ---
+  Module 6: Sole Proprietorship
+
+  Module Name: Sole Proprietorship (Form I, Term II)
+  Description: Understanding sole proprietorship and interviewing entrepreneurs
+  Sequence Order: 6
+  Files to upload:
+  - BS F1 Textbook.pdf
+  - Form I-Term II_Project.pdf
+  - BS Teachers-Project Manual_Final_May 2025.pdf
+
+  ---
+  Module 7: Sources of Funds & Microfinance
+
+  Module Name: Sources of Funds, Microfinance & Cooperatives (Form II, Term I)
+  Description: Teaching about business financing and cooperative societies
+  Sequence Order: 7
+  Files to upload:
+  - BUSINESS STUDIES F2.pdf
+  - Form II-Term I-Project.pdf
+  - BS Lesson Plan Book_Final_May 2025.pdf
+
+  ---
+  Module 8: Production & Small Business Operations
+
+  Module Name: Production & Small Business Operations (Form II, Term II)
+  Description: Teaching production processes and small business management
+  Sequence Order: 8
+  Files to upload:
+  - BUSINESS STUDIES F2.pdf
+  - Form II-Term II-Project.pdf
+
+  ---
+  Module 9: Project-Based Assessment Implementation
+
+  Module Name: Project-Based Assessment (PBA) Implementation
+  Description: Mastering PBA methodology and assessment techniques
+  Sequence Order: 9
+  Files to upload:
+  - PBA_IMPLEMENTATION_MANUAL_FORM_I-IV .pdf
+  - BS Teachers-Project Manual_Final_May 2025.pdf
+  - GUIDELINES_FOR_PROJECT_BASED_ASSESSMENT_FOR_BUSINESS_STUDIES.pdf
+
+  ---
+  Module 10: Lesson Planning & Classroom Management
+
+  Module Name: Lesson Planning & Classroom Management
+  Description: Student-centered teaching methods and classroom management
+  Sequence Order: 10
+  Files to upload:
+  - BS Lesson Plan Book_Final_May 2025.pdf
+  - BS Teachers-Project Manual_Final_May 2025.pdf
+
+  ---
+  Module 11: Teaching Resources & Technology
+
+  Module Name: Teaching Resources & Technology Integration
+  Description: Digital integration and improvising teaching materials
+  Sequence Order: 11
+  Files to upload:
+  - BS Syllabus Analysis.pdf
+  - PBA_IMPLEMENTATION_MANUAL_FORM_I-IV .pdf
+
+  ---
+  Module 12: Assessment & Evaluation
+
+  Module Name: Assessment & Evaluation
+  Description: Formative and summative assessment techniques using rubrics
+  Sequence Order: 12
+  Files to upload:
+  - BS Syllabus Analysis.pdf
+  - BS Teachers-Project Manual_Final_May 2025.pdf
+
+  ---
+  STEP 3: Upload Content to Each Module
+
+  For each module:
+  1. Click "📋 View Modules" on the course
+  2. Click "📤 Upload Content" button on the module
+  3. Drag & drop or click to browse the PDF files
+  4. Click "📤 Upload Files"
+  5. Wait for success message
+
+  ---
+  QUICK REFERENCE: File Upload Matrix
+
+  | Module # | Module Name                        | Files Needed |
+  |----------|------------------------------------|--------------|
+  | 1        | Overview & Textbooks               | 2 PDFs       |
+  | 2        | Entrepreneurship & Business Ideas  | 3 PDFs       |
+  | 3        | Community Needs & Resource Mapping | 2 PDFs       |
+  | 4        | Business Idea Feasibility          | 2 PDFs       |
+  | 5        | Project - Mapping & Business Idea  | 3 PDFs       |
+  | 6        | Sole Proprietorship                | 3 PDFs       |
+  | 7        | Sources of Funds & Microfinance    | 3 PDFs       |
+  | 8        | Production & Small Business        | 2 PDFs       |
+  | 9        | Project-Based Assessment           | 3 PDFs       |
+  | 10       | Lesson Planning & Classroom Mgmt   | 2 PDFs       |
+  | 11       | Teaching Resources & Technology    | 2 PDFs       |
+  | 12       | Assessment & Evaluation            | 2 PDFs       |
+
+  Total: 12 modules, ~29 file uploads
+
+  ---
+  ✅ WORKFLOW SUMMARY
+
+  1. ✅ Create Course (BSTT-001)
+  2. ✅ Create Module 1 → Upload 2 files
+  3. ✅ Create Module 2 → Upload 3 files
+  4. ✅ Create Module 3 → Upload 2 files
+  5. ✅ Continue for all 12 modules...
+  6. ✅ Test chat functionality on any module
+  7. ✅ Test quiz generation
+
+  ---

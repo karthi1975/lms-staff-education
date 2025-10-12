@@ -3,7 +3,8 @@
  * Handles conversational flow for training modules and quizzes
  */
 
-const whatsappService = require('./whatsapp.service');
+// Use the adapter service to support both Meta and Twilio
+const whatsappService = require('./whatsapp-adapter.service');
 const quizService = require('./quiz.service');
 const postgresService = require('./database/postgres.service');
 const moodleSyncService = require('./moodle-sync.service');

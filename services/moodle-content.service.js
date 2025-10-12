@@ -5,26 +5,52 @@
 
 const https = require('https');
 const { JSDOM } = require('jsdom');
+const moodleSettingsService = require('./moodle-settings.service');
 const logger = require('../utils/logger');
 
-const MOODLE_URL = process.env.MOODLE_URL || 'https://karthitest.moodlecloud.com';
-const MOODLE_TOKEN = process.env.MOODLE_TOKEN || 'c0ee6baca141679fdd6793ad397e6f21';
-
 class MoodleContentService {
+  constructor() {
+    this.config = null;
+    this.initialized = false;
+  }
+
+  /**
+   * Initialize service with DB settings
+   */
+  async initialize() {
+    if (this.initialized) return;
+
+    try {
+      this.config = await moodleSettingsService.getMoodleConfig();
+      this.initialized = true;
+    } catch (error) {
+      // Fallback to .env if DB settings not available
+      logger.warn('Failed to load Moodle settings from DB, using .env fallback');
+      this.config = {
+        url: process.env.MOODLE_URL || 'https://karthitest.moodlecloud.com',
+        token: process.env.MOODLE_TOKEN || '',
+        sync_enabled: process.env.MOODLE_SYNC_ENABLED === 'true'
+      };
+      this.initialized = true;
+    }
+  }
+
   /**
    * Make Moodle API call
    */
   async moodleApiCall(wsfunction, params = {}) {
+    await this.initialize();
+
     return new Promise((resolve, reject) => {
       const postData = new URLSearchParams({
-        wstoken: MOODLE_TOKEN,
+        wstoken: this.config.token,
         wsfunction,
         moodlewsrestformat: 'json',
         ...params
       }).toString();
 
       const options = {
-        hostname: MOODLE_URL.replace('https://', '').replace('http://', ''),
+        hostname: this.config.url.replace('https://', '').replace('http://', ''),
         path: '/webservice/rest/server.php',
         method: 'POST',
         headers: {
@@ -350,24 +376,42 @@ class MoodleContentService {
 
       const modules = [];
 
-      // Process sections and modules
+      // Process sections as modules (each section becomes one module)
       for (const section of contents) {
+        // Aggregate all content from modules within this section
+        let sectionContentParts = [];
+        let sectionUrls = [];
+
         for (const module of section.modules) {
-          // Extract content
+          // Extract content from each module in the section
           const contentText = await this.extractModuleContent(module);
 
-          modules.push({
-            moodle_module_id: module.id,
-            module_name: module.name,
-            module_type: module.modname,
-            sequence_order: module.id,
-            content_text: contentText,
-            content_url: module.url,
-            description: this.stripHtml(module.description || ''),
-            section_name: section.name,
-            section_id: section.id
-          });
+          if (contentText && contentText.trim()) {
+            sectionContentParts.push(`### ${module.name}\n${contentText}`);
+          }
+
+          if (module.url) {
+            sectionUrls.push(`${module.name}: ${module.url}`);
+          }
         }
+
+        // Combine all section content
+        const aggregatedContent = sectionContentParts.join('\n\n');
+        const sectionDescription = this.stripHtml(section.summary || '');
+
+        // Create one module per section
+        modules.push({
+          moodle_module_id: section.id, // Use section ID
+          module_name: section.name,
+          module_type: 'section',
+          sequence_order: section.section, // Section number
+          content_text: aggregatedContent,
+          content_url: sectionUrls.join('\n'),
+          description: sectionDescription,
+          section_name: section.name,
+          section_id: section.id,
+          module_count: section.modules.length // Track how many Moodle modules this section contains
+        });
       }
 
       return {
@@ -377,6 +421,67 @@ class MoodleContentService {
       };
     } catch (error) {
       logger.error(`Failed to fetch course structure:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all accessible courses for the authenticated token
+   * For service accounts, uses core_course_get_courses to get all courses
+   * For regular users, falls back to enrolled courses
+   */
+  async getUserCourses() {
+    await this.initialize();
+
+    try {
+      // Get site info first to identify token capabilities
+      const siteInfo = await this.moodleApiCall('core_webservice_get_site_info', {});
+      logger.info(`Fetching courses for user ${siteInfo.username} (ID: ${siteInfo.userid}, Version: ${siteInfo.version})`);
+
+      // Method 1: Try to get ALL courses (works for service accounts with proper permissions)
+      try {
+        logger.info('Attempting to fetch all courses (service account method)...');
+        const allCourses = await this.moodleApiCall('core_course_get_courses', {});
+
+        // Filter out site-level course (ID 1) if present
+        const filteredCourses = allCourses.filter(c => c.id !== 1);
+        logger.info(`✅ Found ${filteredCourses.length} courses using service account method`);
+        return filteredCourses;
+      } catch (error) {
+        logger.warn(`Service account method failed: ${error.message}, trying user enrollment method...`);
+      }
+
+      // Method 2: Try enrolled courses by timeline (works for regular users)
+      try {
+        logger.info('Attempting to fetch enrolled courses (user method)...');
+        const result = await this.moodleApiCall('core_course_get_enrolled_courses_by_timeline_classification', {
+          classification: 'all'
+        });
+        const courses = result.courses || [];
+        logger.info(`✅ Found ${courses.length} enrolled courses using user method`);
+        return courses;
+      } catch (error) {
+        logger.warn(`User enrollment method failed: ${error.message}, trying legacy method...`);
+      }
+
+      // Method 3: Try legacy user courses API
+      try {
+        logger.info('Attempting to fetch courses (legacy user method)...');
+        const courses = await this.moodleApiCall('core_enrol_get_users_courses', {
+          userid: siteInfo.userid.toString()
+        });
+        logger.info(`✅ Found ${courses.length} courses using legacy method`);
+        return courses;
+      } catch (error) {
+        logger.error(`All course fetch methods failed: ${error.message}`);
+      }
+
+      throw new Error('Unable to fetch courses. Please ensure the Moodle token has one of these permissions: ' +
+                      'core_course_get_courses (service account), ' +
+                      'core_course_get_enrolled_courses_by_timeline_classification (user), or ' +
+                      'core_enrol_get_users_courses (legacy user)');
+    } catch (error) {
+      logger.error('Failed to fetch courses:', error);
       throw error;
     }
   }

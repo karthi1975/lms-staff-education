@@ -240,10 +240,51 @@
             color: #6b7280;
             margin-top: 5px;
         }
+
+        .breadcrumb {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb a:hover {
+            color: #5a67d8;
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            color: #9ca3af;
+        }
+
+        .breadcrumb-current {
+            color: #6b7280;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="/admin/index.html">🏠 Home</a>
+            <span class="breadcrumb-separator">›</span>
+            <a href="/admin/lms-dashboard.html">LMS Dashboard</a>
+            <span class="breadcrumb-separator">›</span>
+            <span class="breadcrumb-current">User Management</span>
+        </nav>
+
         <header>
             <h1>👥 User Management</h1>
             <div style="display: flex; gap: 10px;">
@@ -343,8 +384,25 @@
 
         async function loadUsers() {
             try {
-                const response = await fetch('/api/users');
+                const authToken = localStorage.getItem('adminToken');
+
+                if (!authToken) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const response = await fetch('/api/admin/users', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
                 const result = await response.json();
+
+                if (!result.success) {
+                    showAlert(result.error || 'Failed to load users', 'error');
+                    return;
+                }
+
                 allUsers = result.data || [];
 
                 displayUsers(allUsers);
@@ -368,8 +426,10 @@
                     ? new Date(user.last_active_at).toLocaleDateString()
                     : 'Never';
 
-                const isActive = user.last_active_at &&
-                    (new Date() - new Date(user.last_active_at)) < 7 * 24 * 60 * 60 * 1000;
+                const isActive = user.is_active && (
+                    user.last_active_at &&
+                    (new Date() - new Date(user.last_active_at)) < 7 * 24 * 60 * 60 * 1000
+                );
 
                 const statusBadge = isActive
                     ? '<span class="badge badge-active">Active</span>'
@@ -400,7 +460,7 @@
             document.getElementById('totalUsers').textContent = allUsers.length;
 
             const activeCount = allUsers.filter(u => {
-                return u.last_active_at &&
+                return u.is_active && u.last_active_at &&
                     (new Date() - new Date(u.last_active_at)) < 7 * 24 * 60 * 60 * 1000;
             }).length;
             document.getElementById('activeUsers').textContent = activeCount;
@@ -451,9 +511,14 @@
             }
 
             try {
-                const response = await fetch('/api/users', {
+                const authToken = localStorage.getItem('adminToken');
+
+                const response = await fetch('/api/admin/users', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
                     body: JSON.stringify({ name, whatsapp_id: phone })
                 });
 
@@ -464,7 +529,7 @@
                     closeAddUserModal();
                     loadUsers();
                 } else {
-                    showAlert(result.message || 'Failed to add user', 'error');
+                    showAlert(result.error || 'Failed to add user', 'error');
                 }
             } catch (error) {
                 console.error('Error adding user:', error);
@@ -486,8 +551,13 @@
             if (!userToDelete) return;
 
             try {
-                const response = await fetch(`/api/users/${userToDelete}`, {
-                    method: 'DELETE'
+                const authToken = localStorage.getItem('adminToken');
+
+                const response = await fetch(`/api/admin/users/${userToDelete}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
                 });
 
                 const result = await response.json();
@@ -497,7 +567,7 @@
                     closeDeleteModal();
                     loadUsers();
                 } else {
-                    showAlert(result.message || 'Failed to delete user', 'error');
+                    showAlert(result.error || 'Failed to delete user', 'error');
                 }
             } catch (error) {
                 console.error('Error deleting user:', error);
@@ -518,6 +588,9 @@
                 alert.style.display = 'none';
             }, 3000);
         }
+
+        // Cache buster - Updated 2025-10-07 20:37 - Fixed active status check
+        console.log('User Management v2 - Active status check includes is_active field');
     </script>
 </body>
 </html>

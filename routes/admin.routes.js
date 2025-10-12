@@ -2,11 +2,8 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs').promises;
-const postgresService = require('../services/database/postgres.service');
-const documentProcessor = require('../services/document-processor.service');
-const chromaService = require('../services/chroma.service');
-// const contentService = require('../services/content.service'); // Disabled - has dependency issues
+const contentService = require('../services/content.service');
+const portalContentService = require('../services/portal-content.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
@@ -45,21 +42,8 @@ const upload = multer({
  */
 router.get('/modules', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const result = await postgresService.pool.query(`
-      SELECT
-        id,
-        title,
-        description,
-        sequence_order,
-        is_active,
-        created_at,
-        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = modules.id) as content_count
-      FROM modules
-      WHERE is_active = true
-      ORDER BY sequence_order
-    `);
-
-    res.json({ success: true, data: result.rows });
+    const modules = await contentService.getModules();
+    res.json({ success: true, data: modules });
   } catch (error) {
     logger.error('Error fetching modules:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -74,24 +58,13 @@ router.get('/modules', authMiddleware.authenticateToken, async (req, res) => {
 router.get('/modules/:moduleId', authMiddleware.authenticateToken, async (req, res) => {
   try {
     const { moduleId } = req.params;
+    const module = await contentService.getModuleById(moduleId);
 
-    const result = await postgresService.pool.query(`
-      SELECT
-        id,
-        title,
-        description,
-        sequence_order,
-        is_active,
-        created_at
-      FROM modules
-      WHERE id = $1 AND is_active = true
-    `, [parseInt(moduleId)]);
-
-    if (result.rows.length === 0) {
+    if (!module) {
       return res.status(404).json({ success: false, error: 'Module not found' });
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data: module });
   } catch (error) {
     logger.error(`Error fetching module ${req.params.moduleId}:`, error);
     res.status(500).json({ success: false, error: error.message });
@@ -106,24 +79,8 @@ router.get('/modules/:moduleId', authMiddleware.authenticateToken, async (req, r
 router.get('/modules/:moduleId/content', authMiddleware.authenticateToken, async (req, res) => {
   try {
     const { moduleId } = req.params;
-
-    const result = await postgresService.pool.query(`
-      SELECT
-        mc.id,
-        mc.file_name,
-        mc.original_name,
-        mc.file_type,
-        mc.chunk_count,
-        mc.uploaded_at,
-        mc.processed,
-        au.name as uploaded_by_name
-      FROM module_content mc
-      LEFT JOIN admin_users au ON mc.uploaded_by = au.id
-      WHERE mc.module_id = $1
-      ORDER BY mc.uploaded_at DESC
-    `, [parseInt(moduleId)]);
-
-    res.json({ success: true, data: result.rows });
+    const content = await contentService.getModuleContent(moduleId);
+    res.json({ success: true, data: content });
   } catch (error) {
     logger.error(`Error fetching content for module ${req.params.moduleId}:`, error);
     res.status(500).json({ success: false, error: error.message });
@@ -137,7 +94,24 @@ router.get('/modules/:moduleId/content', authMiddleware.authenticateToken, async
  */
 router.post('/modules/:moduleId/content',
   authMiddleware.authenticateToken,
-  upload.single('file'),
+  (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        // Handle multer-specific errors
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            success: false,
+            error: `File too large. Maximum size is ${Math.round(parseInt(process.env.UPLOAD_MAX_SIZE || '104857600') / 1024 / 1024)}MB`
+          });
+        }
+        return res.status(400).json({ success: false, error: err.message });
+      } else if (err) {
+        // Handle other errors
+        return res.status(400).json({ success: false, error: err.message });
+      }
+      next();
+    });
+  },
   async (req, res) => {
     try {
       const { moduleId } = req.params;
@@ -147,99 +121,16 @@ router.post('/modules/:moduleId/content',
         return res.status(400).json({ success: false, error: 'No file uploaded' });
       }
 
-      // Insert content record into database
-      const result = await postgresService.pool.query(`
-        INSERT INTO module_content (
-          module_id,
-          file_name,
-          original_name,
-          file_path,
-          file_type,
-          file_size,
-          chunk_count,
-          uploaded_by,
-          processed
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id, file_name, original_name, file_type, file_size, uploaded_at
-      `, [
+      const content = await contentService.uploadContent(
         parseInt(moduleId),
-        req.file.filename,
-        req.file.originalname,
-        req.file.path,
-        path.extname(req.file.originalname).substring(1).toLowerCase(),
-        req.file.size,
-        0, // chunk_count will be updated after processing
-        uploadedById,
-        false
-      ]);
-
-      const contentRecord = result.rows[0];
-
-      // Process file in background (don't wait for completion)
-      setImmediate(async () => {
-        try {
-          logger.info(`Starting background processing for: ${req.file.originalname}`);
-
-          // Prepare metadata for chunking
-          const baseMetadata = {
-            module_id: parseInt(moduleId),
-            content_id: contentRecord.id,
-            filename: req.file.originalname,
-            uploadedAt: new Date().toISOString()
-          };
-
-          // Process document into chunks
-          const chunks = await documentProcessor.processDocument(req.file.path, baseMetadata);
-
-          if (chunks.length === 0) {
-            logger.warn(`No chunks created for ${req.file.originalname}`);
-            return;
-          }
-
-          logger.info(`Created ${chunks.length} chunks for ${req.file.originalname}`);
-
-          // Store chunks in ChromaDB
-          let storedCount = 0;
-          for (const chunk of chunks) {
-            try {
-              await chromaService.addDocument(chunk.content, chunk.metadata);
-              storedCount++;
-            } catch (error) {
-              logger.error(`Error storing chunk in ChromaDB:`, error);
-            }
-          }
-
-          logger.info(`Stored ${storedCount}/${chunks.length} chunks in ChromaDB`);
-
-          // Update database - mark as processed and update chunk count
-          await postgresService.pool.query(`
-            UPDATE module_content
-            SET processed = true, processed_at = NOW(), chunk_count = $1
-            WHERE id = $2
-          `, [chunks.length, contentRecord.id]);
-
-          logger.info(`File processed successfully: ${req.file.originalname} (${chunks.length} chunks)`);
-
-        } catch (processError) {
-          logger.error('Error in background processing:', processError);
-
-          // Mark as failed in database
-          await postgresService.pool.query(`
-            UPDATE module_content
-            SET processed = false, metadata = jsonb_set(
-              COALESCE(metadata, '{}'::jsonb),
-              '{processing_error}',
-              to_jsonb($1::text)
-            )
-            WHERE id = $2
-          `, [processError.message, contentRecord.id]);
-        }
-      });
+        req.file,
+        uploadedById
+      );
 
       res.json({
         success: true,
         message: 'File uploaded successfully. Processing in background.',
-        data: contentRecord
+        data: content
       });
 
     } catch (error) {
@@ -260,48 +151,11 @@ router.delete('/content/:contentId',
   async (req, res) => {
     try {
       const { contentId } = req.params;
-
-      // Get file info before deleting
-      const fileResult = await postgresService.pool.query(
-        'SELECT file_name, file_path FROM module_content WHERE id = $1',
-        [parseInt(contentId)]
-      );
-
-      if (fileResult.rows.length === 0) {
-        return res.status(404).json({ success: false, error: 'Content not found' });
-      }
-
-      const { file_name: fileName, file_path: filePath } = fileResult.rows[0];
-
-      // Delete chunks from ChromaDB vector store
-      try {
-        await chromaService.deleteByMetadata({ content_id: parseInt(contentId) });
-        logger.info(`Deleted vector embeddings for content ID: ${contentId}`);
-      } catch (chromaError) {
-        logger.error('Error deleting from ChromaDB:', chromaError);
-        // Continue with deletion even if ChromaDB fails
-      }
-
-      // Delete physical file
-      try {
-        await fs.unlink(filePath);
-        logger.info(`Deleted physical file: ${filePath}`);
-      } catch (fileError) {
-        logger.error('Error deleting physical file:', fileError);
-        // Continue with deletion even if file doesn't exist
-      }
-
-      // Delete from database
-      await postgresService.pool.query(
-        'DELETE FROM module_content WHERE id = $1',
-        [parseInt(contentId)]
-      );
-
-      logger.info(`Content fully deleted: ${fileName} (ID: ${contentId})`);
+      await contentService.deleteContent(parseInt(contentId));
 
       res.json({
         success: true,
-        message: 'Content and all related data deleted successfully'
+        message: 'Content deleted successfully'
       });
 
     } catch (error) {
@@ -318,29 +172,9 @@ router.delete('/content/:contentId',
  */
 router.get('/users', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const postgresService = require('../services/database/postgres.service');
-
-    // Query users with aggregated progress stats
-    const result = await postgresService.pool.query(`
-      SELECT
-        u.id,
-        u.name,
-        u.whatsapp_id,
-        u.created_at,
-        u.last_active_at,
-        COUNT(DISTINCT CASE WHEN up.status = 'completed' THEN up.module_id END) as modules_completed,
-        COUNT(DISTINCT CASE WHEN up.status = 'in_progress' THEN up.module_id END) as modules_in_progress,
-        COUNT(DISTINCT CASE WHEN qa.passed = true THEN qa.module_id END) as quizzes_passed,
-        COALESCE(SUM(up.time_spent_minutes), 0) as total_time_spent_minutes
-      FROM users u
-      LEFT JOIN user_progress up ON u.id = up.user_id
-      LEFT JOIN quiz_attempts qa ON u.id = qa.user_id
-      WHERE u.is_active = true
-      GROUP BY u.id, u.name, u.whatsapp_id, u.created_at, u.last_active_at
-      ORDER BY u.last_active_at DESC NULLS LAST, u.created_at DESC
-    `);
-
-    res.json({ success: true, data: result.rows });
+    const users = await contentService.getAllUsersProgress();
+    // Return in expected format with data property
+    res.json({ success: true, data: users || [] });
   } catch (error) {
     logger.error('Error fetching users:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -362,28 +196,8 @@ router.get('/users/:userId/progress', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    // Get user progress from database
-    const result = await postgresService.pool.query(`
-      SELECT
-        up.id,
-        up.module_id,
-        m.title as module_title,
-        m.description as module_description,
-        up.status,
-        up.progress_percentage,
-        up.started_at,
-        up.completed_at,
-        up.time_spent_minutes,
-        up.last_activity_at,
-        (SELECT COUNT(*) FROM quiz_attempts qa
-         WHERE qa.user_id = up.user_id AND qa.module_id = up.module_id AND qa.passed = true) as quizzes_passed
-      FROM user_progress up
-      JOIN modules m ON m.id = up.module_id
-      WHERE up.user_id = $1
-      ORDER BY m.sequence_order
-    `, [parseInt(userId)]);
-
-    res.json({ success: true, data: result.rows });
+    const progress = await contentService.getUserProgress(parseInt(userId));
+    res.json({ success: true, data: progress });
   } catch (error) {
     logger.error(`Error fetching progress for user ${req.params.userId}:`, error);
     res.status(500).json({ success: false, error: error.message });
@@ -403,13 +217,15 @@ router.post('/bulk-upload',
       const directoryPath = path.join(__dirname, '../training-content');
       const uploadedById = req.user.id;
 
-      // TODO: Implement bulk upload from directory
-      // This would scan the directory, read files, and upload them to the database
-      logger.warn('Bulk upload endpoint not yet implemented');
+      const results = await contentService.bulkUploadFromDirectory(directoryPath, uploadedById);
 
-      res.status(501).json({
-        success: false,
-        error: 'Bulk upload feature not yet implemented. Please use single file upload.'
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.filter(r => !r.success).length;
+
+      res.json({
+        success: true,
+        message: `Bulk upload completed: ${successCount} succeeded, ${failureCount} failed`,
+        data: results
       });
 
     } catch (error) {
@@ -456,184 +272,368 @@ router.get('/user-progress/:userId', authMiddleware.authenticateToken, async (re
   }
 });
 
+// ==================== PORTAL COURSE MANAGEMENT ====================
+
 /**
- * @route POST /api/admin/chat
- * @desc Chat with module content using RAG
+ * @route POST /api/admin/portal/courses
+ * @desc Create a new portal course manually
  * @access Admin
  */
-router.post('/chat', authMiddleware.authenticateToken, async (req, res) => {
+router.post('/portal/courses', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const { module_id, message } = req.body;
+    const { course_name, course_code, description, category } = req.body;
+    const adminUserId = req.user.id;
 
-    if (!module_id || !message) {
-      return res.status(400).json({
-        success: false,
-        error: 'module_id and message are required'
-      });
+    if (!course_name) {
+      return res.status(400).json({ success: false, error: 'Course name is required' });
     }
 
-    // Query ChromaDB for relevant content
-    const relevantDocs = await chromaService.searchSimilar(message, {
-      module: `module_${module_id}`,
-      nResults: 3
-    });
-
-    let context = '';
-    let sources = [];
-
-    if (relevantDocs && relevantDocs.length > 0) {
-      context = relevantDocs.map(doc => doc.content).join('\n\n');
-      sources = relevantDocs.map(doc => doc.metadata?.filename || 'Training Content');
-      // Remove duplicates
-      sources = [...new Set(sources)];
-    }
-
-    // Build prompt for AI
-    const prompt = `You are a helpful teaching assistant for a teacher training program.
-You are answering questions about training content.
-
-${context ? `CONTEXT FROM TRAINING MATERIALS:
-${context}
-
-` : ''}USER QUESTION: ${message}
-
-Provide a clear, helpful answer based on the training materials${context ? '' : ' (note: no specific content was found, so provide general teaching guidance)'}. Be concise but informative.`;
-
-    // Call Vertex AI for response
-    const vertexAI = require('../services/vertexai.service');
-    const aiResponse = await vertexAI.generateEducationalResponse(message, context, 'english');
+    const course = await portalContentService.createPortalCourse({
+      course_name,
+      course_code,
+      description,
+      category
+    }, adminUserId);
 
     res.json({
       success: true,
-      response: aiResponse,
-      sources: sources,
-      has_context: relevantDocs.length > 0
-    });
-
-  } catch (error) {
-    logger.error('Error in chat endpoint:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to process chat message',
-      details: error.message
-    });
-  }
-});
-
-/**
- * @route GET /api/admin/quiz/:moduleId
- * @desc Get quiz questions for a module
- * @access Admin
- */
-router.get('/quiz/:moduleId', authMiddleware.authenticateToken, async (req, res) => {
-  try {
-    const { moduleId } = req.params;
-
-    const result = await postgresService.pool.query(`
-      SELECT
-        id,
-        question_text,
-        question_type,
-        options,
-        difficulty,
-        points,
-        sequence_order
-      FROM quiz_questions
-      WHERE module_id = $1 AND is_active = true
-      ORDER BY sequence_order
-    `, [parseInt(moduleId)]);
-
-    res.json({
-      success: true,
-      questions: result.rows
+      message: 'Course created successfully',
+      data: course
     });
   } catch (error) {
-    logger.error(`Error fetching quiz for module ${req.params.moduleId}:`, error);
+    logger.error('Error creating portal course:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 /**
- * @route POST /api/admin/quiz/:moduleId/submit
- * @desc Submit quiz answers
- * @access Admin (for testing) or User
+ * @route GET /api/admin/courses
+ * @desc Get all courses (portal and Moodle)
+ * @access Admin
  */
-router.post('/quiz/:moduleId/submit', authMiddleware.authenticateToken, async (req, res) => {
+router.get('/courses', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const { moduleId } = req.params;
-    const { answers } = req.body; // { questionId: userAnswer }
-    const userId = req.user.id;
+    const postgresService = require('../services/database/postgres.service');
 
-    if (!answers || typeof answers !== 'object') {
-      return res.status(400).json({
-        success: false,
-        error: 'Answers object is required'
-      });
-    }
+    const result = await postgresService.pool.query(`
+      SELECT
+        mc.*,
+        (SELECT COUNT(*) FROM moodle_modules mm WHERE mm.moodle_course_id = mc.moodle_course_id) as module_count,
+        CASE
+          WHEN mc.source = 'portal' THEN 'Portal'
+          WHEN mc.source = 'moodle' THEN 'Moodle'
+          ELSE 'Unknown'
+        END as source_display
+      FROM moodle_courses mc
+      ORDER BY mc.created_at DESC
+    `);
 
-    // Get correct answers
-    const questionsResult = await postgresService.pool.query(`
-      SELECT id, correct_answer, points
-      FROM quiz_questions
-      WHERE module_id = $1 AND is_active = true
-    `, [parseInt(moduleId)]);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    logger.error('Error fetching courses:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
-    const questions = questionsResult.rows;
-    let score = 0;
-    let totalPoints = 0;
-
-    // Calculate score
-    questions.forEach(q => {
-      totalPoints += q.points;
-      if (answers[q.id] && answers[q.id].trim() === q.correct_answer.trim()) {
-        score += q.points;
-      }
-    });
-
-    const percentage = Math.round((score / totalPoints) * 100);
-    const passed = percentage >= 70; // 70% pass threshold
-
-    // Get attempt number
-    const attemptsResult = await postgresService.pool.query(`
-      SELECT COUNT(*) as count
-      FROM quiz_attempts
-      WHERE user_id = $1 AND module_id = $2
-    `, [userId, parseInt(moduleId)]);
-
-    const attemptNumber = parseInt(attemptsResult.rows[0].count) + 1;
-
-    // Save attempt
-    await postgresService.pool.query(`
-      INSERT INTO quiz_attempts (
-        user_id,
-        module_id,
-        attempt_number,
-        score,
-        total_questions,
-        passed,
-        answers
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      userId,
-      parseInt(moduleId),
-      attemptNumber,
-      percentage,
-      questions.length,
-      passed,
-      JSON.stringify(answers)
-    ]);
+/**
+ * @route GET /api/admin/portal/courses/:courseId
+ * @desc Get course with all modules
+ * @access Admin
+ */
+router.get('/portal/courses/:courseId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const courseData = await portalContentService.getCourseWithModules(parseInt(courseId));
 
     res.json({
       success: true,
-      score: percentage,
-      passed: passed,
-      attempt_number: attemptNumber,
-      points_earned: score,
-      total_points: totalPoints
+      data: courseData
+    });
+  } catch (error) {
+    logger.error('Error fetching course:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/portal/courses/:courseId/modules
+ * @desc Add a module to a portal course
+ * @access Admin
+ */
+router.post('/portal/courses/:courseId/modules', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { module_name, description, sequence_order } = req.body;
+    const adminUserId = req.user.id;
+
+    if (!module_name) {
+      return res.status(400).json({ success: false, error: 'Module name is required' });
+    }
+
+    const module = await portalContentService.createPortalModule(
+      parseInt(courseId),
+      { module_name, description, sequence_order },
+      adminUserId
+    );
+
+    res.json({
+      success: true,
+      message: 'Module created successfully',
+      data: module
+    });
+  } catch (error) {
+    logger.error('Error creating module:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/portal/courses/:courseId/modules/:moduleId/upload
+ * @desc Upload content file for a portal module (creates RAG + GraphDB)
+ * @access Admin
+ */
+router.post('/portal/courses/:courseId/modules/:moduleId/upload',
+  authMiddleware.authenticateToken,
+  (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            success: false,
+            error: `File too large. Maximum size is ${Math.round(parseInt(process.env.UPLOAD_MAX_SIZE || '104857600') / 1024 / 1024)}MB`
+          });
+        }
+        return res.status(400).json({ success: false, error: err.message });
+      } else if (err) {
+        return res.status(400).json({ success: false, error: err.message });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    try {
+      const { moduleId } = req.params;
+      const adminUserId = req.user.id;
+
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'No file uploaded' });
+      }
+
+      const result = await portalContentService.uploadModuleContent(
+        parseInt(moduleId),
+        req.file.path,
+        req.file,
+        adminUserId
+      );
+
+      res.json({
+        success: true,
+        message: 'Content uploaded and processed successfully (RAG + GraphDB)',
+        data: result
+      });
+
+    } catch (error) {
+      logger.error('Error uploading module content:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+/**
+ * @route GET /api/admin/modules/:moduleId/graph
+ * @desc Get knowledge graph data for a module
+ * @access Admin
+ */
+router.get('/modules/:moduleId/graph', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const neo4jService = require('../services/neo4j.service');
+
+    const graphData = await neo4jService.getModuleContentGraph(parseInt(moduleId));
+
+    if (!graphData) {
+      return res.status(404).json({
+        success: false,
+        error: 'No graph data found for this module'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: graphData
     });
 
   } catch (error) {
-    logger.error('Error submitting quiz:', error);
+    logger.error(`Error fetching graph for module ${req.params.moduleId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/modules/:moduleId/related
+ * @desc Get related content modules based on topics
+ * @access Admin
+ */
+router.get('/modules/:moduleId/related', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const neo4jService = require('../services/neo4j.service');
+
+    const relatedContent = await neo4jService.getRelatedContent(parseInt(moduleId));
+
+    res.json({
+      success: true,
+      data: relatedContent
+    });
+
+  } catch (error) {
+    logger.error(`Error fetching related content for module ${req.params.moduleId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/search/topic/:topicName
+ * @desc Search content by topic in knowledge graph
+ * @access Admin
+ */
+router.get('/search/topic/:topicName', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { topicName } = req.params;
+    const limit = parseInt(req.query.limit) || 10;
+    const neo4jService = require('../services/neo4j.service');
+
+    const results = await neo4jService.searchByTopic(topicName, limit);
+
+    res.json({
+      success: true,
+      data: results
+    });
+
+  } catch (error) {
+    logger.error(`Error searching for topic ${req.params.topicName}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route DELETE /api/admin/courses/:courseId
+ * @desc Delete a course and all its related data
+ * @access Admin
+ */
+router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+    const neo4jService = require('../services/neo4j.service');
+    const chromaService = require('../services/chroma.service');
+
+    // Get course details
+    const courseResult = await postgresService.pool.query(
+      'SELECT * FROM moodle_courses WHERE id = $1',
+      [courseId]
+    );
+
+    if (courseResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Course not found' });
+    }
+
+    const course = courseResult.rows[0];
+    const moodleCourseId = course.moodle_course_id;
+
+    // Get all modules for this course
+    const modulesResult = await postgresService.pool.query(
+      'SELECT id FROM moodle_modules WHERE moodle_course_id = $1',
+      [moodleCourseId]
+    );
+
+    const moduleIds = modulesResult.rows.map(row => row.id);
+
+    // Delete from Neo4j
+    try {
+      await neo4jService.deleteCourseGraph(moodleCourseId);
+      logger.info(`Deleted Neo4j graph for course ${moodleCourseId}`);
+    } catch (neo4jError) {
+      logger.warn('Error deleting from Neo4j:', neo4jError);
+    }
+
+    // Delete from ChromaDB
+    try {
+      for (const moduleId of moduleIds) {
+        await chromaService.deleteByModule(moduleId);
+      }
+      logger.info(`Deleted ChromaDB vectors for ${moduleIds.length} modules`);
+    } catch (chromaError) {
+      logger.warn('Error deleting from ChromaDB:', chromaError);
+    }
+
+    // Delete from PostgreSQL (cascading deletes should handle related records)
+    await postgresService.pool.query('BEGIN');
+
+    try {
+      // Delete quiz attempts (use moodle_quiz_id, not quiz_id)
+      await postgresService.pool.query(`
+        DELETE FROM quiz_attempts
+        WHERE moodle_quiz_id IN (
+          SELECT id FROM moodle_quizzes
+          WHERE moodle_module_id IN (
+            SELECT id FROM moodle_modules WHERE moodle_course_id = $1
+          )
+        )
+      `, [moodleCourseId]);
+
+      // Delete quiz questions
+      await postgresService.pool.query(`
+        DELETE FROM quiz_questions
+        WHERE moodle_quiz_id IN (
+          SELECT id FROM moodle_quizzes
+          WHERE moodle_module_id IN (
+            SELECT id FROM moodle_modules WHERE moodle_course_id = $1
+          )
+        )
+      `, [moodleCourseId]);
+
+      // Delete quizzes
+      await postgresService.pool.query(`
+        DELETE FROM moodle_quizzes
+        WHERE moodle_module_id IN (
+          SELECT id FROM moodle_modules WHERE moodle_course_id = $1
+        )
+      `, [moodleCourseId]);
+
+      // Delete content chunks
+      await postgresService.pool.query(`
+        DELETE FROM module_content_chunks
+        WHERE moodle_module_id IN (
+          SELECT id FROM moodle_modules WHERE moodle_course_id = $1
+        )
+      `, [moodleCourseId]);
+
+      // Delete modules
+      await postgresService.pool.query(
+        'DELETE FROM moodle_modules WHERE moodle_course_id = $1',
+        [moodleCourseId]
+      );
+
+      // Delete course
+      await postgresService.pool.query(
+        'DELETE FROM moodle_courses WHERE id = $1',
+        [courseId]
+      );
+
+      await postgresService.pool.query('COMMIT');
+
+      res.json({
+        success: true,
+        message: 'Course and all related data deleted successfully'
+      });
+    } catch (dbError) {
+      await postgresService.pool.query('ROLLBACK');
+      throw dbError;
+    }
+
+  } catch (error) {
+    logger.error('Error deleting course:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -8,32 +8,55 @@
 const https = require('https');
 const { JSDOM } = require('jsdom');
 const postgresService = require('./database/postgres.service');
+const moodleSettingsService = require('./moodle-settings.service');
 const logger = require('../utils/logger');
 
-const MOODLE_URL = process.env.MOODLE_URL || 'https://karthitest.moodlecloud.com';
-const MOODLE_TOKEN = process.env.MOODLE_TOKEN || 'c0ee6baca141679fdd6793ad397e6f21';
 const MOODLE_QUIZ_ID = 4; // Module 1 Quiz
 
 class MoodleSyncService {
   constructor() {
-    this.enabled = process.env.MOODLE_SYNC_ENABLED === 'true';
-    logger.info(`Moodle sync ${this.enabled ? 'ENABLED' : 'DISABLED'}`);
+    this.config = null;
+    this.initialized = false;
+  }
+
+  /**
+   * Initialize service with DB settings
+   */
+  async initialize() {
+    if (this.initialized) return;
+
+    try {
+      this.config = await moodleSettingsService.getMoodleConfig();
+      this.initialized = true;
+      logger.info(`Moodle sync ${this.config.sync_enabled ? 'ENABLED' : 'DISABLED'}`);
+    } catch (error) {
+      // Fallback to .env if DB settings not available
+      logger.warn('Failed to load Moodle settings from DB, using .env fallback');
+      this.config = {
+        url: process.env.MOODLE_URL || 'https://karthitest.moodlecloud.com',
+        token: process.env.MOODLE_TOKEN || '',
+        sync_enabled: process.env.MOODLE_SYNC_ENABLED === 'true'
+      };
+      this.initialized = true;
+    }
   }
 
   /**
    * Make Moodle API call (POST with form data)
    */
   async moodleApiCall(wsfunction, params = {}) {
+    await this.initialize();
+
     return new Promise((resolve, reject) => {
       const postData = new URLSearchParams({
-        wstoken: MOODLE_TOKEN,
+        wstoken: this.config.token,
         wsfunction,
         moodlewsrestformat: 'json',
         ...params
       }).toString();
 
       const options = {
-        hostname: MOODLE_URL.replace('https://', '').replace('http://', ''),
+        hostname: this.config.url.replace('https://', '').replace('http://', ''),
         path: '/webservice/rest/server.php',
         method: 'POST',
         headers: {
@@ -236,7 +259,9 @@ class MoodleSyncService {
    * Uses HTML parsing with multi-page support
    */
   async syncQuizResultToMoodle(userId, moduleId, answers, questions, score, totalQuestions, quizId = null) {
-    if (!this.enabled) {
+    await this.initialize();
+
+    if (!this.config.sync_enabled) {
       logger.info('Moodle sync disabled');
       return { success: false, message: 'Moodle sync disabled' };
     }

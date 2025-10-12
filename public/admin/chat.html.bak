@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Chat - Teachers Training System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .module-list {
+            list-style: none;
+        }
+
+        .module-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .module-item:hover {
+            background: #f0f0f0;
+        }
+
+        .module-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .module-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .module-item.active .module-number {
+            background: white;
+            color: #667eea;
+        }
+
+        .chat-container {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 180px);
+        }
+
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .chat-header h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            display: flex;
+            gap: 10px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: #10b981;
+        }
+
+        .message-content {
+            background: #f9fafb;
+            padding: 12px 16px;
+            border-radius: 12px;
+            flex: 1;
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+        }
+
+        .message-text {
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .message.user .message-time {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .input-container {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+            max-height: 120px;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .send-button:hover {
+            background: #5568d3;
+        }
+
+        .send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: #f9fafb;
+            border-radius: 12px;
+            max-width: 80px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.7; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        .sources {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            font-size: 12px;
+            color: #666;
+        }
+
+        .message.user .sources {
+            border-top-color: rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.8);
+        }
+
+        .source-tag {
+            display: inline-block;
+            background: rgba(0,0,0,0.05);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 5px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>💬 Module Chat Assistant</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="window.location.href='modules.html'">Module Management</button>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div style="background: white; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <a href="lms-dashboard.html" style="color: #667eea; text-decoration: none;">🏠 Home</a>
+            <span style="color: #999;"> / </span>
+            <span style="color: #333; font-weight: 500;">AI Assistant Chat</span>
+        </div>
+
+        <div class="sidebar">
+            <h2>Training Modules</h2>
+            <ul class="module-list" id="moduleList">
+                <!-- Modules will be loaded here -->
+            </ul>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2 id="chatTitle">Select a Module</h2>
+                <p id="chatSubtitle">Choose a module to start chatting</p>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state">
+                    <div class="empty-state-icon">💬</div>
+                    <h3>Start a Conversation</h3>
+                    <p>Select a module and ask questions about the training content</p>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <textarea
+                    class="message-input"
+                    id="messageInput"
+                    placeholder="Ask a question about this module..."
+                    rows="1"
+                    disabled
+                ></textarea>
+                <button class="send-button" id="sendButton" onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let currentModuleId = null;
+        let authToken = localStorage.getItem('adminToken');
+        let messageHistory = {};
+
+        // Check authentication
+        if (!authToken) {
+            window.location.href = 'login.html';
+        }
+
+        // Load modules on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadModules();
+            setupInputHandlers();
+        });
+
+        async function loadModules() {
+            try {
+                const response = await fetch(`${API_BASE}/modules`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        logout();
+                        return;
+                    }
+                    throw new Error('Failed to load modules');
+                }
+
+                const result = await response.json();
+                displayModules(result.data);
+            } catch (error) {
+                console.error('Error loading modules:', error);
+            }
+        }
+
+        function displayModules(modules) {
+            const list = document.getElementById('moduleList');
+            list.innerHTML = modules.map(module => `
+                <li class="module-item" onclick="selectModule(${module.id}, '${module.title}', '${module.description}')">
+                    <div class="module-number">${module.sequence_order}</div>
+                    <div>${module.title}</div>
+                </li>
+            `).join('');
+        }
+
+        function selectModule(moduleId, title, description) {
+            currentModuleId = moduleId;
+
+            // Update active state
+            document.querySelectorAll('.module-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            // Update chat header
+            document.getElementById('chatTitle').textContent = title;
+            document.getElementById('chatSubtitle').textContent = description;
+
+            // Enable input
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+
+            // Load or restore messages
+            const messagesContainer = document.getElementById('messagesContainer');
+            if (messageHistory[moduleId]) {
+                messagesContainer.innerHTML = messageHistory[moduleId];
+            } else {
+                messagesContainer.innerHTML = `
+                    <div class="message">
+                        <div class="message-avatar">AI</div>
+                        <div class="message-content">
+                            <div class="message-text">
+                                Hello! I'm your AI assistant for <strong>${title}</strong>.
+                                Ask me anything about this module's content and I'll help you learn!
+                            </div>
+                            <div class="message-time">${formatTime(new Date())}</div>
+                        </div>
+                    </div>
+                `;
+                messageHistory[moduleId] = messagesContainer.innerHTML;
+            }
+
+            // Focus input
+            document.getElementById('messageInput').focus();
+        }
+
+        function setupInputHandlers() {
+            const input = document.getElementById('messageInput');
+
+            // Auto-resize textarea
+            input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+
+            // Send on Enter (Shift+Enter for new line)
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message || !currentModuleId) return;
+
+            // Add user message to chat
+            addMessage(message, 'user');
+
+            // Clear input
+            input.value = '';
+            input.style.height = 'auto';
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        module_id: currentModuleId,
+                        message: message
+                    })
+                });
+
+                hideTypingIndicator();
+
+                if (!response.ok) {
+                    throw new Error('Failed to get response');
+                }
+
+                const result = await response.json();
+
+                // Add AI response to chat
+                addMessage(result.response, 'assistant', result.sources);
+
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+                console.error('Chat error:', error);
+            }
+        }
+
+        function addMessage(text, sender, sources = null) {
+            const messagesContainer = document.getElementById('messagesContainer');
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            const avatar = sender === 'user' ? 'You' : 'AI';
+
+            let sourcesHtml = '';
+            if (sources && sources.length > 0) {
+                sourcesHtml = `
+                    <div class="sources">
+                        📚 Sources: ${sources.map(s => `<span class="source-tag">${s}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar[0]}</div>
+                <div class="message-content">
+                    <div class="message-text">${escapeHtml(text)}</div>
+                    ${sourcesHtml}
+                    <div class="message-time">${formatTime(new Date())}</div>
+                </div>
+            `;
+
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Save to history
+            messageHistory[currentModuleId] = messagesContainer.innerHTML;
+        }
+
+        function showTypingIndicator() {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const indicator = document.createElement('div');
+            indicator.id = 'typingIndicator';
+            indicator.className = 'message';
+            indicator.innerHTML = `
+                <div class="message-avatar">AI</div>
+                <div class="typing-indicator active">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(indicator);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML.replace(/\n/g, '<br>');
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

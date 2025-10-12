@@ -1,0 +1,315 @@
+{
+  "courseId": 9,
+  "courseName": "Teacher Training Courses",
+  "nodeCount": 16,
+  "relationshipCount": 20,
+  "nodes": [
+    {
+      "type": "Course",
+      "id": "course_9",
+      "properties": {
+        "moodleId": 9,
+        "name": "Teacher Training Courses",
+        "code": "TEACH-001",
+        "source": "moodle"
+      }
+    },
+    {
+      "type": "Module",
+      "id": "section_34",
+      "properties": {
+        "moodleId": 34,
+        "name": "General",
+        "order": 0,
+        "summary": "",
+        "moduleCount": 2
+      }
+    },
+    {
+      "type": "Content",
+      "id": "module_37",
+      "properties": {
+        "moodleId": 37,
+        "name": "Announcements",
+        "type": "forum",
+        "description": "",
+        "url": "https://karthitest.moodlecloud.com/mod/forum/view.php?id=37"
+      }
+    },
+    {
+      "type": "Content",
+      "id": "module_38",
+      "properties": {
+        "moodleId": 38,
+        "name": "Teacher Training Courses course question bank",
+        "type": "qbank",
+        "description": "",
+        "url": "https://karthitest.moodlecloud.com/mod/qbank/view.php?id=38"
+      }
+    },
+    {
+      "type": "Module",
+      "id": "section_35",
+      "properties": {
+        "moodleId": 35,
+        "name": "Module 1: Introduction to Teaching",
+        "order": 1,
+        "summary": "",
+        "moduleCount": 2
+      }
+    },
+    {
+      "type": "Content",
+      "id": "module_39",
+      "properties": {
+        "moodleId": 39,
+        "name": "Module 1: Introduction to teaching",
+        "type": "resource",
+        "description": "",
+        "url": "https://karthitest.moodlecloud.com/mod/resource/view.php?id=39"
+      }
+    },
+    {
+      "type": "Content",
+      "id": "module_46",
+      "properties": {
+        "moodleId": 46,
+        "name": "Module 1: Knowledge Check Quiz",
+        "type": "quiz",
+        "description": "",
+        "url": "https://karthitest.moodlecloud.com/mod/quiz/view.php?id=46"
+      }
+    },
+    {
+      "type": "Module",
+      "id": "section_36",
+      "properties": {
+        "moodleId": 36,
+        "name": "Module 2: Classroom Management",
+        "order": 2,
+        "summary": "",
+        "moduleCount": 1
+      }
+    },
+    {
+      "type": "Content",
+      "id": "module_40",
+      "properties": {
+        "moodleId": 40,
+        "name": "Module 2: Classroom Management",
+        "type": "resource",
+        "description": "",
+        "url": "https://karthitest.moodlecloud.com/mod/resource/view.php?id=40"
+      }
+    },
+    {
+      "type": "Module",
+      "id": "section_37",
+      "properties": {
+        "moodleId": 37,
+        "name": "Module 3: Lesson Planning",
+        "order": 3,
+        "summary": "",
+        "moduleCount": 1
+      }
+    },
+    {
+      "type": "Content",
+      "id": "module_41",
+      "properties": {
+        "moodleId": 41,
+        "name": "Module 3: Lesson Planning",
+        "type": "resource",
+        "description": "",
+        "url": "https://karthitest.moodlecloud.com/mod/resource/view.php?id=41"
+      }
+    },
+    {
+      "type": "Module",
+      "id": "section_38",
+      "properties": {
+        "moodleId": 38,
+        "name": "Module 4: Assessment Strategies",
+        "order": 4,
+        "summary": "",
+        "moduleCount": 1
+      }
+    },
+    {
+      "type": "Content",
+      "id": "module_42",
+      "properties": {
+        "moodleId": 42,
+        "name": "Module 4: Assessment Strategies",
+        "type": "resource",
+        "description": "",
+        "url": "https://karthitest.moodlecloud.com/mod/resource/view.php?id=42"
+      }
+    },
+    {
+      "type": "Module",
+      "id": "section_39",
+      "properties": {
+        "moodleId": 39,
+        "name": " Module 5: Technology in Education",
+        "order": 5,
+        "summary": "",
+        "moduleCount": 1
+      }
+    },
+    {
+      "type": "Content",
+      "id": "module_43",
+      "properties": {
+        "moodleId": 43,
+        "name": "Module 5: Technology in Education",
+        "type": "resource",
+        "description": "",
+        "url": "https://karthitest.moodlecloud.com/mod/resource/view.php?id=43"
+      }
+    },
+    {
+      "type": "Quiz",
+      "id": "quiz_4",
+      "properties": {
+        "moodleId": 4,
+        "name": "Module 1: Knowledge Check Quiz"
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "HAS_MODULE",
+      "from": "course_9",
+      "to": "section_34",
+      "properties": {
+        "order": 0
+      }
+    },
+    {
+      "type": "CONTAINS",
+      "from": "section_34",
+      "to": "module_37",
+      "properties": {}
+    },
+    {
+      "type": "CONTAINS",
+      "from": "section_34",
+      "to": "module_38",
+      "properties": {}
+    },
+    {
+      "type": "HAS_MODULE",
+      "from": "course_9",
+      "to": "section_35",
+      "properties": {
+        "order": 1
+      }
+    },
+    {
+      "type": "NEXT",
+      "from": "section_34",
+      "to": "section_35",
+      "properties": {}
+    },
+    {
+      "type": "CONTAINS",
+      "from": "section_35",
+      "to": "module_39",
+      "properties": {}
+    },
+    {
+      "type": "CONTAINS",
+      "from": "section_35",
+      "to": "module_46",
+      "properties": {}
+    },
+    {
+      "type": "HAS_MODULE",
+      "from": "course_9",
+      "to": "section_36",
+      "properties": {
+        "order": 2
+      }
+    },
+    {
+      "type": "NEXT",
+      "from": "section_35",
+      "to": "section_36",
+      "properties": {}
+    },
+    {
+      "type": "CONTAINS",
+      "from": "section_36",
+      "to": "module_40",
+      "properties": {}
+    },
+    {
+      "type": "HAS_MODULE",
+      "from": "course_9",
+      "to": "section_37",
+      "properties": {
+        "order": 3
+      }
+    },
+    {
+      "type": "NEXT",
+      "from": "section_36",
+      "to": "section_37",
+      "properties": {}
+    },
+    {
+      "type": "CONTAINS",
+      "from": "section_37",
+      "to": "module_41",
+      "properties": {}
+    },
+    {
+      "type": "HAS_MODULE",
+      "from": "course_9",
+      "to": "section_38",
+      "properties": {
+        "order": 4
+      }
+    },
+    {
+      "type": "NEXT",
+      "from": "section_37",
+      "to": "section_38",
+      "properties": {}
+    },
+    {
+      "type": "CONTAINS",
+      "from": "section_38",
+      "to": "module_42",
+      "properties": {}
+    },
+    {
+      "type": "HAS_MODULE",
+      "from": "course_9",
+      "to": "section_39",
+      "properties": {
+        "order": 5
+      }
+    },
+    {
+      "type": "NEXT",
+      "from": "section_38",
+      "to": "section_39",
+      "properties": {}
+    },
+    {
+      "type": "CONTAINS",
+      "from": "section_39",
+      "to": "module_43",
+      "properties": {}
+    },
+    {
+      "type": "HAS_QUIZ",
+      "from": "course_9",
+      "to": "quiz_4",
+      "properties": {}
+    }
+  ],
+  "downloadedAt": "2025-10-08T19:41:53.887Z"
+}

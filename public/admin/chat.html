@@ -148,17 +148,35 @@
         .chat-header {
             padding: 20px;
             border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .chat-header h2 {
+        .chat-header-text h2 {
             font-size: 20px;
             color: #333;
             margin-bottom: 5px;
         }
 
-        .chat-header p {
+        .chat-header-text p {
             font-size: 14px;
             color: #666;
+        }
+
+        .btn-clear {
+            padding: 8px 16px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-clear:hover {
+            background: #dc2626;
         }
 
         .messages-container {
@@ -378,8 +396,11 @@
 
         <div class="chat-container">
             <div class="chat-header">
-                <h2 id="chatTitle">Select a Module</h2>
-                <p id="chatSubtitle">Choose a module to start chatting</p>
+                <div class="chat-header-text">
+                    <h2 id="chatTitle">Select a Module</h2>
+                    <p id="chatSubtitle">Choose a module to start chatting</p>
+                </div>
+                <button class="btn-clear" onclick="clearChat()" style="display: none;" id="clearChatBtn">🗑️ Clear Chat</button>
             </div>
 
             <div class="messages-container" id="messagesContainer">
@@ -466,9 +487,10 @@
             document.getElementById('chatTitle').textContent = title;
             document.getElementById('chatSubtitle').textContent = description;
 
-            // Enable input
+            // Enable input and clear button
             document.getElementById('messageInput').disabled = false;
             document.getElementById('sendButton').disabled = false;
+            document.getElementById('clearChatBtn').style.display = 'block';
 
             // Load or restore messages
             const messagesContainer = document.getElementById('messagesContainer');
@@ -492,6 +514,32 @@
 
             // Focus input
             document.getElementById('messageInput').focus();
+        }
+
+        function clearChat() {
+            if (!currentModuleId) return;
+
+            if (confirm('Are you sure you want to clear this chat history?')) {
+                // Clear from memory
+                delete messageHistory[currentModuleId];
+
+                // Reset UI
+                const messagesContainer = document.getElementById('messagesContainer');
+                const title = document.getElementById('chatTitle').textContent;
+                messagesContainer.innerHTML = `
+                    <div class="message">
+                        <div class="message-avatar">AI</div>
+                        <div class="message-content">
+                            <div class="message-text">
+                                Hello! I'm your AI assistant for <strong>${title}</strong>.
+                                Ask me anything about this module's content and I'll help you learn!
+                            </div>
+                            <div class="message-time">${formatTime(new Date())}</div>
+                        </div>
+                    </div>
+                `;
+                messageHistory[currentModuleId] = messagesContainer.innerHTML;
+            }
         }
 
         function setupInputHandlers() {
@@ -529,7 +577,7 @@
             showTypingIndicator();
 
             try {
-                const response = await fetch(`${API_BASE}/chat`, {
+                const response = await fetch(`/api/chat`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
@@ -537,7 +585,9 @@
                     },
                     body: JSON.stringify({
                         module_id: currentModuleId,
-                        message: message
+                        message: message,
+                        useContext: true,
+                        language: 'english'
                     })
                 });
 
@@ -550,7 +600,9 @@
                 const result = await response.json();
 
                 // Add AI response to chat
-                addMessage(result.response, 'assistant', result.sources);
+                // Extract source titles from context array
+                const sources = result.context ? result.context.map(c => c.module || c.title || 'Unknown') : [];
+                addMessage(result.response, 'assistant', sources);
 
             } catch (error) {
                 hideTypingIndicator();

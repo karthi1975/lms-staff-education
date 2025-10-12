@@ -57,34 +57,62 @@ class ChromaService {
     }
   }
 
-  async addDocument(content, metadata = {}) {
+  async addDocument(moduleIdOrContent, contentOrEmbedding, embeddingOrMetadata, metadataOptional) {
     try {
+      // Handle both old signature (content, metadata) and new signature (moduleId, content, embedding, metadata)
+      let content, embedding, metadata;
+
+      if (arguments.length === 2 && typeof arguments[1] === 'object' && !Array.isArray(arguments[1])) {
+        // Old signature: addDocument(content, metadata)
+        content = moduleIdOrContent;
+        embedding = null;
+        metadata = contentOrEmbedding;
+      } else if (arguments.length >= 3) {
+        // New signature: addDocument(moduleId, content, embedding, metadata)
+        // moduleId is ignored (it's in metadata)
+        content = contentOrEmbedding;
+        embedding = embeddingOrMetadata;
+        metadata = metadataOptional || {};
+      } else {
+        content = moduleIdOrContent;
+        embedding = null;
+        metadata = {};
+      }
+
       const id = uuidv4();
-      const embedding = await this.generateEmbedding(content);
-      
+
+      // If embedding not provided, generate it
+      let finalEmbedding = embedding;
+      if (!finalEmbedding || !Array.isArray(finalEmbedding)) {
+        finalEmbedding = await this.generateEmbedding(content);
+      }
+
       // Validate embedding
-      if (!Array.isArray(embedding) || embedding.length !== 768) {
-        logger.error(`Invalid embedding dimension: ${embedding?.length || 'undefined'}`);
+      if (!Array.isArray(finalEmbedding) || finalEmbedding.length !== 768) {
+        logger.error(`Invalid embedding dimension: ${finalEmbedding?.length || 'undefined'}`);
         throw new Error('Invalid embedding generated');
       }
-      
+
       // Ensure all values are valid numbers
-      const validEmbedding = embedding.map(val => {
+      const validEmbedding = finalEmbedding.map(val => {
         if (typeof val !== 'number' || isNaN(val) || !isFinite(val)) {
           return 0; // Replace invalid values with 0
         }
         return val;
       });
 
+      // Ensure content is a string
+      const contentStr = typeof content === 'string' ? content : String(content || '');
+
       await this.collection.add({
         ids: [id],
         embeddings: [validEmbedding],
-        documents: [content],
+        documents: [contentStr],
         metadatas: [{
           ...metadata,
           id,
           created_at: new Date().toISOString(),
-          content_length: content.length
+          content_length: contentStr.length
         }]
       });
 
@@ -126,10 +154,23 @@ class ChromaService {
 
   async searchSimilar(query, options = {}) {
     try {
-      const { nResults = 5, module = null } = options;
+      const { nResults = 5, module = null, module_id = null } = options;
       const queryEmbedding = await this.generateEmbedding(query);
 
-      const filter = module ? { module } : undefined;
+      // Support both 'module' (legacy string like 'module_1') and 'module_id' (integer like 1)
+      let filter = undefined;
+      if (module_id !== null) {
+        filter = { module_id: parseInt(module_id) };
+      } else if (module) {
+        // Try to extract module ID from string like 'module_1' -> 1
+        const match = String(module).match(/module[_-]?(\d+)/i);
+        if (match) {
+          filter = { module_id: parseInt(match[1]) };
+        } else {
+          // Fallback to old behavior for backward compatibility
+          filter = { module };
+        }
+      }
 
       const results = await this.collection.query({
         queryEmbeddings: [queryEmbedding],
@@ -151,8 +192,23 @@ class ChromaService {
 
   async getDocumentsByModule(moduleId, limit = 10) {
     try {
+      // Support both integer module_id and string 'module_X' format
+      let whereClause;
+      if (typeof moduleId === 'number') {
+        whereClause = { module_id: moduleId };
+      } else if (typeof moduleId === 'string') {
+        const match = moduleId.match(/module[_-]?(\d+)/i);
+        if (match) {
+          whereClause = { module_id: parseInt(match[1]) };
+        } else {
+          whereClause = { module: moduleId };
+        }
+      } else {
+        whereClause = { module_id: parseInt(moduleId) };
+      }
+
       const results = await this.collection.get({
-        where: { module: moduleId },
+        where: whereClause,
         limit
       });
 
@@ -190,6 +246,37 @@ class ChromaService {
       return true;
     } catch (error) {
       logger.error('Error deleting documents by metadata:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete all documents for a specific module
+   */
+  async deleteByModule(moduleId) {
+    try {
+      // Support both integer module_id and string 'module_X' format
+      let whereClause;
+      if (typeof moduleId === 'number') {
+        whereClause = { module_id: moduleId };
+      } else if (typeof moduleId === 'string') {
+        const match = moduleId.match(/module[_-]?(\d+)/i);
+        if (match) {
+          whereClause = { module_id: parseInt(match[1]) };
+        } else {
+          whereClause = { module: moduleId };
+        }
+      } else {
+        whereClause = { module_id: parseInt(moduleId) };
+      }
+
+      await this.collection.delete({
+        where: whereClause
+      });
+      logger.info(`Documents deleted for module ${moduleId}`);
+      return true;
+    } catch (error) {
+      logger.error('Error deleting documents by module:', error);
       throw error;
     }
   }

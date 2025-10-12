@@ -10,11 +10,14 @@ class VertexAIService {
   constructor() {
     this.endpoint = process.env.ENDPOINT || 'us-east5-aiplatform.googleapis.com';
     this.projectId = process.env.GCP_PROJECT_ID || 'staff-education';
+    this.quotaProject = process.env.GOOGLE_CLOUD_QUOTA_PROJECT || 'lms-tanzania-consultant';
     this.region = process.env.REGION || 'us-east5';
     this.model = process.env.VERTEX_AI_MODEL || 'meta/llama-4-maverick-17b-128e-instruct-maas';
-    
+
     // Use the OpenAI-compatible endpoint for Llama
     this.apiUrl = `https://${this.endpoint}/v1/projects/${this.projectId}/locations/${this.region}/endpoints/openapi/chat/completions`;
+
+    logger.info(`Vertex AI Service initialized with quota project: ${this.quotaProject}`);
   }
 
   async getAccessToken() {
@@ -103,7 +106,8 @@ class VertexAIService {
       const response = await axios.post(this.apiUrl, requestData, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-goog-user-project': this.quotaProject
         },
         responseType: options.stream ? 'stream' : 'json'
       });
@@ -163,39 +167,61 @@ class VertexAIService {
     const lastMessage = messages[messages.length - 1];
     const query = lastMessage.content.toLowerCase();
 
+    // Extract context from system messages if available
+    let contextInfo = '';
+    for (const msg of messages) {
+      if (msg.role === 'system' && msg.content) {
+        contextInfo = msg.content.substring(0, 500);
+        break;
+      }
+    }
+
     if (language === 'swahili') {
-      // Swahili fallback responses
+      // Swahili fallback responses with more variety
+      if (query.includes('overview') || query.includes('muhtasari') || query.includes('orodha')) {
+        return `Mafunzo haya yanajumuisha mada za msingi za ufundishaji:\n\n1. **Usimamizi wa Darasa** - Kuweka matarajio na kujenga uhusiano\n2. **Mipango ya Masomo** - Kutengeneza masomo yenye ufanisi\n3. **Mikakati ya Tathmini** - Kupima maendeleo ya wanafunzi\n4. **Teknolojia ya Elimu** - Kutumia zana za kisasa\n5. **Uundaji wa Mtaala** - Kuoanisha na viwango vya kitaifa\n\nKila sehemu ina mazoezi ya vitendo na mifano halisi.`;
+      }
+
+      if (query.includes('example') || query.includes('mfano') || query.includes('mifano')) {
+        return `Hebu tuone mifano michache ya vitendo:\n\n**Usimamizi wa Darasa:**\n- Kuweka sheria 3-5 za darasa pamoja na wanafunzi\n- Kutumia ishara za sauti au mwili kuwapa wanafunzi tahadhari\n- Kutunga utaratibu wa asubuhi ili kuanza siku vizuri\n\n**Mipango ya Masomo:**\n- Kuanza na swali lenye kuvutia kuelekeza kujifunza\n- Kutumia mbinu za vikundi vidogo kwa ushirikiano\n- Kuhitimisha na maoni au tathmini\n\nJe, ungependa maelezo zaidi juu ya eneo maalum?`;
+      }
+
+      if (query.includes('textbook') || query.includes('kitabu') || query.includes('vitabu')) {
+        return `Vitabu vya darasa ni rasilimali muhimu kwa ufundishaji. Hapa kuna njia za kuvitumia vizuri:\n\n**Uchambuzi wa Vitabu:**\n- Fanya mapitio ya muundo na maudhui\n- Tambua sehemu kuu na mada\n- Panga mpangilio wa kufundisha\n\n**Matumizi ya Darasani:**\n- Tumia kama msingi wa masomo\n- Ongeza mazoezi ya ziada\n- Unganisha na uzoefu wa ulimwengu halisi\n\nVitabu ni mwongozo, si mpaka. Kuwa na ubunifu!`;
+      }
+
+      if (query.includes('curriculum') || query.includes('mtaala')) {
+        return `Mtaala unafafanua ni nini kinachopaswa kufundishwa na lini. Kwa Business Studies:\n\n**Vipaumbele:**\n- Msingi wa biashara na ujasiriamali\n- Ujuzi wa kifedha na usimamizi\n- Maadili ya biashara na uwajibikaji\n\n**Ufuatiliaji:**\n- Oanisha masomo na malengo ya mtaala\n- Pima ustadi kupitia tathmini\n- Rekodi maendeleo ya wanafunzi\n\nMtaala ni ramani - unaongoza safari ya kujifunza.`;
+      }
+
+      // More general responses based on keywords
       if (query.includes('siku ya kwanza') || query.includes('siku 1')) {
         return 'Siku ya kwanza ya mafunzo inazungumzia utangulizi wa somo la Mafunzo ya Biashara (Business Studies) na malengo yake. Walimu wanajifunza kuhusu jukumu lao katika kufikia maono ya CBC ya kuwakuza wanafunzi kuwa waajiri wa siku zijazo.';
-      }
-
-      if (query.includes('siku ya pili') || query.includes('siku 2')) {
-        return 'Siku ya pili inalenga usimamizi wa darasa na mbinu za kufundisha. Walimu wanajifunza jinsi ya kugawa miradi, kuweka matarajio ya CBC na kufanya miunganisho ya ulimwengu halisi.';
-      }
-
-      if (query.includes('siku ya tatu') || query.includes('siku 3') || query.includes('siku tatu')) {
-        return 'Siku ya tatu inajikita kwenye mazoezi ya vitendo na maoni kuhusu mbinu za msingi za usimamizi wa darasa na shughuli zinazomlenga mwanafunzi. Pia kuna mapitio ya mafunzo yote ya siku tatu.';
-      }
-
-      if (query.includes('mafunzo')) {
-        return 'Mafunzo haya yanajumuisha mada muhimu za ufundishaji ikiwemo usimamizi wa darasa, mipango ya masomo, mikakati ya tathmini, na teknolojia ya kielimu. Kila moduli imeundwa kujenga ujuzi wako wa kitaaluma kwa uendelezaji.';
       }
 
       if (query.includes('darasa') || query.includes('usimamizi')) {
         return 'Usimamizi mzuri wa darasa unahusisha kuweka matarajio wazi, kujenga uhusiano mzuri na wanafunzi, kutumia utaratibu thabiti, na kutekeleza matokeo ya haki. Lenga kuzuia kuliko kujibu.';
       }
 
-      if (query.includes('mpango') || query.includes('somo')) {
-        return 'Mipango mizuri ya masomo inajumuisha malengo wazi ya kujifunza, shughuli za kuvutia, tathmini zinazofaa, na tofauti kwa wanafunzi mbalimbali. Oanisha masomo yako na viwango vya mtaala na mahitaji ya wanafunzi.';
-      }
-
-      if (query.includes('tathmini') || query.includes('ukaguzi')) {
-        return 'Tathmini inapaswa kuwa ya mara kwa mara na tofauti. Tumia tathmini za kuunda kuongoza mafundisho na tathmini za muhtasari kupima kujifunza. Jumuisha kujitathmini na maoni ya wenzao kukuza umiliki wa wanafunzi wa kujifunza.';
-      }
-
-      return 'Naweza kukusaidia na mada za mafunzo ya walimu ikiwemo usimamizi wa darasa, mipango ya masomo, mikakati ya tathmini, na zaidi. Je, ungependa kuchunguza eneo gani maalum?';
+      return `Asante kwa swali lako: "${lastMessage.content}"\n\nNaweza kukusaidia na mada mbalimbali za mafunzo ya walimu. Unaweza kuuliza kuhusu:\n\n- 📚 Muhtasari wa kozi\n- 📖 Matumizi ya vitabu vya darasa\n- 🎯 Malengo ya kujifunza\n- 💡 Mifano ya vitendo\n- 📝 Mikakati ya tathmini\n\nTafadhali pakia maudhui zaidi ili nipate kukupa majibu bora zaidi kulingana na kozi yako!`;
     } else {
-      // English fallback responses
+      // English fallback responses with more variety
+      if (query.includes('overview') || query.includes('about') || query.includes('summary')) {
+        return `This course covers essential teaching topics:\n\n1. **Classroom Management** - Setting expectations and building relationships\n2. **Lesson Planning** - Creating effective lessons\n3. **Assessment Strategies** - Measuring student progress\n4. **Educational Technology** - Using modern tools\n5. **Curriculum Development** - Aligning with standards\n\nEach section includes practical exercises and real-world examples.`;
+      }
+
+      if (query.includes('example') || query.includes('show me')) {
+        return `Here are some practical examples:\n\n**Classroom Management:**\n- Establish 3-5 class rules with student input\n- Use non-verbal signals to redirect behavior\n- Create morning routines to start the day positively\n\n**Lesson Planning:**\n- Begin with an engaging question to hook learners\n- Use small group work for collaboration\n- End with reflection or assessment\n\nWould you like more details on any specific area?`;
+      }
+
+      if (query.includes('textbook') || query.includes('book') || query.includes('material')) {
+        return `Textbooks are essential resources for teaching. Here's how to use them effectively:\n\n**Textbook Analysis:**\n- Review structure and content\n- Identify key sections and topics\n- Plan teaching sequence\n\n**Classroom Use:**\n- Use as foundation for lessons\n- Supplement with additional activities\n- Connect to real-world experiences\n\nRemember: Textbooks are guides, not limits. Be creative!`;
+      }
+
+      if (query.includes('curriculum') || query.includes('syllabus')) {
+        return `The curriculum defines what should be taught and when. For Business Studies:\n\n**Key Areas:**\n- Business fundamentals and entrepreneurship\n- Financial literacy and management\n- Business ethics and responsibility\n\n**Implementation:**\n- Align lessons with curriculum goals\n- Assess competency through evaluations\n- Track student progress\n\nThe curriculum is your roadmap for the learning journey.`;
+      }
+
       if (query.includes('topic') || query.includes('cover')) {
         return 'The training covers essential teaching topics including classroom management, lesson planning, assessment strategies, and educational technology. Each module is designed to build your professional teaching skills progressively.';
       }
@@ -204,15 +230,7 @@ class VertexAIService {
         return 'Effective classroom management involves establishing clear expectations, building positive relationships with students, using consistent routines, and implementing fair consequences. Focus on prevention rather than reaction.';
       }
 
-      if (query.includes('lesson') || query.includes('plan')) {
-        return 'Good lesson planning includes clear learning objectives, engaging activities, appropriate assessments, and differentiation for diverse learners. Always align your lessons with curriculum standards and student needs.';
-      }
-
-      if (query.includes('assess') || query.includes('evaluation')) {
-        return 'Assessment should be ongoing and varied. Use formative assessments to guide instruction and summative assessments to measure learning. Include self-assessment and peer feedback to promote student ownership of learning.';
-      }
-
-      return 'I can help you with teacher training topics including classroom management, lesson planning, assessment strategies, and more. What specific area would you like to explore?';
+      return `Thank you for your question: "${lastMessage.content}"\n\nI can help with various teacher training topics. You can ask about:\n\n- 📚 Course overview\n- 📖 Textbook navigation\n- 🎯 Learning objectives\n- 💡 Practical examples\n- 📝 Assessment strategies\n\nPlease upload content files for better responses tailored to your specific course!`;
     }
   }
 

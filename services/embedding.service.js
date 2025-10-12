@@ -9,26 +9,39 @@ class EmbeddingService {
   constructor() {
     this.endpoint = process.env.ENDPOINT || 'us-east5-aiplatform.googleapis.com';
     this.projectId = process.env.GCP_PROJECT_ID || 'staff-education';
+    this.quotaProject = process.env.GOOGLE_CLOUD_QUOTA_PROJECT || 'lms-tanzania-consultant';
     this.region = process.env.REGION || 'us-east5';
-    
+
     // Use text-embedding-004 - latest and best model
     this.embeddingModel = 'text-embedding-004';
     this.embeddingDimension = 768; // Standard dimension for text-embedding-004
-    
+
     // API endpoint for embeddings
     this.embeddingUrl = `https://${this.endpoint}/v1/projects/${this.projectId}/locations/${this.region}/publishers/google/models/${this.embeddingModel}:predict`;
+
+    logger.info(`Vertex AI Embedding Service initialized with quota project: ${this.quotaProject}`);
   }
 
   async getAccessToken() {
     try {
       // First try to use Application Default Credentials file directly
       const fs = require('fs');
-      const adcPath = '/root/.config/gcloud/application_default_credentials.json';
-      
-      if (fs.existsSync(adcPath)) {
+      const os = require('os');
+
+      // Try multiple possible paths for ADC (Docker mounts to /home/nodejs)
+      const adcPaths = [
+        '/home/nodejs/.config/gcloud/application_default_credentials.json',
+        `${os.homedir()}/.config/gcloud/application_default_credentials.json`,
+        '/root/.config/gcloud/application_default_credentials.json',
+        process.env.GOOGLE_APPLICATION_CREDENTIALS
+      ].filter(Boolean);
+
+      for (const adcPath of adcPaths) {
+        if (!fs.existsSync(adcPath)) continue;
+
         try {
           const adc = JSON.parse(fs.readFileSync(adcPath, 'utf8'));
-          
+
           // For user credentials, we need to use the refresh token to get an access token
           if (adc.type === 'authorized_user' && adc.refresh_token) {
             const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
@@ -37,17 +50,18 @@ class EmbeddingService {
               refresh_token: adc.refresh_token,
               grant_type: 'refresh_token'
             });
-            
+
             if (tokenResponse.data && tokenResponse.data.access_token) {
-              logger.info('Got access token from ADC file');
+              logger.info(`Got access token from ADC at ${adcPath}`);
               return tokenResponse.data.access_token;
             }
           }
         } catch (e) {
-          logger.warn('Failed to use ADC file:', e.message);
+          logger.warn(`Failed to use ADC file at ${adcPath}:`, e.message);
+          continue; // Try next path
         }
       }
-      
+
       // Fallback to gcloud command if available
       const gcloudPaths = [
         'gcloud',
@@ -55,7 +69,7 @@ class EmbeddingService {
         '/opt/homebrew/bin/gcloud',
         `${process.env.HOME}/google-cloud-sdk/bin/gcloud`
       ];
-      
+
       for (const gcloudPath of gcloudPaths) {
         try {
           const { stdout } = await execAsync(`${gcloudPath} auth print-access-token`);
@@ -67,7 +81,7 @@ class EmbeddingService {
           continue;
         }
       }
-      
+
       throw new Error('Unable to obtain access token');
     } catch (error) {
       logger.error('Failed to get access token:', error.message);
@@ -83,14 +97,18 @@ class EmbeddingService {
   async generateEmbeddings(texts) {
     const isArray = Array.isArray(texts);
     const inputTexts = isArray ? texts : [texts];
-    
+
     try {
       const accessToken = await this.getAccessToken();
-      
+
       // Prepare request for Vertex AI embedding
-      const instances = inputTexts.map(text => ({
-        content: text.substring(0, 3072) // Limit to 3072 tokens (roughly 2048 chars)
-      }));
+      const instances = inputTexts.map(text => {
+        // Ensure text is a string
+        const textStr = typeof text === 'string' ? text : String(text || '');
+        return {
+          content: textStr.substring(0, 3072) // Limit to 3072 tokens (roughly 2048 chars)
+        };
+      });
       
       const requestBody = {
         instances: instances
@@ -99,7 +117,8 @@ class EmbeddingService {
       const response = await axios.post(this.embeddingUrl, requestBody, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-goog-user-project': this.quotaProject
         }
       });
       
@@ -136,8 +155,11 @@ class EmbeddingService {
    */
   generateFallbackEmbeddings(texts, returnArray) {
     const embeddings = texts.map(text => {
+      // Ensure text is a string
+      const textStr = typeof text === 'string' ? text : String(text || '');
+
       // Create a more sophisticated embedding
-      const words = text.toLowerCase().split(/\s+/);
+      const words = textStr.toLowerCase().split(/\s+/);
       const embedding = new Array(this.embeddingDimension).fill(0);
       
       // Use word hashing for better distribution

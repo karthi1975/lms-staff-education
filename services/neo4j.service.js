@@ -8,12 +8,8 @@ class Neo4jService {
 
   async initialize() {
     try {
-      // Use localhost for scripts running outside Docker
-      let uri = process.env.NEO4J_URI || 'bolt://localhost:7687';
-      if (uri.includes('neo4j:')) {
-        uri = uri.replace('neo4j:', 'localhost:');
-      }
-
+      // Use NEO4J_URI from environment (neo4j:7687 for Docker, localhost:7687 for local)
+      const uri = process.env.NEO4J_URI || 'bolt://localhost:7687';
       const user = process.env.NEO4J_USER || 'neo4j';
       const password = process.env.NEO4J_PASSWORD || 'password';
 
@@ -573,6 +569,305 @@ class Neo4jService {
       );
 
       return result.records[0]?.get('score') || { engagement_score: 0 };
+    } finally {
+      await session.close();
+    }
+  }
+
+  // ========================================
+  // CONTENT KNOWLEDGE GRAPH MANAGEMENT
+  // ========================================
+
+  /**
+   * Create course node in graph
+   */
+  async createCourse(courseData) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MERGE (c:Course {id: $id})
+        SET c.moodle_course_id = $moodleCourseId,
+            c.name = $name,
+            c.code = $code,
+            c.description = $description,
+            c.category = $category,
+            c.source = $source,
+            c.created_at = datetime()
+        RETURN c`,
+        {
+          id: courseData.id,
+          moodleCourseId: courseData.moodle_course_id,
+          name: courseData.course_name,
+          code: courseData.course_code,
+          description: courseData.description || '',
+          category: courseData.category || '',
+          source: courseData.source || 'portal'
+        }
+      );
+
+      logger.info(`Created course node in Neo4j: ${courseData.course_name}`);
+      return result.records[0]?.get('c').properties;
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Create module node and link to course
+   */
+  async createModuleInCourse(moduleData, courseId) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (c:Course {id: $courseId})
+        MERGE (m:Module {id: $moduleId})
+        SET m.name = $name,
+            m.description = $description,
+            m.order_index = $sequenceOrder,
+            m.module_type = $moduleType,
+            m.created_at = datetime()
+        MERGE (c)-[:CONTAINS]->(m)
+        RETURN m`,
+        {
+          courseId: courseId,
+          moduleId: moduleData.id,
+          name: moduleData.module_name,
+          description: moduleData.description || '',
+          sequenceOrder: moduleData.sequence_order,
+          moduleType: moduleData.module_type || 'page'
+        }
+      );
+
+      logger.info(`Created module node in Neo4j: ${moduleData.module_name}`);
+      return result.records[0]?.get('m').properties;
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Create content chunk nodes from document processing
+   * Creates Topic nodes and relationships between chunks
+   */
+  async createContentGraph(moduleId, chunks) {
+    const session = this.driver.session();
+    try {
+      logger.info(`Creating content graph for module ${moduleId} with ${chunks.length} chunks`);
+
+      // Create module node if not exists
+      await session.run(
+        `MERGE (m:Module {id: $moduleId})
+        ON CREATE SET m.created_at = datetime()`,
+        { moduleId }
+      );
+
+      let topicsCreated = 0;
+      let chunksLinked = 0;
+
+      for (const chunk of chunks) {
+        // Create chunk node
+        await session.run(
+          `MATCH (m:Module {id: $moduleId})
+          CREATE (chunk:ContentChunk {
+            id: $chunkId,
+            text: $text,
+            chunk_order: $chunkOrder,
+            chunk_size: $chunkSize,
+            created_at: datetime()
+          })
+          CREATE (m)-[:HAS_CONTENT]->(chunk)`,
+          {
+            moduleId: moduleId,
+            chunkId: chunk.chunk_id || `chunk_${Date.now()}_${Math.random()}`,
+            text: chunk.content.substring(0, 1000), // Limit for graph storage
+            chunkOrder: chunk.chunk_index || 0,
+            chunkSize: chunk.content.length
+          }
+        );
+
+        chunksLinked++;
+
+        // Extract and create topic nodes from metadata
+        const topics = chunk.metadata?.topics || chunk.metadata?.keywords || [];
+        if (topics.length > 0) {
+          for (const topic of topics) {
+            await session.run(
+              `MATCH (chunk:ContentChunk {id: $chunkId})
+              MERGE (topic:Topic {name: $topicName})
+              ON CREATE SET topic.created_at = datetime()
+              MERGE (chunk)-[:DISCUSSES]->(topic)
+              WITH topic
+              MATCH (m:Module {id: $moduleId})
+              MERGE (m)-[:COVERS_TOPIC]->(topic)`,
+              {
+                chunkId: chunk.chunk_id || `chunk_${Date.now()}_${Math.random()}`,
+                topicName: topic.toLowerCase(),
+                moduleId: moduleId
+              }
+            );
+            topicsCreated++;
+          }
+        }
+      }
+
+      // Create relationships between sequential chunks
+      if (chunks.length > 1) {
+        for (let i = 0; i < chunks.length - 1; i++) {
+          const currentChunkId = chunks[i].chunk_id || `chunk_${i}`;
+          const nextChunkId = chunks[i + 1].chunk_id || `chunk_${i + 1}`;
+
+          await session.run(
+            `MATCH (c1:ContentChunk), (c2:ContentChunk)
+            WHERE c1.chunk_order = $currentOrder AND c2.chunk_order = $nextOrder
+            MERGE (c1)-[:FOLLOWED_BY]->(c2)`,
+            {
+              currentOrder: i,
+              nextOrder: i + 1
+            }
+          );
+        }
+      }
+
+      logger.info(`Content graph created: ${chunksLinked} chunks, ${topicsCreated} topic relationships`);
+      return { chunks: chunksLinked, topics: topicsCreated };
+
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Get module content graph visualization data
+   */
+  async getModuleContentGraph(moduleId) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (m:Module {id: $moduleId})
+        OPTIONAL MATCH (m)-[:HAS_CONTENT]->(chunk:ContentChunk)
+        OPTIONAL MATCH (m)-[:COVERS_TOPIC]->(topic:Topic)
+        OPTIONAL MATCH (chunk)-[:DISCUSSES]->(topic)
+        RETURN m,
+          collect(DISTINCT chunk) as chunks,
+          collect(DISTINCT topic) as topics,
+          collect(DISTINCT {chunk: chunk, topic: topic}) as relationships`,
+        { moduleId }
+      );
+
+      if (result.records.length === 0) {
+        return null;
+      }
+
+      const record = result.records[0];
+      return {
+        module: record.get('m')?.properties,
+        chunks: record.get('chunks').map(c => c?.properties).filter(Boolean),
+        topics: record.get('topics').map(t => t?.properties).filter(Boolean),
+        relationships: record.get('relationships')
+      };
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Delete course and all related graph data
+   */
+  async deleteCourseGraph(moodleCourseId) {
+    const session = this.driver.session();
+    try {
+      await session.run(
+        `MATCH (c:Course {moodle_course_id: $moodleCourseId})
+        OPTIONAL MATCH (c)-[:CONTAINS]->(m:Module)
+        OPTIONAL MATCH (m)-[:HAS_CONTENT]->(chunk:ContentChunk)
+        OPTIONAL MATCH (m)-[:COVERS_TOPIC]->(topic:Topic)
+        DETACH DELETE c, m, chunk`,
+        { moodleCourseId }
+      );
+
+      // Clean up orphaned topics
+      await session.run(
+        `MATCH (topic:Topic)
+        WHERE NOT exists((topic)<-[:COVERS_TOPIC]-())
+        DELETE topic`
+      );
+
+      logger.info(`Deleted course graph for moodle_course_id: ${moodleCourseId}`);
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Search content by topic
+   */
+  async searchByTopic(topicName, limit = 10) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (topic:Topic)
+        WHERE toLower(topic.name) CONTAINS toLower($topicName)
+        MATCH (topic)<-[:DISCUSSES]-(chunk:ContentChunk)
+        MATCH (chunk)<-[:HAS_CONTENT]-(m:Module)
+        RETURN m.name as module_name,
+               m.id as module_id,
+               chunk.text as content_preview,
+               topic.name as topic
+        LIMIT $limit`,
+        { topicName, limit }
+      );
+
+      return result.records.map(record => ({
+        module_name: record.get('module_name'),
+        module_id: record.get('module_id'),
+        content_preview: record.get('content_preview'),
+        topic: record.get('topic')
+      }));
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Get related content based on topics
+   */
+  async getRelatedContent(moduleId, limit = 5) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (m:Module {id: $moduleId})-[:COVERS_TOPIC]->(topic:Topic)
+        MATCH (topic)<-[:COVERS_TOPIC]-(related:Module)
+        WHERE related.id <> $moduleId
+        WITH related, count(topic) as shared_topics
+        ORDER BY shared_topics DESC
+        LIMIT $limit
+        RETURN related.id as module_id,
+               related.name as module_name,
+               shared_topics`,
+        { moduleId, limit }
+      );
+
+      return result.records.map(record => ({
+        module_id: record.get('module_id'),
+        module_name: record.get('module_name'),
+        shared_topics: record.get('shared_topics').toNumber()
+      }));
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Generic query runner for custom Cypher queries
+   * @param {string} query - Cypher query to execute
+   * @param {object} params - Parameters for the query
+   * @returns {Promise<any>} Query result
+   */
+  async runQuery(query, params = {}) {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(query, params);
+      return result;
     } finally {
       await session.close();
     }

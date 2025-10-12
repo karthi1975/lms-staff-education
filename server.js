@@ -29,6 +29,7 @@ const enhancedRAGRoutes = require('./routes/enhanced-rag.routes');
 const adminRoutes = require('./routes/admin.routes');
 const userRoutes = require('./routes/user.routes');
 const certificateRoutes = require('./routes/certificate.routes');
+const twilioWebhookRoutes = require('./routes/twilio-webhook.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,6 +70,9 @@ app.use('/api', userRoutes);
 
 // Add certificate routes
 app.use('/api', certificateRoutes);
+
+// Add Twilio webhook routes
+app.use('/', twilioWebhookRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
@@ -430,7 +434,7 @@ app.post('/api/modules/:moduleId/generate-quiz', async (req, res) => {
 // Chat endpoint for testing documents
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, module, history = [], useContext = true, language = 'swahili' } = req.body;
+    const { message, module_id, module, history = [], useContext = true, language = 'english' } = req.body;
 
     if (!message) {
       return res.status(400).json({
@@ -441,34 +445,85 @@ app.post('/api/chat', async (req, res) => {
 
     let context = [];
     let contextDocuments = [];
+    let graphContext = null;
 
     // If useContext is true, search for relevant documents
     if (useContext) {
-      // Search for relevant content in ChromaDB
+      // 1. Search for relevant content in ChromaDB (Vector/RAG)
       const searchResults = await chromaService.searchSimilar(message, {
-        module: module || undefined,
-        limit: 3
+        module_id: module_id || undefined,
+        module: module || undefined,  // Fallback for backward compatibility
+        nResults: 3
       });
 
       if (searchResults && searchResults.length > 0) {
         contextDocuments = searchResults.map(doc => ({
           content: doc.content,
           module: doc.metadata?.module || 'unknown',
-          title: doc.metadata?.title || 'Untitled'
+          title: doc.metadata?.title || 'Untitled',
+          source: 'vector_db'
         }));
 
         context = searchResults.map(doc => doc.content).join('\n\n');
-        logger.info(`Found ${searchResults.length} relevant documents for chat context`);
+        logger.info(`Found ${searchResults.length} relevant documents for chat context from ChromaDB`);
+      }
+
+      // 2. Enrich with Neo4j graph context if user is authenticated
+      if (req.user?.id) {
+        try {
+          const userId = req.user.id;
+
+          // Get user's learning path and recommendations
+          const [learningPath, recommendations] = await Promise.all([
+            neo4jService.getUserLearningPath(userId).catch(() => null),
+            neo4jService.getPersonalizedRecommendations(userId).catch(() => null)
+          ]);
+
+          graphContext = {
+            learningPath,
+            recommendations: recommendations?.slice(0, 3) || []
+          };
+
+          // Add graph insights to context if available
+          if (learningPath || recommendations) {
+            const graphInsights = [];
+            if (learningPath?.currentModule) {
+              graphInsights.push(`User is currently on: ${learningPath.currentModule}`);
+            }
+            if (recommendations && recommendations.length > 0) {
+              graphInsights.push(`Related concepts: ${recommendations.map(r => r.concept || r.title).join(', ')}`);
+            }
+
+            if (graphInsights.length > 0) {
+              context = `${context}\n\n[Learning Context]\n${graphInsights.join('\n')}`;
+              logger.info(`Added graph-based learning context for user ${userId}`);
+            }
+          }
+        } catch (error) {
+          logger.warn('Failed to fetch graph context:', error.message);
+        }
       }
     }
 
     // Generate response using Vertex AI with language support
-    const response = await vertexAIService.generateEducationalResponse(
-      message,
-      context || 'No specific context available.',
-      language
-    );
-    
+    let response;
+    try {
+      response = await vertexAIService.generateEducationalResponse(
+        message,
+        context || 'No specific context available.',
+        language
+      );
+    } catch (vertexError) {
+      logger.warn('Vertex AI failed, using fallback response:', vertexError.message);
+
+      // Fallback response when Vertex AI is not available
+      if (contextDocuments.length > 0) {
+        response = `Based on the uploaded content, here's what I found:\n\n${context.substring(0, 500)}...\n\n(Note: Full AI responses require Google Cloud setup. Please upload content first or configure Vertex AI credentials.)`;
+      } else {
+        response = `Hello! I can help answer questions about "${module || 'your course'}" once you upload some content files (PDF, DOCX, or TXT).\n\nTo get started:\n1. Click "Upload Content" button\n2. Select a file about your course topic\n3. After upload, ask me questions!\n\n(Note: Full AI chat requires content to be uploaded first and Google Cloud Vertex AI credentials to be configured.)`;
+      }
+    }
+
     // Log the interaction for analytics
     if (module) {
       try {
@@ -483,18 +538,24 @@ app.post('/api/chat', async (req, res) => {
         logger.warn('Failed to log interaction:', err.message);
       }
     }
-    
+
     res.json({
       success: true,
       response: response,
       context: contextDocuments,
-      module: module || 'all'
+      graphContext: graphContext,
+      module: module || 'all',
+      module_id: module_id,
+      sources: {
+        vector_db: contextDocuments.length,
+        graph_db: graphContext ? 1 : 0
+      }
     });
-    
+
   } catch (error) {
     logger.error('Chat API error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Failed to process chat message',
       details: error.message
     });

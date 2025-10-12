@@ -200,8 +200,9 @@ class MoodleCourseImporter {
 
     for (const [index, chunk] of chunks.entries()) {
       try {
-        // Generate embedding
-        const embedding = await embeddingService.generateEmbedding(chunk);
+        // Generate embedding (note: generateEmbeddings returns array, we take first element)
+        const embeddings = await embeddingService.generateEmbeddings(chunk);
+        const embedding = Array.isArray(embeddings[0]) ? embeddings[0] : embeddings;
 
         // Create unique ID for ChromaDB
         const embeddingId = `${courseShortName}_${module.module_name}_chunk_${index}`

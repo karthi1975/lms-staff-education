@@ -1,10 +1,18 @@
-const pool = require('./database/pool');
+const postgresService = require('./database/postgres.service');
 const chromaService = require('./chroma.service');
 const embeddingService = require('./embedding.service');
 const documentProcessor = require('./document-processor.service');
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../utils/logger');
+
+// Helper function to get pool (lazy access)
+const getPool = () => {
+  if (!postgresService.pool) {
+    throw new Error('Database pool not initialized');
+  }
+  return postgresService.pool;
+};
 
 /**
  * Content Management Service
@@ -16,7 +24,7 @@ class ContentService {
    */
   async getModules() {
     try {
-      const result = await pool.query(
+      const result = await getPool().query(
         'SELECT * FROM modules ORDER BY sequence_order ASC'
       );
       return result.rows;
@@ -31,7 +39,7 @@ class ContentService {
    */
   async getModuleById(moduleId) {
     try {
-      const result = await pool.query(
+      const result = await getPool().query(
         'SELECT * FROM modules WHERE id = $1',
         [moduleId]
       );
@@ -43,19 +51,48 @@ class ContentService {
   }
 
   /**
-   * Get all content for a module
+   * Get all content for a module (supports both modules and moodle_modules)
    */
   async getModuleContent(moduleId) {
     try {
-      const result = await pool.query(
-        `SELECT mc.*, au.name as uploaded_by_name
-         FROM module_content mc
-         LEFT JOIN admin_users au ON mc.uploaded_by = au.id
-         WHERE mc.module_id = $1
-         ORDER BY mc.uploaded_at DESC`,
+      // Check if this is a Moodle module
+      const moodleCheck = await getPool().query(
+        'SELECT id FROM moodle_modules WHERE id = $1',
         [moduleId]
       );
-      return result.rows;
+
+      if (moodleCheck.rows.length > 0) {
+        // This is a Moodle module - get content from module_content_chunks
+        // Group by original_file to show files, not individual chunks
+        const result = await getPool().query(
+          `SELECT
+            MIN(mcc.id) as id,
+            mcc.metadata->>'original_file' as original_name,
+            mcc.metadata->>'original_file' as file_name,
+            COUNT(*) as chunk_count,
+            MIN(mcc.created_at) as uploaded_at,
+            TRUE as processed,
+            'moodle_chunks' as content_type
+           FROM module_content_chunks mcc
+           WHERE mcc.moodle_module_id = $1
+           AND mcc.metadata->>'original_file' IS NOT NULL
+           GROUP BY mcc.metadata->>'original_file'
+           ORDER BY MIN(mcc.created_at) DESC`,
+          [moduleId]
+        );
+        return result.rows;
+      } else {
+        // Old module - get from module_content table
+        const result = await getPool().query(
+          `SELECT mc.*, au.name as uploaded_by_name, 'module_content' as content_type
+           FROM module_content mc
+           LEFT JOIN admin_users au ON mc.uploaded_by = au.id
+           WHERE mc.module_id = $1
+           ORDER BY mc.uploaded_at DESC`,
+          [moduleId]
+        );
+        return result.rows;
+      }
     } catch (error) {
       logger.error(`Error fetching content for module ${moduleId}:`, error);
       throw error;
@@ -66,48 +103,82 @@ class ContentService {
    * Upload and process content file for a module
    */
   async uploadContent(moduleId, file, uploadedById) {
-    const client = await pool.connect();
+    const client = await getPool().connect();
 
     try {
       await client.query('BEGIN');
 
-      // Verify module exists
-      const moduleCheck = await client.query(
-        'SELECT id FROM modules WHERE id = $1',
+      // Check if module exists in moodle_modules or modules table
+      let isMoodleModule = false;
+      let moduleCheck = await client.query(
+        'SELECT id, module_name FROM moodle_modules WHERE id = $1',
         [moduleId]
       );
 
-      if (moduleCheck.rows.length === 0) {
-        throw new Error(`Module ${moduleId} not found`);
+      if (moduleCheck.rows.length > 0) {
+        isMoodleModule = true;
+      } else {
+        // Try old modules table
+        moduleCheck = await client.query(
+          'SELECT id, title as module_name FROM modules WHERE id = $1',
+          [moduleId]
+        );
+
+        if (moduleCheck.rows.length === 0) {
+          throw new Error(`Module ${moduleId} not found`);
+        }
       }
 
-      // Insert content record
-      const contentResult = await client.query(
-        `INSERT INTO module_content
-         (module_id, file_name, original_name, file_path, file_type, file_size, uploaded_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING *`,
-        [
-          moduleId,
-          file.filename,
-          file.originalname,
-          file.path,
-          file.mimetype,
-          file.size,
-          uploadedById
-        ]
-      );
+      const moduleName = moduleCheck.rows[0].module_name;
 
-      const content = contentResult.rows[0];
+      // For Moodle modules, skip module_content table and process directly
+      if (isMoodleModule) {
+        // Create a temporary content object for tracking
+        const tempContent = {
+          id: `temp_${Date.now()}`,
+          module_id: moduleId,
+          file_name: file.filename,
+          original_name: file.originalname,
+          file_path: file.path
+        };
 
-      // Process file asynchronously
-      this.processContent(content.id, file.path)
-        .catch(error => {
-          logger.error(`Error processing content ${content.id}:`, error);
-        });
+        // Process file asynchronously
+        this.processMoodleContentDirect(moduleId, file.path, moduleName, file.originalname)
+          .catch(error => {
+            logger.error(`Error processing Moodle content for module ${moduleId}:`, error);
+          });
 
-      await client.query('COMMIT');
-      return content;
+        await client.query('COMMIT');
+        return tempContent;
+      } else {
+        // For old modules, use module_content table
+        const contentResult = await client.query(
+          `INSERT INTO module_content
+           (module_id, file_name, original_name, file_path, file_type, file_size, uploaded_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [
+            moduleId,
+            file.filename,
+            file.originalname,
+            file.path,
+            file.mimetype,
+            file.size,
+            uploadedById
+          ]
+        );
+
+        const content = contentResult.rows[0];
+
+        // Process file asynchronously
+        this.processContent(content.id, file.path)
+          .catch(error => {
+            logger.error(`Error processing content ${content.id}:`, error);
+          });
+
+        await client.query('COMMIT');
+        return content;
+      }
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -133,7 +204,7 @@ class ContentService {
       }
 
       // Update content_text
-      await pool.query(
+      await getPool().query(
         'UPDATE module_content SET content_text = $1 WHERE id = $2',
         [text, contentId]
       );
@@ -145,7 +216,7 @@ class ContentService {
       logger.info(`Created ${chunks.length} chunks from content ${contentId}`);
 
       // Get module info for metadata
-      const contentInfo = await pool.query(
+      const contentInfo = await getPool().query(
         `SELECT mc.*, m.title as module_title
          FROM module_content mc
          JOIN modules m ON mc.module_id = m.id
@@ -160,7 +231,8 @@ class ContentService {
         const chunk = chunks[i];
 
         // Generate embedding
-        const embedding = await embeddingService.generateEmbedding(chunk);
+        const embeddings = await embeddingService.generateEmbeddings(chunk);
+        const embedding = Array.isArray(embeddings) ? embeddings[0] : embeddings;
 
         // Store in ChromaDB
         await chromaService.addDocument(
@@ -180,7 +252,7 @@ class ContentService {
       }
 
       // Mark as processed
-      await pool.query(
+      await getPool().query(
         `UPDATE module_content
          SET processed = true,
              processed_at = NOW(),
@@ -195,7 +267,207 @@ class ContentService {
       logger.error(`Error processing content ${contentId}:`, error);
 
       // Update processing error in metadata
-      await pool.query(
+      await getPool().query(
+        `UPDATE module_content
+         SET metadata = jsonb_set(
+           COALESCE(metadata, '{}'::jsonb),
+           '{processing_error}',
+           to_jsonb($1::text)
+         )
+         WHERE id = $2`,
+        [error.message, contentId]
+      );
+
+      throw error;
+    }
+  }
+
+  /**
+   * Process uploaded content for Moodle modules directly (without module_content table)
+   */
+  async processMoodleContentDirect(moodleModuleId, filePath, moduleName, originalName) {
+    try {
+      logger.info(`Processing Moodle content for module ${moodleModuleId} from ${filePath}`);
+
+      // Extract and chunk document (returns array of chunk objects)
+      const processedData = await documentProcessor.processDocument(filePath);
+
+      // Handle both old string format and new chunked format
+      let chunks = [];
+      if (Array.isArray(processedData)) {
+        // New format: already chunked with metadata
+        chunks = processedData;
+      } else if (typeof processedData === 'string') {
+        // Old format: plain text that needs chunking
+        const chunkSize = parseInt(process.env.CONTENT_CHUNK_SIZE || '1000');
+        const textChunks = this.chunkText(processedData, chunkSize);
+        chunks = textChunks.map((text, index) => ({
+          content: text,
+          metadata: {},
+          chunk_index: index,
+          total_chunks: textChunks.length
+        }));
+      } else {
+        throw new Error('Unexpected document processor output format');
+      }
+
+      if (chunks.length === 0) {
+        throw new Error('No chunks extracted from document');
+      }
+
+      logger.info(`Created ${chunks.length} chunks from Moodle module ${moodleModuleId}`);
+
+      // Store chunks in module_content_chunks table
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const chunkText = chunk.content || chunk;
+
+        // Generate embedding
+        const embeddings = await embeddingService.generateEmbeddings(chunkText);
+        const embedding = Array.isArray(embeddings) ? embeddings[0] : embeddings;
+
+        // Merge metadata
+        const combinedMetadata = {
+          ...chunk.metadata,
+          module_name: moduleName,
+          original_file: originalName,
+          chunk_index: i,
+          total_chunks: chunks.length,
+          source: 'manual_upload'
+        };
+
+        // Store chunk in database
+        const chunkResult = await getPool().query(
+          `INSERT INTO module_content_chunks
+           (moodle_module_id, chunk_text, chunk_order, chunk_size, metadata)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id`,
+          [
+            moodleModuleId,
+            chunkText,
+            i + 1,
+            chunkText.length,
+            JSON.stringify(combinedMetadata)
+          ]
+        );
+
+        const chunkId = chunkResult.rows[0].id;
+
+        // Store in ChromaDB
+        await chromaService.addDocument(
+          moodleModuleId,
+          chunkText,
+          embedding,
+          {
+            chunk_id: chunkId,
+            module_id: moodleModuleId,
+            module_name: moduleName,
+            original_file: originalName,
+            chunk_index: i,
+            total_chunks: chunks.length,
+            ...chunk.metadata
+          }
+        );
+      }
+
+      logger.info(`Successfully processed Moodle module ${moodleModuleId} with ${chunks.length} chunks`);
+
+    } catch (error) {
+      logger.error(`Error processing Moodle content for module ${moodleModuleId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process uploaded content for Moodle modules: extract text, chunk, and store in module_content_chunks
+   */
+  async processMoodleContent(contentId, moodleModuleId, filePath, moduleName) {
+    try {
+      logger.info(`Processing Moodle content ${contentId} for module ${moodleModuleId} from ${filePath}`);
+
+      // Extract text from file
+      const text = await documentProcessor.processDocument(filePath);
+
+      if (!text || text.trim().length === 0) {
+        throw new Error('No text extracted from document');
+      }
+
+      // Update content_text in module_content
+      await getPool().query(
+        'UPDATE module_content SET content_text = $1 WHERE id = $2',
+        [text, contentId]
+      );
+
+      // Chunk the text
+      const chunkSize = parseInt(process.env.CONTENT_CHUNK_SIZE || '1000');
+      const chunks = this.chunkText(text, chunkSize);
+
+      logger.info(`Created ${chunks.length} chunks from Moodle content ${contentId}`);
+
+      // Store chunks in module_content_chunks table
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+
+        // Generate embedding
+        const embeddings = await embeddingService.generateEmbeddings(chunk);
+        const embedding = Array.isArray(embeddings) ? embeddings[0] : embeddings;
+
+        // Store chunk in database
+        const chunkResult = await getPool().query(
+          `INSERT INTO module_content_chunks
+           (moodle_module_id, chunk_text, chunk_order, chunk_size, metadata)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id`,
+          [
+            moodleModuleId,
+            chunk,
+            i + 1,
+            chunk.length,
+            JSON.stringify({
+              content_id: contentId,
+              module_name: moduleName,
+              chunk_index: i,
+              total_chunks: chunks.length,
+              source: 'manual_upload'
+            })
+          ]
+        );
+
+        const chunkId = chunkResult.rows[0].id;
+
+        // Store in ChromaDB
+        await chromaService.addDocument(
+          moodleModuleId,
+          chunk,
+          embedding,
+          {
+            content_id: contentId,
+            chunk_id: chunkId,
+            module_id: moodleModuleId,
+            module_name: moduleName,
+            chunk_index: i,
+            total_chunks: chunks.length
+          }
+        );
+      }
+
+      // Mark as processed
+      await getPool().query(
+        `UPDATE module_content
+         SET processed = true,
+             processed_at = NOW(),
+             chunk_count = $1
+         WHERE id = $2`,
+        [chunks.length, contentId]
+      );
+
+      logger.info(`Successfully processed Moodle content ${contentId} with ${chunks.length} chunks`);
+
+    } catch (error) {
+      logger.error(`Error processing Moodle content ${contentId}:`, error);
+
+      // Update processing error in metadata
+      await getPool().query(
         `UPDATE module_content
          SET metadata = jsonb_set(
            COALESCE(metadata, '{}'::jsonb),
@@ -260,14 +532,57 @@ class ContentService {
 
   /**
    * Delete content and its embeddings
+   * Handles both old module_content and Moodle module_content_chunks
    */
   async deleteContent(contentId) {
-    const client = await pool.connect();
+    const client = await getPool().connect();
 
     try {
       await client.query('BEGIN');
 
-      // Get content info
+      // First check if this is a Moodle module chunk
+      const chunkCheck = await client.query(
+        `SELECT mcc.id, mcc.metadata->>'original_file' as original_file, mcc.moodle_module_id
+         FROM module_content_chunks mcc
+         WHERE mcc.id = $1`,
+        [contentId]
+      );
+
+      if (chunkCheck.rows.length > 0) {
+        // This is a Moodle module - delete all chunks with same original_file
+        const chunk = chunkCheck.rows[0];
+        const originalFile = chunk.original_file;
+        const moduleId = chunk.moodle_module_id;
+
+        logger.info(`Deleting Moodle module file: ${originalFile} from module ${moduleId}`);
+
+        // Delete from ChromaDB using metadata filter
+        try {
+          await chromaService.deleteByMetadata({
+            module_id: moduleId,
+            original_file: originalFile
+          });
+          logger.info(`Deleted embeddings for ${originalFile} from ChromaDB`);
+        } catch (error) {
+          logger.warn(`Could not delete embeddings for ${originalFile}:`, error.message);
+        }
+
+        // Delete all chunks with same original_file from database
+        const deleteResult = await client.query(
+          `DELETE FROM module_content_chunks
+           WHERE moodle_module_id = $1
+           AND metadata->>'original_file' = $2`,
+          [moduleId, originalFile]
+        );
+
+        logger.info(`Deleted ${deleteResult.rowCount} chunks for file ${originalFile}`);
+
+        await client.query('COMMIT');
+        logger.info(`Successfully deleted Moodle file: ${originalFile}`);
+        return;
+      }
+
+      // Otherwise, check old module_content table
       const result = await client.query(
         'SELECT * FROM module_content WHERE id = $1',
         [contentId]
@@ -314,7 +629,7 @@ class ContentService {
    */
   async getUserProgress(userId) {
     try {
-      const result = await pool.query(
+      const result = await getPool().query(
         `SELECT
           m.id as module_id,
           m.title,
@@ -355,7 +670,7 @@ class ContentService {
    */
   async getAllUsersProgress() {
     try {
-      const result = await pool.query(
+      const result = await getPool().query(
         `SELECT
           u.id,
           u.whatsapp_id,
@@ -390,7 +705,7 @@ class ContentService {
    */
   async updateUserProgress(userId, moduleId, progressData) {
     try {
-      const result = await pool.query(
+      const result = await getPool().query(
         `INSERT INTO user_progress
          (user_id, module_id, status, progress_percentage, started_at, last_activity_at, time_spent_minutes)
          VALUES ($1, $2, $3, $4,

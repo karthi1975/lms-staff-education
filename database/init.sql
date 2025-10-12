@@ -182,18 +182,18 @@ CREATE INDEX idx_progress_status ON user_progress(status);
 
 -- Insert admin users with bcrypt hashed passwords
 -- Password for all test users: "Admin123!"
--- Hash: $2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0
+-- Hash generated with: bcrypt.hash('Admin123!', 10)
 
 INSERT INTO admin_users (email, password_hash, name, role) VALUES
-('admin@school.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'System Admin', 'admin'),
-('principal@lincoln.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'Dr. Margaret Anderson', 'admin'),
-('coordinator@district.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'John Williams', 'instructor'),
-('supervisor@training.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'Lisa Chen', 'admin'),
-('instructor1@school.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'Robert Johnson', 'instructor'),
-('instructor2@school.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'Sarah Miller', 'instructor'),
-('viewer@district.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'James Thompson', 'viewer'),
-('qa_lead@training.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'Emily Davis', 'admin'),
-('support@school.edu', '$2b$10$rZ5fGYZ0xZ5fGYZ0xZ5fGu7XZJ8YZ0xZ5fGYZ0xZ5fGYZ0xZ5fGYZ0', 'Michael Brown', 'viewer')
+('admin@school.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'System Admin', 'admin'),
+('principal@lincoln.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Dr. Margaret Anderson', 'admin'),
+('coordinator@district.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'John Williams', 'instructor'),
+('supervisor@training.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Lisa Chen', 'admin'),
+('instructor1@school.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Robert Johnson', 'instructor'),
+('instructor2@school.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Sarah Miller', 'instructor'),
+('viewer@district.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'James Thompson', 'viewer'),
+('qa_lead@training.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Emily Davis', 'admin'),
+('support@school.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Michael Brown', 'viewer')
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert modules

@@ -1,0 +1,14 @@
+{
+  "courseId": 9,
+  "courseName": "Teacher Training Courses",
+  "quizCount": 1,
+  "quizzes": [
+    {
+      "quizId": 4,
+      "quizName": "Module 1: Knowledge Check Quiz",
+      "error": "mod_quiz_get_attempt_data: quiz/Invalid page number",
+      "questions": []
+    }
+  ],
+  "downloadedAt": "2025-10-08T19:41:53.886Z"
+}

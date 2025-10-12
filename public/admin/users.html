@@ -77,6 +77,38 @@
             background: #d1d5db;
         }
 
+        .breadcrumb {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb a:hover {
+            color: #5a67d8;
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            color: #9ca3af;
+        }
+
+        .breadcrumb-current {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
         .search-box {
             background: white;
             padding: 20px;
@@ -284,6 +316,13 @@
 </head>
 <body>
     <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="/admin/index.html">🏠 Home</a>
+            <span class="breadcrumb-separator">›</span>
+            <span class="breadcrumb-current">User Progress Tracking</span>
+        </nav>
+
         <header>
             <h1>👥 User Progress Tracking</h1>
             <div class="header-actions">

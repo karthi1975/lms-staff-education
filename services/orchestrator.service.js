@@ -1,4 +1,5 @@
-const whatsappService = require('./whatsapp.service');
+// Use the adapter service to support both Meta and Twilio
+const whatsappService = require('./whatsapp-adapter.service');
 const chromaService = require('./chroma.service');
 const neo4jService = require('./neo4j.service');
 const vertexAIService = require('./vertexai.service');
@@ -205,10 +206,10 @@ class OrchestratorService {
     return this.processContentQuery(userId, input, session.currentModule);
   }
 
-  async processContentQuery(userId, query, currentModule) {
+  async processContentQuery(userId, query, currentModule, language = 'english') {
     try {
       logger.info(`Processing content query: "${query}" for module: ${currentModule}`);
-      
+
       // Search relevant content
       logger.debug('Searching ChromaDB for similar content...');
       const searchResults = await chromaService.searchSimilar(query, {
@@ -216,20 +217,20 @@ class OrchestratorService {
         nResults: 3
       });
       logger.info(`Found ${searchResults.length} relevant documents`);
-      
+
       // Build context from search results
       const context = searchResults.map(r => r.content).join('\n\n---\n\n');
       logger.debug(`Context length: ${context.length} characters`);
-      
-      // Generate response using Vertex AI with Swahili language
-      logger.debug('Generating response with Vertex AI in Swahili...');
-      const response = await vertexAIService.generateEducationalResponse(query, context, 'swahili');
+
+      // Generate response using Vertex AI with specified language (default: english)
+      logger.debug(`Generating response with Vertex AI in ${language}...`);
+      const response = await vertexAIService.generateEducationalResponse(query, context, language);
       logger.info(`Generated response length: ${response.length} characters`);
-      
+
       // Track interaction
       logger.debug('Tracking content interaction...');
       await neo4jService.trackContentInteraction(userId, 'content_query', 'query');
-      
+
       return {
         type: 'text',
         content: response

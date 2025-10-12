@@ -3,7 +3,8 @@
  * Handles: Course selection → Module selection → Chat → Quiz
  */
 
-const whatsappService = require('./whatsapp.service');
+// Use the adapter service to support both Meta and Twilio
+const whatsappService = require('./whatsapp-adapter.service');
 const chromaService = require('./chroma.service');
 const vertexAIService = require('./vertexai.service');
 const giftParserService = require('./gift-parser.service');
@@ -166,21 +167,24 @@ class MoodleOrchestratorService {
    * Show course selection with WhatsApp list
    */
   showCourseSelection() {
-    // WhatsApp list message format
-    const sections = [{
-      title: "Available Courses",
-      rows: this.courses.map((course, idx) => ({
-        id: `course_${course.id}`,
-        title: course.name,
-        description: `Learn ${course.name}`
-      }))
-    }];
+    // Format for numbered text list (Twilio-friendly)
+    let message = `📚 *Welcome to Teachers Training!*\n\n`;
+    message += `🎓 *Select a Course*\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `*Available Courses:*\n\n`;
+
+    this.courses.forEach((course, idx) => {
+      message += `${idx + 1}. 📖 *${course.name}*\n`;
+      message += `   Learn ${course.name}\n\n`;
+    });
+
+    message += `━━━━━━━━━━━━━━━━━━━━\n`;
+    message += `💬 Reply with the number to select\n`;
+    message += `Example: Type *1* for ${this.courses[0]?.name || 'first course'}`;
 
     return {
-      type: 'list',
-      text: `📚 *Select a Course*\n\nChoose a course to begin learning:`,
-      buttonText: 'Select Course',
-      sections
+      type: 'text',
+      text: message
     };
   }
 
@@ -217,20 +221,27 @@ class MoodleOrchestratorService {
    * Show module selection
    */
   showModuleSelection(course) {
-    const sections = [{
-      title: `${course.name} Modules`.substring(0, 24), // WhatsApp max 24 chars
-      rows: course.modules.map((module, idx) => ({
-        id: `module_${module.id}`,
-        title: module.name.length > 24 ? module.name.substring(0, 21) + '...' : module.name, // Max 24 chars
-        description: module.name.length > 72 ? module.name.substring(0, 69) + '...' : module.name // Max 72 chars
-      }))
-    }];
+    let message = `📘 *${course.name}*\n\n`;
+    message += `📚 *Select a Module*\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    message += `*${course.name} Modules:*\n\n`;
+
+    course.modules.forEach((module, idx) => {
+      message += `${idx + 1}. 📑 *${module.name}*\n`;
+      // Truncate long names for readability
+      const shortName = module.name.length > 50
+        ? module.name.substring(0, 47) + '...'
+        : module.name;
+      message += `   ${shortName}\n\n`;
+    });
+
+    message += `━━━━━━━━━━━━━━━━━━━━\n`;
+    message += `💬 Reply with the number to select\n`;
+    message += `Example: Type *1* for ${course.modules[0]?.name || 'first module'}`;
 
     return {
-      type: 'list',
-      text: `📖 *${course.name}*\n\nSelect a module to begin:`,
-      buttonText: 'Select Module',
-      sections
+      type: 'text',
+      text: message
     };
   }
 
@@ -238,9 +249,9 @@ class MoodleOrchestratorService {
    * Handle module selection
    */
   async handleModuleSelection(userId, message, context) {
-    const moduleId = this.parseModuleFromMessage(message);
+    const moduleSelection = this.parseModuleFromMessage(message);
 
-    if (!moduleId) {
+    if (!moduleSelection) {
       const course = this.courses.find(c => c.id === context.current_course_id);
       return {
         text: "Please select a module by number:\n" +
@@ -248,12 +259,20 @@ class MoodleOrchestratorService {
       };
     }
 
-    // Find module
+    // Find module by index (1-based) or by ID
     const course = this.courses.find(c => c.id === context.current_course_id);
-    const module = course.modules.find(m => m.id === moduleId);
+    let module;
+
+    // If it's a number 1-9, treat it as index (1-based)
+    if (typeof moduleSelection === 'number' && moduleSelection >= 1 && moduleSelection <= course.modules.length) {
+      module = course.modules[moduleSelection - 1]; // Convert to 0-based index
+    } else {
+      // Otherwise, try to find by module ID
+      module = course.modules.find(m => m.id === moduleSelection);
+    }
 
     if (!module) {
-      return { text: "Invalid module selection. Please try again." };
+      return { text: `Invalid module selection. Please choose a number between 1 and ${course.modules.length}.` };
     }
 
     // Update context
@@ -269,15 +288,26 @@ class MoodleOrchestratorService {
     // Create/update user progress
     await this.initializeModuleProgress(userId, module.id);
 
+    let responseText = `🎓 *${module.name}*\n`;
+    responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    responseText += `✅ Great! You've started learning!\n\n`;
+    responseText += `📚 *What You'll Learn:*\n`;
+    responseText += `   Learn key concepts and practical skills\n`;
+    responseText += `   in ${module.name}\n\n`;
+    responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    responseText += `💬 *Ask Me Anything!*\n`;
+    responseText += `   Examples:\n`;
+    responseText += `   • "What is entrepreneurship?"\n`;
+    responseText += `   • "How to identify opportunities?"\n`;
+    responseText += `   • "Tell me about market research"\n\n`;
+    responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    responseText += `📊 *Ready to Test Your Knowledge?*\n`;
+    responseText += `   Type: *"quiz"* or *"start quiz"*\n\n`;
+    responseText += `🔄 *Need Help?*\n`;
+    responseText += `   Type: *"menu"* to see options`;
+
     return {
-      text: `🎓 *${module.name}*\n\n` +
-            `Great! You've started learning about ${module.name}.\n\n` +
-            `📝 Ask me any questions about the topic!\n` +
-            `💬 Examples:\n` +
-            `  • "What is entrepreneurship?"\n` +
-            `  • "How do I identify business opportunities?"\n` +
-            `  • "Tell me about market research"\n\n` +
-            `📊 When you're ready, type *"quiz please"* to test your knowledge!`
+      text: responseText
     };
   }
 
@@ -836,14 +866,17 @@ class MoodleOrchestratorService {
       return id;
     }
 
-    // Check for number
-    if (lowerMsg.match(/^[12]$/)) {
+    // Check for number (accept any digit 1-9)
+    if (lowerMsg.match(/^\d+$/)) {
       return parseInt(lowerMsg);
     }
 
     // Check for module name
     if (lowerMsg.includes('entrepreneurship')) return 1;
     if (lowerMsg.includes('classroom')) return 2;
+    if (lowerMsg.includes('lesson')) return 3;
+    if (lowerMsg.includes('assessment')) return 4;
+    if (lowerMsg.includes('technology')) return 5;
 
     return null;
   }

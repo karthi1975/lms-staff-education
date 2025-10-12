@@ -213,8 +213,8 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    // Token is valid, redirect to dashboard
-                    window.location.href = '/admin/index.html';
+                    // Token is valid, redirect to LMS dashboard
+                    window.location.href = '/admin/lms-dashboard.html';
                 } else {
                     // Token invalid, remove it
                     localStorage.removeItem('adminToken');
@@ -259,10 +259,10 @@
                     // Show success message
                     successMessage.textContent = 'Login successful! Redirecting...';
                     successMessage.style.display = 'block';
-                    
-                    // Redirect to dashboard
+
+                    // Redirect to LMS dashboard
                     setTimeout(() => {
-                        window.location.href = '/admin/index.html';
+                        window.location.href = '/admin/lms-dashboard.html';
                     }, 1000);
                 } else {
                     // Show error
