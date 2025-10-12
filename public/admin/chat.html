@@ -600,8 +600,11 @@
                 const result = await response.json();
 
                 // Add AI response to chat
-                // Extract source titles from context array (use title which contains the filename)
-                const sources = result.context ? result.context.map(c => c.title || c.module || 'Unknown') : [];
+                // Extract source titles from context array - check multiple possible filename fields
+                const sources = result.context ? result.context.map(c => {
+                    // Try multiple metadata fields that might contain the filename
+                    return c.title || c.original_file || c.file_name || c.original_name || c.filename || c.module || 'Unknown';
+                }) : [];
                 addMessage(result.response, 'assistant', sources);
 
             } catch (error) {
@@ -628,10 +631,13 @@
                 `;
             }
 
+            // Convert markdown-style formatting to HTML
+            const formattedText = formatMarkdown(text);
+
             messageDiv.innerHTML = `
                 <div class="message-avatar">${avatar[0]}</div>
                 <div class="message-content">
-                    <div class="message-text">${escapeHtml(text)}</div>
+                    <div class="message-text">${formattedText}</div>
                     ${sourcesHtml}
                     <div class="message-time">${formatTime(new Date())}</div>
                 </div>
@@ -672,6 +678,41 @@
 
         function formatTime(date) {
             return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        }
+
+        function formatMarkdown(text) {
+            // Escape HTML first to prevent XSS
+            const div = document.createElement('div');
+            div.textContent = text;
+            let html = div.innerHTML;
+
+            // Convert markdown formatting to HTML
+            // Bold: **text** -> <strong>text</strong>
+            html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+
+            // Numbered lists: 1. item -> <ol><li>item</li></ol>
+            html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li-num data-num="$1">$2</li-num>');
+
+            // Bullet lists: - item or * item -> <ul><li>item</li></ul>
+            html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li-bullet>$1</li-bullet>');
+
+            // Wrap consecutive list items
+            html = html.replace(/(<li-num[^>]*>.*?<\/li-num>\s*)+/g, (match) => {
+                return '<ol style="margin: 10px 0; padding-left: 20px;">' +
+                       match.replace(/<li-num[^>]*>(.*?)<\/li-num>/g, '<li>$1</li>') +
+                       '</ol>';
+            });
+
+            html = html.replace(/(<li-bullet>.*?<\/li-bullet>\s*)+/g, (match) => {
+                return '<ul style="margin: 10px 0; padding-left: 20px;">' +
+                       match.replace(/<li-bullet>(.*?)<\/li-bullet>/g, '<li>$1</li>') +
+                       '</ul>';
+            });
+
+            // Preserve line breaks
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
         }
 
         function escapeHtml(text) {
