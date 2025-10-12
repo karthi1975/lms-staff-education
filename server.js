@@ -459,8 +459,8 @@ app.post('/api/chat', async (req, res) => {
       if (searchResults && searchResults.length > 0) {
         contextDocuments = searchResults.map(doc => ({
           content: doc.content,
-          module: doc.metadata?.module || 'unknown',
-          title: doc.metadata?.title || 'Untitled',
+          module: doc.metadata?.module_name || doc.metadata?.module || 'unknown',
+          title: doc.metadata?.original_file || doc.metadata?.title || doc.metadata?.filename || 'Untitled',
           source: 'vector_db'
         }));
 
