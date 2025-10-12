@@ -681,35 +681,41 @@
         }
 
         function formatMarkdown(text) {
+            if (!text) return '';
+
             // Escape HTML first to prevent XSS
             const div = document.createElement('div');
             div.textContent = text;
             let html = div.innerHTML;
 
-            // Convert markdown formatting to HTML
-            // Bold: **text** -> <strong>text</strong>
-            html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+            // Convert markdown formatting to HTML (process in order)
 
-            // Numbered lists: 1. item -> <ol><li>item</li></ol>
+            // 1. Bold: **text** -> <strong>text</strong>
+            // Match any characters including spaces between **
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+            // 2. Numbered lists: 1. item -> <ol><li>item</li></ol>
             html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li-num data-num="$1">$2</li-num>');
 
-            // Bullet lists: - item or * item -> <ul><li>item</li></ul>
-            html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li-bullet>$1</li-bullet>');
-
-            // Wrap consecutive list items
+            // 3. Wrap consecutive numbered list items
             html = html.replace(/(<li-num[^>]*>.*?<\/li-num>\s*)+/g, (match) => {
-                return '<ol style="margin: 10px 0; padding-left: 20px;">' +
-                       match.replace(/<li-num[^>]*>(.*?)<\/li-num>/g, '<li>$1</li>') +
+                return '<ol style="margin: 10px 0; padding-left: 20px; list-style-position: inside;">' +
+                       match.replace(/<li-num[^>]*>(.*?)<\/li-num>/g, '<li style="margin-bottom: 5px;">$1</li>') +
                        '</ol>';
             });
 
+            // 4. Bullet lists: - item or * item -> <ul><li>item</li></ul>
+            // But NOT ** (which is bold marker)
+            html = html.replace(/^[\-]\s+(.+)$/gm, '<li-bullet>$1</li-bullet>');
+
+            // 5. Wrap consecutive bullet list items
             html = html.replace(/(<li-bullet>.*?<\/li-bullet>\s*)+/g, (match) => {
-                return '<ul style="margin: 10px 0; padding-left: 20px;">' +
-                       match.replace(/<li-bullet>(.*?)<\/li-bullet>/g, '<li>$1</li>') +
+                return '<ul style="margin: 10px 0; padding-left: 20px; list-style-position: inside;">' +
+                       match.replace(/<li-bullet>(.*?)<\/li-bullet>/g, '<li style="margin-bottom: 5px;">$1</li>') +
                        '</ul>';
             });
 
-            // Preserve line breaks
+            // 6. Preserve line breaks (but not inside lists)
             html = html.replace(/\n/g, '<br>');
 
             return html;
