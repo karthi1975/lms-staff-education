@@ -600,8 +600,8 @@
                 const result = await response.json();
 
                 // Add AI response to chat
-                // Extract source titles from context array
-                const sources = result.context ? result.context.map(c => c.module || c.title || 'Unknown') : [];
+                // Extract source titles from context array (use title which contains the filename)
+                const sources = result.context ? result.context.map(c => c.title || c.module || 'Unknown') : [];
                 addMessage(result.response, 'assistant', sources);
 
             } catch (error) {
