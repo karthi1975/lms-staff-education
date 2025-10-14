@@ -1119,4 +1119,288 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
   }
 });
 
+// ==================== ADMIN USER MANAGEMENT ====================
+
+/**
+ * @route GET /api/admin/admin-users
+ * @desc Get all admin users
+ * @access Admin
+ */
+router.get('/admin-users', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const postgresService = require('../services/database/postgres.service');
+
+    const result = await postgresService.pool.query(`
+      SELECT id, email, name, role, is_active, created_at, updated_at, last_login_at
+      FROM admin_users
+      ORDER BY created_at DESC
+    `);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    logger.error('Error fetching admin users:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/admin-users
+ * @desc Create a new admin user
+ * @access Admin
+ */
+router.post('/admin-users', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    const postgresService = require('../services/database/postgres.service');
+    const bcrypt = require('bcrypt');
+
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name, email, and password are required'
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 8 characters'
+      });
+    }
+
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must include uppercase, lowercase, and number'
+      });
+    }
+
+    // Check if email already exists
+    const existingUser = await postgresService.pool.query(
+      'SELECT id FROM admin_users WHERE email = $1',
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email already exists'
+      });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Insert admin user
+    const result = await postgresService.pool.query(`
+      INSERT INTO admin_users (email, password_hash, name, role, is_active)
+      VALUES ($1, $2, $3, $4, TRUE)
+      RETURNING id, email, name, role, is_active, created_at
+    `, [email, passwordHash, name, role || 'viewer']);
+
+    logger.info(`Admin user created: ${email} (${role || 'viewer'})`);
+
+    res.json({
+      success: true,
+      message: 'Admin user created successfully',
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    logger.error('Error creating admin user:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route PATCH /api/admin/admin-users/:userId/toggle-status
+ * @desc Toggle admin user active status
+ * @access Admin
+ */
+router.patch('/admin-users/:userId/toggle-status', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    // Toggle status
+    const result = await postgresService.pool.query(`
+      UPDATE admin_users
+      SET is_active = NOT is_active, updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, email, name, role, is_active
+    `, [userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Admin user not found'
+      });
+    }
+
+    const user = result.rows[0];
+    logger.info(`Admin user ${user.email} status toggled to ${user.is_active ? 'active' : 'inactive'}`);
+
+    res.json({
+      success: true,
+      message: `User ${user.is_active ? 'activated' : 'deactivated'} successfully`,
+      data: user
+    });
+
+  } catch (error) {
+    logger.error('Error toggling admin user status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route DELETE /api/admin/admin-users/:userId
+ * @desc Delete an admin user
+ * @access Admin
+ */
+router.delete('/admin-users/:userId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    // Prevent deleting yourself
+    if (parseInt(userId) === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        error: 'You cannot delete your own account'
+      });
+    }
+
+    const result = await postgresService.pool.query(
+      'DELETE FROM admin_users WHERE id = $1 RETURNING email',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Admin user not found'
+      });
+    }
+
+    logger.info(`Admin user deleted: ${result.rows[0].email}`);
+
+    res.json({
+      success: true,
+      message: 'Admin user deleted successfully'
+    });
+
+  } catch (error) {
+    logger.error('Error deleting admin user:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route PATCH /api/admin/users/:userId/toggle-status
+ * @desc Toggle WhatsApp user active status
+ * @access Admin
+ */
+router.patch('/users/:userId/toggle-status', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { is_active } = req.body;
+    const postgresService = require('../services/database/postgres.service');
+
+    // If is_active is provided, use it; otherwise toggle
+    // When activating a user, also set last_active_at to NOW so they show as active
+    let query, params;
+    if (is_active !== undefined) {
+      query = `
+        UPDATE users
+        SET
+          is_active = $1,
+          updated_at = NOW(),
+          last_active_at = CASE WHEN $1 = TRUE THEN NOW() ELSE last_active_at END
+        WHERE id = $2
+        RETURNING id, whatsapp_id, name, is_active, last_active_at
+      `;
+      params = [is_active, userId];
+    } else {
+      query = `
+        UPDATE users
+        SET
+          is_active = NOT is_active,
+          updated_at = NOW(),
+          last_active_at = CASE WHEN (NOT is_active) = TRUE THEN NOW() ELSE last_active_at END
+        WHERE id = $1
+        RETURNING id, whatsapp_id, name, is_active, last_active_at
+      `;
+      params = [userId];
+    }
+
+    const result = await postgresService.pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'WhatsApp user not found'
+      });
+    }
+
+    const user = result.rows[0];
+    logger.info(`WhatsApp user ${user.whatsapp_id} status toggled to ${user.is_active ? 'active' : 'inactive'}`);
+
+    res.json({
+      success: true,
+      message: `User ${user.is_active ? 'activated' : 'deactivated'} successfully`,
+      data: user
+    });
+
+  } catch (error) {
+    logger.error('Error toggling WhatsApp user status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route DELETE /api/admin/users/:userId
+ * @desc Delete a WhatsApp user
+ * @access Admin
+ */
+router.delete('/users/:userId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    const result = await postgresService.pool.query(
+      'DELETE FROM users WHERE id = $1 RETURNING whatsapp_id, name',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    logger.info(`WhatsApp user deleted: ${result.rows[0].name} (${result.rows[0].whatsapp_id})`);
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    logger.error('Error deleting WhatsApp user:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

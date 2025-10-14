@@ -700,6 +700,7 @@ class ContentService {
           u.id,
           u.whatsapp_id,
           u.name,
+          u.is_active,
           u.created_at,
           u.last_active_at,
           u.current_module_id,
@@ -713,8 +714,7 @@ class ContentService {
           ) as quizzes_passed
          FROM users u
          LEFT JOIN user_progress up ON u.id = up.user_id
-         WHERE u.is_active = true
-         GROUP BY u.id, u.whatsapp_id, u.name, u.created_at, u.last_active_at, u.current_module_id
+         GROUP BY u.id, u.whatsapp_id, u.name, u.is_active, u.created_at, u.last_active_at, u.current_module_id
          ORDER BY u.last_active_at DESC NULLS LAST`
       );
 

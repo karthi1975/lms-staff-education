@@ -204,6 +204,8 @@
             padding: 12px;
             border-radius: 6px;
             margin-bottom: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
         }
 
         .alert-success {
@@ -272,6 +274,43 @@
             color: #6b7280;
             font-weight: 500;
         }
+
+        .user-type-tab {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+
+        .user-type-tab:hover {
+            color: #667eea;
+        }
+
+        .user-type-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .user-form {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -313,7 +352,7 @@
 
         <!-- Search and Filter -->
         <div class="search-filter">
-            <input type="text" id="searchInput" placeholder="🔍 Search by name or phone..." onkeyup="filterUsers()">
+            <input type="text" id="searchInput" placeholder="🔍 Search by name, email, or phone..." onkeyup="filterUsers()">
             <select id="statusFilter" onchange="filterUsers()" style="padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
                 <option value="">All Status</option>
                 <option value="active">Active</option>
@@ -327,8 +366,8 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>WhatsApp</th>
-                        <th>Current Module</th>
+                        <th>WhatsApp / Email</th>
+                        <th>Module / Role</th>
                         <th>Progress</th>
                         <th>Last Active</th>
                         <th>Status</th>
@@ -344,21 +383,84 @@
         </div>
     </div>
 
-    <!-- Add User Modal -->
+    <!-- Add User Modal (Dual Type: Admin + WhatsApp) -->
     <div id="addUserModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">Add New User</div>
-            <div class="form-group">
-                <label>Name</label>
-                <input type="text" id="userName" placeholder="Enter user name">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">👥 Add New User</div>
+
+            <!-- User Type Tabs -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
+                <button id="tabWhatsApp" class="user-type-tab active" onclick="switchUserType('whatsapp')">
+                    📱 WhatsApp User
+                </button>
+                <button id="tabAdmin" class="user-type-tab" onclick="switchUserType('admin')">
+                    🔐 Admin User
+                </button>
             </div>
-            <div class="form-group">
-                <label>WhatsApp Number</label>
-                <input type="text" id="userPhone" placeholder="+1234567890">
+
+            <!-- WhatsApp User Form -->
+            <div id="formWhatsApp" class="user-form">
+                <p style="margin-bottom: 20px; color: #6b7280; font-size: 14px;">
+                    Creates a user account for WhatsApp-based learning. A verification code will be sent via WhatsApp.
+                </p>
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="whatsappUserName" placeholder="e.g., John Smith">
+                </div>
+                <div class="form-group">
+                    <label>WhatsApp Number (E.164 format) *</label>
+                    <input type="text" id="whatsappUserPhone" placeholder="+1234567890" pattern="\+[0-9]+" title="Must start with + followed by country code and number">
+                    <small style="color: #6b7280; font-size: 12px;">
+                        📞 Must include country code. Examples:<br>
+                        • USA: +18016809129<br>
+                        • Tanzania: +255123456789<br>
+                        • Kenya: +254123456789
+                    </small>
+                </div>
+                <div style="background: #fef3c7; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; color: #92400e;">
+                    ⚠️ <strong>Note:</strong> User will receive a verification code via WhatsApp. They must reply with "HI [code]" to activate their account.
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="addWhatsAppUser()">Send Verification Code</button>
+                </div>
             </div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="addUser()">Add User</button>
+
+            <!-- Admin User Form -->
+            <div id="formAdmin" class="user-form" style="display: none;">
+                <p style="margin-bottom: 20px; color: #6b7280; font-size: 14px;">
+                    Creates an admin account for managing the training system. No phone number required.
+                </p>
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="adminUserName" placeholder="e.g., Jane Doe">
+                </div>
+                <div class="form-group">
+                    <label>Email Address *</label>
+                    <input type="email" id="adminUserEmail" placeholder="admin@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input type="password" id="adminUserPassword" placeholder="Must be 8+ characters">
+                    <small style="color: #6b7280; font-size: 12px;">
+                        🔒 Must include uppercase, lowercase, and number (min 8 chars)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label>Role *</label>
+                    <select id="adminUserRole" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
+                        <option value="viewer">Viewer (Read-only)</option>
+                        <option value="editor">Editor (Can modify content)</option>
+                        <option value="admin" selected>Admin (Full access)</option>
+                    </select>
+                </div>
+                <div style="background: #dbeafe; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; color: #1e3a8a;">
+                    ℹ️ <strong>Note:</strong> Admin users can log in to the admin dashboard. They do not receive WhatsApp messages.
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="addAdminUser()">Create Admin User</button>
+                </div>
             </div>
         </div>
     </div>
@@ -391,19 +493,28 @@
                     return;
                 }
 
-                const response = await fetch('/api/admin/users', {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                const result = await response.json();
+                // Fetch both WhatsApp users and admin users in parallel
+                const [whatsappResponse, adminResponse] = await Promise.all([
+                    fetch('/api/admin/users', {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    }),
+                    fetch('/api/admin/admin-users', {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    })
+                ]);
 
-                if (!result.success) {
-                    showAlert(result.error || 'Failed to load users', 'error');
-                    return;
+                const whatsappResult = await whatsappResponse.json();
+                const adminResult = await adminResponse.json();
+
+                if (!whatsappResult.success || !adminResult.success) {
+                    showAlert('Failed to load some users', 'error');
                 }
 
-                allUsers = result.data || [];
+                // Merge both user types, adding a type flag
+                const whatsappUsers = (whatsappResult.data || []).map(u => ({ ...u, userType: 'whatsapp' }));
+                const adminUsers = (adminResult.data || []).map(u => ({ ...u, userType: 'admin' }));
+
+                allUsers = [...whatsappUsers, ...adminUsers];
 
                 displayUsers(allUsers);
                 updateStats();
@@ -422,14 +533,28 @@
             }
 
             tbody.innerHTML = users.map(user => {
-                const lastActive = user.last_active_at
-                    ? new Date(user.last_active_at).toLocaleDateString()
+                const isAdminUser = user.userType === 'admin';
+
+                // Debug logging for User 9129
+                if (user.id === 9 || user.name === 'User 9129') {
+                    console.log('User 9129 Data:', {
+                        is_active: user.is_active,
+                        last_active_at: user.last_active_at,
+                        daysSinceActive: user.last_active_at ?
+                            (new Date() - new Date(user.last_active_at)) / (1000 * 60 * 60 * 24) : null
+                    });
+                }
+
+                // Display fields based on user type
+                const lastActive = (isAdminUser ? user.last_login_at : user.last_active_at)
+                    ? new Date(isAdminUser ? user.last_login_at : user.last_active_at).toLocaleDateString()
                     : 'Never';
 
-                const isActive = user.is_active && (
-                    user.last_active_at &&
-                    (new Date() - new Date(user.last_active_at)) < 7 * 24 * 60 * 60 * 1000
-                );
+                // For admin users: show is_active status directly
+                // For WhatsApp users: SIMPLIFIED - just check is_active (remove 7-day requirement)
+                const isActive = isAdminUser
+                    ? user.is_active
+                    : user.is_active;
 
                 const statusBadge = isActive
                     ? '<span class="badge badge-active">Active</span>'
@@ -437,19 +562,34 @@
 
                 const progress = user.progress_percentage || 0;
 
+                // WhatsApp field: show email for admin users, phone for WhatsApp users
+                const whatsappField = isAdminUser
+                    ? `<span style="color: #6b7280; font-size: 12px;">${user.email || 'N/A'}</span>`
+                    : (user.whatsapp_id || 'N/A');
+
+                // Module/Role field: show role for admin users, module for WhatsApp users
+                const moduleField = isAdminUser
+                    ? `<span class="badge" style="background: #dbeafe; color: #1e40af;">${user.role || 'N/A'}</span>`
+                    : `Module ${user.current_module_id || 1}`;
+
+                // Progress field: show dash for admin users
+                const progressField = isAdminUser ? '-' : `${progress}%`;
+
                 return `
                     <tr>
                         <td>${user.name || 'N/A'}</td>
-                        <td>${user.whatsapp_id || 'N/A'}</td>
-                        <td>Module ${user.current_module_id || 1}</td>
-                        <td>${progress}%</td>
+                        <td>${whatsappField}</td>
+                        <td>${moduleField}</td>
+                        <td>${progressField}</td>
                         <td>${lastActive}</td>
                         <td>${statusBadge}</td>
                         <td>
-                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;"
-                                onclick="viewUser(${user.id})">View</button>
+                            ${!isAdminUser ? `<button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="viewUser(${user.id})">View</button>` : ''}
+                            <button class="btn ${user.is_active ? 'btn-secondary' : 'btn-primary'}" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="${isAdminUser ? `toggleAdminStatus(${user.id}, ${user.is_active})` : `toggleWhatsAppStatus(${user.id}, ${user.is_active})`}">${user.is_active ? 'Deactivate' : 'Activate'}</button>
                             <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;"
-                                onclick="openDeleteModal(${user.id}, '${user.name}')">Delete</button>
+                                onclick="openDeleteModal(${user.id}, '${user.name}', '${user.userType}')">Delete</button>
                         </td>
                     </tr>
                 `;
@@ -459,10 +599,8 @@
         function updateStats() {
             document.getElementById('totalUsers').textContent = allUsers.length;
 
-            const activeCount = allUsers.filter(u => {
-                return u.is_active && u.last_active_at &&
-                    (new Date() - new Date(u.last_active_at)) < 7 * 24 * 60 * 60 * 1000;
-            }).length;
+            // Count all users where is_active = true (both admin and WhatsApp)
+            const activeCount = allUsers.filter(u => u.is_active).length;
             document.getElementById('activeUsers').textContent = activeCount;
 
             const completedCount = allUsers.filter(u => u.current_module_id > 1).length;
@@ -475,17 +613,16 @@
 
             let filtered = allUsers.filter(user => {
                 const matchesSearch = (user.name || '').toLowerCase().includes(searchTerm) ||
-                    (user.whatsapp_id || '').toLowerCase().includes(searchTerm);
+                    (user.whatsapp_id || '').toLowerCase().includes(searchTerm) ||
+                    (user.email || '').toLowerCase().includes(searchTerm);
 
                 if (!matchesSearch) return false;
 
                 if (statusFilter === '') return true;
 
-                const isActive = user.last_active_at &&
-                    (new Date() - new Date(user.last_active_at)) < 7 * 24 * 60 * 60 * 1000;
-
-                return (statusFilter === 'active' && isActive) ||
-                       (statusFilter === 'inactive' && !isActive);
+                // Simplified: just check is_active for all user types
+                return (statusFilter === 'active' && user.is_active) ||
+                       (statusFilter === 'inactive' && !user.is_active);
             });
 
             displayUsers(filtered);
@@ -497,48 +634,149 @@
 
         function closeAddUserModal() {
             document.getElementById('addUserModal').classList.remove('active');
-            document.getElementById('userName').value = '';
-            document.getElementById('userPhone').value = '';
+            // Clear WhatsApp form
+            document.getElementById('whatsappUserName').value = '';
+            document.getElementById('whatsappUserPhone').value = '';
+            // Clear Admin form
+            document.getElementById('adminUserName').value = '';
+            document.getElementById('adminUserEmail').value = '';
+            document.getElementById('adminUserPassword').value = '';
+            document.getElementById('adminUserRole').value = 'admin';
+            // Reset to WhatsApp tab
+            switchUserType('whatsapp');
         }
 
-        async function addUser() {
-            const name = document.getElementById('userName').value.trim();
-            const phone = document.getElementById('userPhone').value.trim();
+        function switchUserType(type) {
+            // Update tab buttons
+            document.getElementById('tabWhatsApp').classList.toggle('active', type === 'whatsapp');
+            document.getElementById('tabAdmin').classList.toggle('active', type === 'admin');
+
+            // Show/hide forms
+            document.getElementById('formWhatsApp').style.display = type === 'whatsapp' ? 'block' : 'none';
+            document.getElementById('formAdmin').style.display = type === 'admin' ? 'block' : 'none';
+        }
+
+        async function addWhatsAppUser() {
+            const name = document.getElementById('whatsappUserName').value.trim();
+            const phone = document.getElementById('whatsappUserPhone').value.trim();
 
             if (!name || !phone) {
                 showAlert('Please fill in all fields', 'error');
                 return;
             }
 
+            // Validate phone number format
+            if (!phone.startsWith('+')) {
+                showAlert('Phone number must start with + (e.g., +18016809129)', 'error');
+                return;
+            }
+
             try {
                 const authToken = localStorage.getItem('adminToken');
 
-                const response = await fetch('/api/admin/users', {
+                // Use the verification endpoint to send WhatsApp code
+                const response = await fetch('/api/admin/users/register-with-verification', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({ name, whatsapp_id: phone })
+                    body: JSON.stringify({
+                        name,
+                        phoneNumber: phone
+                    })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    showAlert('User added successfully!', 'success');
+                    const verificationCode = result.data.verificationCode;
+                    let message = `✅ WhatsApp user registered! Verification code sent to ${phone}`;
+
+                    // Show code in development mode
+                    if (verificationCode) {
+                        message += `\n\nVerification Code: ${verificationCode}\n(User should reply: HI ${verificationCode})`;
+                    }
+
+                    showAlert(message, 'success');
                     closeAddUserModal();
-                    loadUsers();
+
+                    // Don't reload immediately - user hasn't verified yet
+                    setTimeout(() => {
+                        loadUsers();
+                    }, 2000);
                 } else {
-                    showAlert(result.error || 'Failed to add user', 'error');
+                    showAlert(result.error || 'Failed to register user', 'error');
                 }
             } catch (error) {
-                console.error('Error adding user:', error);
-                showAlert('Error adding user', 'error');
+                console.error('Error adding WhatsApp user:', error);
+                showAlert('Error adding user: ' + error.message, 'error');
             }
         }
 
-        function openDeleteModal(userId, userName) {
-            userToDelete = userId;
+        async function addAdminUser() {
+            const name = document.getElementById('adminUserName').value.trim();
+            const email = document.getElementById('adminUserEmail').value.trim();
+            const password = document.getElementById('adminUserPassword').value;
+            const role = document.getElementById('adminUserRole').value;
+
+            if (!name || !email || !password) {
+                showAlert('Please fill in all fields', 'error');
+                return;
+            }
+
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showAlert('Invalid email format', 'error');
+                return;
+            }
+
+            // Validate password strength
+            if (password.length < 8) {
+                showAlert('Password must be at least 8 characters', 'error');
+                return;
+            }
+
+            if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+                showAlert('Password must include uppercase, lowercase, and number', 'error');
+                return;
+            }
+
+            try {
+                const authToken = localStorage.getItem('adminToken');
+
+                const response = await fetch('/api/admin/admin-users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                        role
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(`✅ Admin user created successfully!\n\nEmail: ${email}\nRole: ${role}`, 'success');
+                    closeAddUserModal();
+                    loadUsers(); // Reload to show new admin user
+                } else {
+                    showAlert(result.error || 'Failed to create admin user', 'error');
+                }
+            } catch (error) {
+                console.error('Error creating admin user:', error);
+                showAlert('Error creating admin user: ' + error.message, 'error');
+            }
+        }
+
+        function openDeleteModal(userId, userName, userType) {
+            userToDelete = { id: userId, type: userType };
             document.getElementById('deleteModal').classList.add('active');
         }
 
@@ -553,7 +791,12 @@
             try {
                 const authToken = localStorage.getItem('adminToken');
 
-                const response = await fetch(`/api/admin/users/${userToDelete}`, {
+                // Use different endpoints based on user type
+                const endpoint = userToDelete.type === 'admin'
+                    ? `/api/admin/admin-users/${userToDelete.id}`
+                    : `/api/admin/users/${userToDelete.id}`;
+
+                const response = await fetch(endpoint, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${authToken}`
@@ -575,6 +818,62 @@
             }
         }
 
+        async function toggleAdminStatus(userId, currentStatus) {
+            try {
+                const authToken = localStorage.getItem('adminToken');
+
+                const response = await fetch(`/api/admin/admin-users/${userId}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const action = currentStatus ? 'deactivated' : 'activated';
+                    showAlert(`✅ Admin user ${action} successfully`, 'success');
+                    loadUsers(); // Reload to show updated status
+                } else {
+                    showAlert(result.error || 'Failed to update user status', 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling admin status:', error);
+                showAlert('Error updating user status: ' + error.message, 'error');
+            }
+        }
+
+        async function toggleWhatsAppStatus(userId, currentStatus) {
+            try {
+                const authToken = localStorage.getItem('adminToken');
+
+                const response = await fetch(`/api/admin/users/${userId}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        is_active: !currentStatus
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const action = currentStatus ? 'deactivated' : 'activated';
+                    showAlert(`✅ WhatsApp user ${action} successfully`, 'success');
+                    loadUsers(); // Reload to show updated status
+                } else {
+                    showAlert(result.error || 'Failed to update user status', 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling WhatsApp status:', error);
+                showAlert('Error updating user status: ' + error.message, 'error');
+            }
+        }
+
         function viewUser(userId) {
             window.location.href = `user-detail.html?id=${userId}`;
         }
@@ -589,8 +888,8 @@
             }, 3000);
         }
 
-        // Cache buster - Updated 2025-10-07 20:37 - Fixed active status check
-        console.log('User Management v2 - Active status check includes is_active field');
+        // Cache buster - Updated 2025-10-14 17:30 - SIMPLIFIED status logic: just use is_active for ALL users
+        console.log('User Management v4 - Status based on is_active field only (no 7-day check)');
     </script>
 </body>
 </html>
