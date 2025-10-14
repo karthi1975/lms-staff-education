@@ -22,6 +22,7 @@ const logger = require('./utils/logger');
 
 // New Services - PostgreSQL and Auth (non-breaking additions)
 const postgresService = require('./services/database/postgres.service');
+const chatHistoryService = require('./services/chat-history.service');
 
 // New Routes (will be added below)
 const authRoutes = require('./routes/auth.routes');
@@ -431,16 +432,90 @@ app.post('/api/modules/:moduleId/generate-quiz', async (req, res) => {
   }
 });
 
-// Chat endpoint for testing documents
+// Get chat history for a session
+app.get('/api/chat/history', async (req, res) => {
+  try {
+    const { user_id = 1, module_id, limit = 50 } = req.query;
+
+    // Get or create session
+    const session = await chatHistoryService.getOrCreateSession(parseInt(user_id), module_id ? parseInt(module_id) : null);
+
+    // Get session history
+    const messages = await chatHistoryService.getSessionHistory(session.id, parseInt(limit));
+
+    res.json({
+      success: true,
+      session_id: session.id,
+      messages: messages.map(msg => ({
+        id: msg.id,
+        role: msg.message_role,
+        content: msg.message_content,
+        sources: msg.context_sources || [],
+        created_at: msg.created_at
+      }))
+    });
+  } catch (error) {
+    logger.error('Error retrieving chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve chat history',
+      details: error.message
+    });
+  }
+});
+
+// Clear chat history for a session
+app.post('/api/chat/clear', async (req, res) => {
+  try {
+    const { user_id = 1, module_id } = req.body;
+
+    // Get existing session
+    const session = await chatHistoryService.getOrCreateSession(parseInt(user_id), module_id ? parseInt(module_id) : null);
+
+    // Delete all messages in this session
+    await postgresService.query(
+      'DELETE FROM chat_messages WHERE session_id = $1',
+      [session.id]
+    );
+
+    logger.info(`Cleared chat history for session ${session.id}`);
+
+    res.json({
+      success: true,
+      message: 'Chat history cleared successfully',
+      session_id: session.id
+    });
+  } catch (error) {
+    logger.error('Error clearing chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear chat history',
+      details: error.message
+    });
+  }
+});
+
+// Chat endpoint for testing documents (with context memory)
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, module_id, module, history = [], useContext = true, language = 'english' } = req.body;
+    const { message, module_id, module, history = [], useContext = true, language = 'english', user_id = 1 } = req.body;
 
     if (!message) {
       return res.status(400).json({
         success: false,
         error: 'Message is required'
       });
+    }
+
+    // Get or create chat session for context memory
+    let session = null;
+    let conversationHistory = '';
+    try {
+      session = await chatHistoryService.getOrCreateSession(user_id, module_id);
+      // Get recent conversation context (last 5 messages)
+      conversationHistory = await chatHistoryService.getConversationContext(session.id, 5);
+    } catch (error) {
+      logger.warn('Chat history unavailable, continuing without context memory:', error.message);
     }
 
     let context = [];
@@ -457,12 +532,30 @@ app.post('/api/chat', async (req, res) => {
       });
 
       if (searchResults && searchResults.length > 0) {
-        contextDocuments = searchResults.map(doc => ({
-          content: doc.content,
-          module: doc.metadata?.module_name || doc.metadata?.module || 'unknown',
-          title: doc.metadata?.original_file || doc.metadata?.file_name || doc.metadata?.original_name || doc.metadata?.title || doc.metadata?.filename || doc.metadata?.chunk_title || 'Untitled',
-          source: 'vector_db'
-        }));
+        contextDocuments = searchResults.map(doc => {
+          // Extract meaningful title from metadata
+          // Priority: original_file > filename > title > chunk_title
+          let displayTitle = 'Untitled';
+
+          if (doc.metadata?.original_file) {
+            displayTitle = doc.metadata.original_file;
+          } else if (doc.metadata?.filename) {
+            // Remove timestamp prefix if present (e.g., "1234567890-file.pdf" -> "file.pdf")
+            displayTitle = doc.metadata.filename.replace(/^\d+-/, '');
+          } else if (doc.metadata?.title) {
+            displayTitle = doc.metadata.title;
+          } else if (doc.metadata?.chunk_title && doc.metadata.chunk_title.length < 50) {
+            // Only use chunk_title if it's short enough to be a section header
+            displayTitle = doc.metadata.chunk_title;
+          }
+
+          return {
+            content: doc.content,
+            module: doc.metadata?.module_name || doc.metadata?.module || 'unknown',
+            title: displayTitle,
+            source: 'vector_db'
+          };
+        });
 
         context = searchResults.map(doc => doc.content).join('\n\n');
         logger.info(`Found ${searchResults.length} relevant documents for chat context from ChromaDB`);
@@ -505,12 +598,17 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
+    // Combine conversation history with document context
+    const fullContext = conversationHistory
+      ? `${conversationHistory}\n\n[Document Context]\n${context || 'No specific context available.'}`
+      : context || 'No specific context available.';
+
     // Generate response using Vertex AI with language support
     let response;
     try {
       response = await vertexAIService.generateEducationalResponse(
         message,
-        context || 'No specific context available.',
+        fullContext,
         language
       );
     } catch (vertexError) {
@@ -521,6 +619,37 @@ app.post('/api/chat', async (req, res) => {
         response = `Based on the uploaded content, here's what I found:\n\n${context.substring(0, 500)}...\n\n(Note: Full AI responses require Google Cloud setup. Please upload content first or configure Vertex AI credentials.)`;
       } else {
         response = `Hello! I can help answer questions about "${module || 'your course'}" once you upload some content files (PDF, DOCX, or TXT).\n\nTo get started:\n1. Click "Upload Content" button\n2. Select a file about your course topic\n3. After upload, ask me questions!\n\n(Note: Full AI chat requires content to be uploaded first and Google Cloud Vertex AI credentials to be configured.)`;
+      }
+    }
+
+    // Save messages to chat history
+    if (session) {
+      try {
+        // Save user message
+        await chatHistoryService.saveMessage(
+          session.id,
+          user_id,
+          'user',
+          message,
+          module_id,
+          [],
+          { language }
+        );
+
+        // Save assistant response
+        await chatHistoryService.saveMessage(
+          session.id,
+          user_id,
+          'assistant',
+          response,
+          module_id,
+          contextDocuments.map(doc => ({ title: doc.title, module: doc.module })),
+          { language, hasContext: !!context }
+        );
+
+        logger.info(`Saved chat exchange to session ${session.id}`);
+      } catch (error) {
+        logger.warn('Failed to save chat history:', error.message);
       }
     }
 
@@ -546,6 +675,7 @@ app.post('/api/chat', async (req, res) => {
       graphContext: graphContext,
       module: module || 'all',
       module_id: module_id,
+      session_id: session?.id,
       sources: {
         vector_db: contextDocuments.length,
         graph_db: graphContext ? 1 : 0

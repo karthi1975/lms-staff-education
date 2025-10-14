@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course UI Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .course-card { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Course UI Fix Verification</h1>
+
+    <div class="test">
+        <h2>1. Login and Get Token</h2>
+        <button onclick="testLogin()">Test Login</button>
+        <pre id="loginResult">Click button to test...</pre>
+    </div>
+
+    <div class="test">
+        <h2>2. Load Courses (Fixed Endpoint)</h2>
+        <button onclick="testLoadCourses()">Load Courses</button>
+        <pre id="coursesResult">Login first, then click to load courses...</pre>
+    </div>
+
+    <div class="test">
+        <h2>3. Display Courses (Fixed Rendering)</h2>
+        <div id="coursesDisplay"></div>
+    </div>
+
+    <script>
+        let token = null;
+
+        async function testLogin() {
+            const result = document.getElementById('loginResult');
+            result.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@school.edu',
+                        password: 'Admin123!'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.accessToken) {
+                    token = data.accessToken;
+                    result.textContent = '✅ Login successful!\nToken: ' + token.substring(0, 50) + '...';
+                    result.parentElement.classList.add('success');
+                } else {
+                    result.textContent = '❌ Login failed: ' + JSON.stringify(data, null, 2);
+                    result.parentElement.classList.add('error');
+                }
+            } catch (error) {
+                result.textContent = '❌ Error: ' + error.message;
+                result.parentElement.classList.add('error');
+            }
+        }
+
+        async function testLoadCourses() {
+            const result = document.getElementById('coursesResult');
+            const display = document.getElementById('coursesDisplay');
+
+            if (!token) {
+                result.textContent = '❌ Please login first!';
+                return;
+            }
+
+            result.textContent = 'Loading courses from /api/admin/portal/courses...';
+
+            try {
+                const response = await fetch('/api/admin/portal/courses', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    result.textContent = `✅ Loaded ${data.data.length} courses\n\n` + JSON.stringify(data, null, 2);
+                    result.parentElement.classList.add('success');
+
+                    // Test the display function (the fixed part)
+                    displayCourses(data.data, display);
+                } else {
+                    result.textContent = '❌ Failed to load: ' + JSON.stringify(data, null, 2);
+                    result.parentElement.classList.add('error');
+                }
+            } catch (error) {
+                result.textContent = '❌ Error: ' + error.message;
+                result.parentElement.classList.add('error');
+            }
+        }
+
+        // This is the FIXED displayCourses function
+        function displayCourses(courses, container) {
+            if (courses.length === 0) {
+                container.innerHTML = '<p>No courses found.</p>';
+                return;
+            }
+
+            container.innerHTML = courses.map(course => {
+                // Safely get course name (handle both course_name and title)
+                const courseName = (course.course_name || course.title || 'Untitled Course').replace(/'/g, "\\'");
+                const courseCode = course.course_code || course.code || 'COURSE';
+
+                return `
+                    <div class="course-card">
+                        <h3>${courseCode}: ${course.course_name || course.title || 'Untitled Course'}</h3>
+                        <p><strong>Description:</strong> ${course.description || 'No description'}</p>
+                        <p><strong>Category:</strong> ${course.category || '-'}</p>
+                        <p><strong>Modules:</strong> ${course.module_count || 0}</p>
+                        <p><strong>Created:</strong> ${new Date(course.created_at).toLocaleString()}</p>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <h3>✅ Successfully rendered ${courses.length} courses without errors!</h3>
+                <p>All courses displayed correctly with safe null checks.</p>
+                ${container.innerHTML}
+            `;
+        }
+    </script>
+
+    <div class="test">
+        <h2>What Was Fixed</h2>
+        <ul>
+            <li>✅ Changed API endpoint from <code>/api/admin/courses</code> to <code>/api/admin/portal/courses</code></li>
+            <li>✅ API now returns <code>course_name</code> field (matches UI expectations)</li>
+            <li>✅ Added safe fallbacks: <code>course.course_name || course.title || 'Untitled Course'</code></li>
+            <li>✅ Pre-escaped quotes before using in onclick handlers</li>
+            <li>✅ No more "Cannot read properties of undefined (reading 'replace')" errors</li>
+        </ul>
+    </div>
+
+    <div class="test">
+        <h2>Test Instructions</h2>
+        <ol>
+            <li>Click "Test Login" button</li>
+            <li>Wait for success message</li>
+            <li>Click "Load Courses" button</li>
+            <li>Verify courses display without errors</li>
+            <li>Open browser console (F12) and check for errors</li>
+        </ol>
+    </div>
+</body>
+</html>

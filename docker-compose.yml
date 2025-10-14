@@ -77,6 +77,8 @@ services:
       - ./public:/app/public
       - ./routes:/app/routes
       - ./services:/app/services
+      - ./server.js:/app/server.js
+      - ./credentials:/app/credentials:ro
       - ~/.config/gcloud:/home/nodejs/.config/gcloud:ro
     networks:
       - teachers-network

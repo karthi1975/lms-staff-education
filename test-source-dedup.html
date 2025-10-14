@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Source Deduplication Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-case {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #374151;
+        }
+        .sources {
+            background: #f3f4f6;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .source-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin: 4px;
+            font-size: 13px;
+        }
+        .label {
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        .pass {
+            color: #10b981;
+            font-weight: 600;
+        }
+        .fail {
+            color: #ef4444;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Source Deduplication Test</h1>
+    <p>Testing that duplicate source titles are removed and only unique sources are displayed.</p>
+
+    <div id="testResults"></div>
+
+    <script>
+        // Simulate the deduplication logic from lms-dashboard.html
+        function processSourcesWithDedup(context) {
+            let sources = null;
+            if (context && context.length > 0) {
+                const allSources = context.map(doc => doc.title || doc.module || 'Unknown');
+                // Remove duplicates using Set
+                sources = [...new Set(allSources)];
+            }
+            return sources;
+        }
+
+        // Simulate OLD logic (without dedup)
+        function processSourcesWithoutDedup(context) {
+            const sources = context && context.length > 0
+                ? context.map(doc => doc.title || doc.module || 'Unknown')
+                : null;
+            return sources;
+        }
+
+        function renderSources(sources) {
+            if (!sources || sources.length === 0) return 'No sources';
+            return '📚 Sources: ' + sources.map(s => `<span class="source-badge">${s}</span>`).join('');
+        }
+
+        function runTests() {
+            const testCases = [
+                {
+                    name: 'Test 1: Duplicate PDF names',
+                    context: [
+                        { title: 'BS Syllabus Analysis.pdf' },
+                        { title: 'BS Syllabus Analysis.pdf' },
+                        { title: 'BS F1 Textbook.pdf' }
+                    ],
+                    expectedUnique: 2
+                },
+                {
+                    name: 'Test 2: Three duplicates of same file',
+                    context: [
+                        { title: 'GUIDELINES_FOR_PROJECT_BASED_ASSESSMENT_FOR_BUSINESS_STUDIES.pdf' },
+                        { title: 'GUIDELINES_FOR_PROJECT_BASED_ASSESSMENT_FOR_BUSINESS_STUDIES.pdf' },
+                        { title: 'Form I-Term I_Project.pdf' }
+                    ],
+                    expectedUnique: 2
+                },
+                {
+                    name: 'Test 3: All unique sources',
+                    context: [
+                        { title: 'Document1.pdf' },
+                        { title: 'Document2.pdf' },
+                        { title: 'Document3.pdf' }
+                    ],
+                    expectedUnique: 3
+                },
+                {
+                    name: 'Test 4: All duplicates',
+                    context: [
+                        { title: 'Same.pdf' },
+                        { title: 'Same.pdf' },
+                        { title: 'Same.pdf' }
+                    ],
+                    expectedUnique: 1
+                }
+            ];
+
+            const resultsDiv = document.getElementById('testResults');
+
+            testCases.forEach(test => {
+                const withoutDedup = processSourcesWithoutDedup(test.context);
+                const withDedup = processSourcesWithDedup(test.context);
+
+                const passed = withDedup.length === test.expectedUnique;
+
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case';
+                testDiv.innerHTML = `
+                    <h3>${test.name} ${passed ? '<span class="pass">✅ PASS</span>' : '<span class="fail">❌ FAIL</span>'}</h3>
+
+                    <div class="label">Without Deduplication (OLD):</div>
+                    <div class="sources">
+                        ${renderSources(withoutDedup)}
+                        <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">
+                            Count: ${withoutDedup.length} sources
+                        </div>
+                    </div>
+
+                    <div class="label">With Deduplication (NEW):</div>
+                    <div class="sources">
+                        ${renderSources(withDedup)}
+                        <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">
+                            Count: ${withDedup.length} sources (Expected: ${test.expectedUnique})
+                        </div>
+                    </div>
+                `;
+                resultsDiv.appendChild(testDiv);
+            });
+
+            // Summary
+            const allPassed = testCases.every(test => {
+                const withDedup = processSourcesWithDedup(test.context);
+                return withDedup.length === test.expectedUnique;
+            });
+
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'test-case';
+            summaryDiv.style.background = allPassed ? '#d1fae5' : '#fee2e2';
+            summaryDiv.innerHTML = `
+                <h3>Test Summary</h3>
+                <p style="margin: 0; font-size: 18px;">
+                    ${allPassed ? '<span class="pass">✅ All tests passed!</span>' : '<span class="fail">❌ Some tests failed</span>'}
+                </p>
+            `;
+            resultsDiv.appendChild(summaryDiv);
+        }
+
+        runTests();
+    </script>
+</body>
+</html>

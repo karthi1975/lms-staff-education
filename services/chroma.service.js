@@ -178,6 +178,11 @@ class ChromaService {
         where: filter
       });
 
+      // Log search results count
+      if (results.ids[0] && results.ids[0].length > 0) {
+        logger.info(`ChromaDB search found ${results.ids[0].length} results`);
+      }
+
       return results.ids[0].map((id, index) => ({
         id,
         content: results.documents[0][index],

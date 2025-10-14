@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const contentService = require('../services/content.service');
 const portalContentService = require('../services/portal-content.service');
+const verificationService = require('../services/verification.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
@@ -275,40 +276,139 @@ router.get('/user-progress/:userId', authMiddleware.authenticateToken, async (re
 // ==================== PORTAL COURSE MANAGEMENT ====================
 
 /**
+ * @route POST /api/admin/courses
+ * @desc Create a new course
+ * @access Admin
+ */
+router.post('/courses', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { code, title, description, category, difficulty_level, duration_weeks, sequence_order } = req.body;
+    const postgresService = require('../services/database/postgres.service');
+
+    if (!code || !title) {
+      return res.status(400).json({ success: false, error: 'Course code and title are required' });
+    }
+
+    // Check if course with this code already exists - if so, return it instead of error
+    const existingCourse = await postgresService.pool.query(
+      'SELECT * FROM courses WHERE code = $1',
+      [code]
+    );
+
+    if (existingCourse.rows.length > 0) {
+      // Return existing course as success (idempotent operation)
+      return res.json({
+        success: true,
+        message: 'Course already exists',
+        course: existingCourse.rows[0],
+        existing: true
+      });
+    }
+
+    const result = await postgresService.pool.query(`
+      INSERT INTO courses (code, title, description, category, difficulty_level, duration_weeks, sequence_order)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `, [code, title, description, category, difficulty_level, duration_weeks || 24, sequence_order || 1]);
+
+    res.json({
+      success: true,
+      message: 'Course created successfully',
+      course: result.rows[0],
+      existing: false
+    });
+  } catch (error) {
+    logger.error('Error creating course:', error);
+    // Handle unique constraint violation (fallback)
+    if (error.code === '23505') {
+      // Race condition - fetch and return the existing course
+      const existingCourse = await postgresService.pool.query(
+        'SELECT * FROM courses WHERE code = $1',
+        [code]
+      );
+      if (existingCourse.rows.length > 0) {
+        return res.json({
+          success: true,
+          message: 'Course already exists',
+          course: existingCourse.rows[0],
+          existing: true
+        });
+      }
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * @route POST /api/admin/portal/courses
- * @desc Create a new portal course manually
+ * @desc Create a new course (portal UI compatibility)
  * @access Admin
  */
 router.post('/portal/courses', authMiddleware.authenticateToken, async (req, res) => {
   try {
+    // Map portal UI fields to courses table schema
     const { course_name, course_code, description, category } = req.body;
-    const adminUserId = req.user.id;
+    const postgresService = require('../services/database/postgres.service');
 
     if (!course_name) {
       return res.status(400).json({ success: false, error: 'Course name is required' });
     }
 
-    const course = await portalContentService.createPortalCourse({
-      course_name,
-      course_code,
-      description,
-      category
-    }, adminUserId);
+    const code = course_code || `COURSE-${Date.now()}`;
+
+    // Check if course with this code already exists - if so, return it instead of error
+    const existingCourse = await postgresService.pool.query(
+      'SELECT * FROM courses WHERE code = $1',
+      [code]
+    );
+
+    if (existingCourse.rows.length > 0) {
+      // Return existing course as success (idempotent operation)
+      return res.json({
+        success: true,
+        message: 'Course already exists',
+        course: existingCourse.rows[0],
+        existing: true
+      });
+    }
+
+    const result = await postgresService.pool.query(`
+      INSERT INTO courses (code, title, description, category, sequence_order)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [code, course_name, description, category || 'General', 1]);
 
     res.json({
       success: true,
       message: 'Course created successfully',
-      data: course
+      course: result.rows[0],
+      existing: false
     });
   } catch (error) {
-    logger.error('Error creating portal course:', error);
+    logger.error('Error creating course:', error);
+    // Handle unique constraint violation (fallback)
+    if (error.code === '23505') {
+      // Race condition - fetch and return the existing course
+      const existingCourse = await postgresService.pool.query(
+        'SELECT * FROM courses WHERE code = $1',
+        [course_code || `COURSE-${Date.now()}`]
+      );
+      if (existingCourse.rows.length > 0) {
+        return res.json({
+          success: true,
+          message: 'Course already exists',
+          course: existingCourse.rows[0],
+          existing: true
+        });
+      }
+    }
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 /**
  * @route GET /api/admin/courses
- * @desc Get all courses (portal and Moodle)
+ * @desc Get all courses
  * @access Admin
  */
 router.get('/courses', authMiddleware.authenticateToken, async (req, res) => {
@@ -317,37 +417,78 @@ router.get('/courses', authMiddleware.authenticateToken, async (req, res) => {
 
     const result = await postgresService.pool.query(`
       SELECT
-        mc.*,
-        (SELECT COUNT(*) FROM moodle_modules mm WHERE mm.moodle_course_id = mc.moodle_course_id) as module_count,
-        CASE
-          WHEN mc.source = 'portal' THEN 'Portal'
-          WHEN mc.source = 'moodle' THEN 'Moodle'
-          ELSE 'Unknown'
-        END as source_display
-      FROM moodle_courses mc
-      ORDER BY mc.created_at DESC
+        c.*,
+        (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
+      FROM courses c
+      ORDER BY c.sequence_order, c.created_at DESC
     `);
 
     res.json({ success: true, data: result.rows });
   } catch (error) {
     logger.error('Error fetching courses:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/portal/courses
+ * @desc Get all courses (portal UI compatibility)
+ * @access Admin
+ */
+router.get('/portal/courses', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const postgresService = require('../services/database/postgres.service');
+
+    const result = await postgresService.pool.query(`
+      SELECT
+        c.id,
+        c.id as moodle_course_id,
+        c.code as course_code,
+        c.title as course_name,
+        c.description,
+        c.category,
+        c.sequence_order,
+        c.is_active,
+        c.created_at,
+        (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
+      FROM courses c
+      ORDER BY c.sequence_order, c.created_at DESC
+    `);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    logger.error('Error fetching portal courses:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 /**
- * @route GET /api/admin/portal/courses/:courseId
+ * @route GET /api/admin/courses/:courseId
  * @desc Get course with all modules
  * @access Admin
  */
-router.get('/portal/courses/:courseId', authMiddleware.authenticateToken, async (req, res) => {
+router.get('/courses/:courseId', authMiddleware.authenticateToken, async (req, res) => {
   try {
     const { courseId } = req.params;
-    const courseData = await portalContentService.getCourseWithModules(parseInt(courseId));
+    const postgresService = require('../services/database/postgres.service');
+
+    const courseResult = await postgresService.pool.query('SELECT * FROM courses WHERE id = $1', [courseId]);
+
+    if (courseResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Course not found' });
+    }
+
+    const modulesResult = await postgresService.pool.query(
+      'SELECT * FROM modules WHERE course_id = $1 ORDER BY sequence_order',
+      [courseId]
+    );
 
     res.json({
       success: true,
-      data: courseData
+      data: {
+        course: courseResult.rows[0],
+        modules: modulesResult.rows
+      }
     });
   } catch (error) {
     logger.error('Error fetching course:', error);
@@ -356,33 +497,125 @@ router.get('/portal/courses/:courseId', authMiddleware.authenticateToken, async 
 });
 
 /**
+ * @route GET /api/admin/portal/courses/:courseId/modules
+ * @desc Get all modules for a course (portal UI compatibility)
+ * @access Admin
+ */
+router.get('/portal/courses/:courseId/modules', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    const modulesResult = await postgresService.pool.query(`
+      SELECT
+        m.id,
+        m.id as moodle_module_id,
+        m.course_id,
+        m.code as module_code,
+        m.title as module_name,
+        m.description,
+        m.sequence_order,
+        m.duration_weeks,
+        m.is_active,
+        m.created_at,
+        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count,
+        (SELECT COUNT(*) FROM module_content_chunks mcc WHERE mcc.module_id = m.id) as chunk_count
+      FROM modules m
+      WHERE m.course_id = $1
+      ORDER BY m.sequence_order
+    `, [courseId]);
+
+    res.json({
+      success: true,
+      data: modulesResult.rows
+    });
+  } catch (error) {
+    logger.error('Error fetching portal modules:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/modules
+ * @desc Create a new module for a course
+ * @access Admin
+ */
+router.post('/modules', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { course_id, code, title, description, sequence_order, duration_weeks } = req.body;
+    const postgresService = require('../services/database/postgres.service');
+
+    if (!course_id || !title) {
+      return res.status(400).json({ success: false, error: 'Course ID and title are required' });
+    }
+
+    const result = await postgresService.pool.query(`
+      INSERT INTO modules (course_id, code, title, description, sequence_order, duration_weeks)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [course_id, code, title, description, sequence_order, duration_weeks || 2]);
+
+    res.json({
+      success: true,
+      message: 'Module created successfully',
+      module: result.rows[0]
+    });
+  } catch (error) {
+    logger.error('Error creating module:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * @route POST /api/admin/portal/courses/:courseId/modules
- * @desc Add a module to a portal course
+ * @desc Create a new module for a course (portal UI compatibility)
  * @access Admin
  */
 router.post('/portal/courses/:courseId/modules', authMiddleware.authenticateToken, async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { module_name, description, sequence_order } = req.body;
-    const adminUserId = req.user.id;
+    const { module_name, module_code, description, sequence_order, duration_weeks } = req.body;
+    const postgresService = require('../services/database/postgres.service');
 
     if (!module_name) {
       return res.status(400).json({ success: false, error: 'Module name is required' });
     }
 
-    const module = await portalContentService.createPortalModule(
-      parseInt(courseId),
-      { module_name, description, sequence_order },
-      adminUserId
+    // Verify course exists
+    const courseResult = await postgresService.pool.query(
+      'SELECT id FROM courses WHERE id = $1',
+      [courseId]
     );
+
+    if (courseResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Course not found' });
+    }
+
+    // Get next sequence_order if not provided
+    let moduleSeq = sequence_order;
+    if (!moduleSeq) {
+      const seqResult = await postgresService.pool.query(
+        'SELECT COALESCE(MAX(sequence_order), 0) + 1 as next_seq FROM modules WHERE course_id = $1',
+        [courseId]
+      );
+      moduleSeq = seqResult.rows[0].next_seq;
+    }
+
+    const code = module_code || `MODULE-${Date.now()}`;
+
+    const result = await postgresService.pool.query(`
+      INSERT INTO modules (course_id, code, title, description, sequence_order, duration_weeks)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [courseId, code, module_name, description, moduleSeq, duration_weeks || 2]);
 
     res.json({
       success: true,
       message: 'Module created successfully',
-      data: module
+      module: result.rows[0]
     });
   } catch (error) {
-    logger.error('Error creating module:', error);
+    logger.error('Error creating portal module:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -513,6 +746,254 @@ router.get('/search/topic/:topicName', authMiddleware.authenticateToken, async (
   } catch (error) {
     logger.error(`Error searching for topic ${req.params.topicName}:`, error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/users/register-with-verification
+ * @desc Register user and send WhatsApp verification code
+ * @access Admin
+ */
+router.post('/users/register-with-verification', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { name, phoneNumber } = req.body;
+
+    if (!name || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name and phone number are required'
+      });
+    }
+
+    // Create user and send verification code
+    const result = await verificationService.createUserAndSendCode(name, phoneNumber);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+        data: {
+          phoneNumber: result.phoneNumber,
+          codeExpiresAt: result.expiresAt,
+          // Don't send actual code in production, but useful for testing
+          verificationCode: process.env.NODE_ENV === 'development' ? result.code : undefined
+        }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.message
+      });
+    }
+
+  } catch (error) {
+    logger.error('Error registering user with verification:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/users/resend-verification
+ * @desc Resend verification code to pending user
+ * @access Admin
+ */
+router.post('/users/resend-verification', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number is required'
+      });
+    }
+
+    const result = await verificationService.resendCode(phoneNumber);
+
+    res.json(result);
+
+  } catch (error) {
+    logger.error('Error resending verification code:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/users/pending-verification
+ * @desc Get all users pending verification
+ * @access Admin
+ */
+router.get('/users/pending-verification', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    // This would need to be stored in database for production
+    // For now, return empty array as verification codes are in memory
+    res.json({
+      success: true,
+      data: [],
+      message: 'Pending verifications are stored in memory. Check application logs for codes.'
+    });
+
+  } catch (error) {
+    logger.error('Error fetching pending verifications:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/modules/:moduleId/quiz/upload
+ * @desc Upload quiz questions for a module from JSON file
+ * @access Admin
+ */
+router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const { questions } = req.body;
+    const adminUserId = req.user.id;
+
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Questions array is required and must not be empty'
+      });
+    }
+
+    // Validate each question
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.question || !q.options || !Array.isArray(q.options)) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: Invalid format (missing question or options)`
+        });
+      }
+      if (q.options.length < 2 || q.options.length > 4) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: Must have 2-4 options`
+        });
+      }
+      if (q.correctAnswer === undefined || q.correctAnswer < 0 || q.correctAnswer >= q.options.length) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: Invalid correctAnswer index`
+        });
+      }
+    }
+
+    const postgresService = require('../services/database/postgres.service');
+
+    // Get module details to get moodle_module_id
+    const moduleResult = await postgresService.pool.query(
+      'SELECT id FROM moodle_modules WHERE id = $1',
+      [moduleId]
+    );
+
+    if (moduleResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Module not found'
+      });
+    }
+
+    const moodleModuleId = moduleResult.rows[0].id;
+
+    // Check if quiz already exists for this module
+    let quizResult = await postgresService.pool.query(
+      'SELECT id FROM moodle_quizzes WHERE moodle_module_id = $1',
+      [moodleModuleId]
+    );
+
+    let quizId;
+
+    if (quizResult.rows.length > 0) {
+      // Update existing quiz
+      quizId = quizResult.rows[0].id;
+
+      // Delete existing questions
+      await postgresService.pool.query(
+        'DELETE FROM quiz_questions WHERE moodle_quiz_id = $1',
+        [quizId]
+      );
+
+      logger.info(`Deleted existing questions for quiz ${quizId}`);
+    } else {
+      // Create new quiz
+      quizResult = await postgresService.pool.query(`
+        INSERT INTO moodle_quizzes (
+          moodle_module_id,
+          quiz_name,
+          time_limit_minutes,
+          pass_percentage,
+          max_attempts,
+          source
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      `, [
+        moodleModuleId,
+        `Module ${moduleId} Quiz`,
+        30, // 30 minutes default
+        70, // 70% pass threshold
+        999, // unlimited attempts
+        'portal'
+      ]);
+
+      quizId = quizResult.rows[0].id;
+      logger.info(`Created new quiz ${quizId} for module ${moduleId}`);
+    }
+
+    // Insert questions
+    const insertedQuestions = [];
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      const result = await postgresService.pool.query(`
+        INSERT INTO quiz_questions (
+          moodle_quiz_id,
+          question_text,
+          question_type,
+          options,
+          correct_answer,
+          explanation,
+          points,
+          source
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+      `, [
+        quizId,
+        q.question,
+        'multichoice',
+        JSON.stringify(q.options),
+        q.correctAnswer.toString(),
+        q.explanation || null,
+        1.0,
+        'portal'
+      ]);
+
+      insertedQuestions.push({
+        id: result.rows[0].id,
+        question: q.question,
+        optionCount: q.options.length
+      });
+    }
+
+    logger.info(`Inserted ${insertedQuestions.length} questions for quiz ${quizId}`);
+
+    res.json({
+      success: true,
+      message: `Quiz uploaded successfully with ${questions.length} questions`,
+      data: {
+        quizId,
+        moduleId: parseInt(moduleId),
+        questionCount: insertedQuestions.length,
+        questions: insertedQuestions
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error uploading quiz:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 

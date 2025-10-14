@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Response Markdown Styling Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .chat-msg {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            align-items: flex-start;
+        }
+
+        .chat-msg-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .chat-msg-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .chat-msg-text {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Markdown styling for AI responses */
+        .chat-msg-text h1, .chat-msg-text h2, .chat-msg-text h3 {
+            margin-top: 12px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .chat-msg-text h1 {
+            font-size: 18px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 4px;
+        }
+
+        .chat-msg-text h2 {
+            font-size: 16px;
+            color: #374151;
+        }
+
+        .chat-msg-text h3 {
+            font-size: 15px;
+            color: #4b5563;
+        }
+
+        .chat-msg-text strong {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .chat-msg-text em {
+            font-style: italic;
+            color: #4b5563;
+        }
+
+        .chat-msg-text ul, .chat-msg-text ol {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        .chat-msg-text li {
+            margin: 4px 0;
+            line-height: 1.5;
+        }
+
+        .chat-msg-text p {
+            margin: 8px 0;
+        }
+
+        .chat-msg-text code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: #dc2626;
+        }
+
+        .chat-msg-text pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+
+        .chat-msg-text pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .chat-msg-text blockquote {
+            border-left: 3px solid #667eea;
+            padding-left: 12px;
+            margin: 8px 0;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .chat-msg-text a {
+            color: #667eea;
+            text-decoration: underline;
+        }
+
+        .chat-msg-text a:hover {
+            color: #5568d3;
+        }
+
+        .chat-sources {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .source-badge {
+            background: #eef2ff;
+            color: #667eea;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-right: 4px;
+            display: inline-block;
+        }
+
+        .test-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Response Markdown Styling Test</h1>
+
+    <div class="test-section">
+        <h2>Test 1: Overview Response</h2>
+        <div class="chat-msg">
+            <div class="chat-msg-avatar">AI</div>
+            <div class="chat-msg-bubble">
+                <div class="chat-msg-text" id="test1"></div>
+                <div class="chat-sources">
+                    📚 Sources: <span class="source-badge">Module 1 PDF</span><span class="source-badge">Training Guide</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Textbook Response</h2>
+        <div class="chat-msg">
+            <div class="chat-msg-avatar">AI</div>
+            <div class="chat-msg-bubble">
+                <div class="chat-msg-text" id="test2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple markdown parser
+        function parseMarkdown(text) {
+            let html = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            // Headers
+            html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+
+            // Bold
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+            // Italic
+            html = html.replace(/(?<!\*)\*(?!\*)(.+?)\*(?!\*)/g, '<em>$1</em>');
+            html = html.replace(/(?<!_)_(?!_)(.+?)_(?!_)/g, '<em>$1</em>');
+
+            // Code
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Links
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+            // Lists
+            html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+            html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+
+            // Paragraphs
+            html = html.replace(/\n\n/g, '</p><p>');
+            html = '<p>' + html + '</p>';
+            html = html.replace(/\n/g, '<br>');
+            html = html.replace(/<p><\/p>/g, '');
+
+            return html;
+        }
+
+        // Test 1: Overview response
+        const overviewText = `This course covers essential teaching topics:
+
+**1. Classroom Management** - Setting expectations and building relationships
+**2. Lesson Planning** - Creating effective lessons
+**3. Assessment Strategies** - Measuring student progress
+**4. Educational Technology** - Using modern tools
+**5. Curriculum Development** - Aligning with standards
+
+Each section includes *practical exercises* and **real-world examples**.`;
+
+        document.getElementById('test1').innerHTML = parseMarkdown(overviewText);
+
+        // Test 2: Textbook response
+        const textbookText = `Textbooks are essential resources for teaching. Here's how to use them effectively:
+
+**Textbook Analysis:**
+- Review structure and content
+- Identify key sections and topics
+- Plan teaching sequence
+
+**Classroom Use:**
+- Use as foundation for lessons
+- Supplement with additional activities
+- Connect to real-world experiences
+
+Remember: Textbooks are *guides*, not limits. Be **creative**!`;
+
+        document.getElementById('test2').innerHTML = parseMarkdown(textbookText);
+    </script>
+</body>
+</html>

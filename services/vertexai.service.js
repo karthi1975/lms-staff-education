@@ -9,7 +9,7 @@ const execAsync = promisify(exec);
 class VertexAIService {
   constructor() {
     this.endpoint = process.env.ENDPOINT || 'us-east5-aiplatform.googleapis.com';
-    this.projectId = process.env.GCP_PROJECT_ID || 'staff-education';
+    this.projectId = process.env.GCP_PROJECT_ID || 'lms-tanzania-consultant';
     this.quotaProject = process.env.GOOGLE_CLOUD_QUOTA_PROJECT || 'lms-tanzania-consultant';
     this.region = process.env.REGION || 'us-east5';
     this.model = process.env.VERTEX_AI_MODEL || 'meta/llama-4-maverick-17b-128e-instruct-maas';
@@ -28,6 +28,7 @@ class VertexAIService {
 
       // Try multiple possible paths for ADC
       const adcPaths = [
+        '/app/credentials/application_default_credentials.json',  // Mounted user credentials
         '/home/nodejs/.config/gcloud/application_default_credentials.json',
         `${os.homedir()}/.config/gcloud/application_default_credentials.json`,
         '/root/.config/gcloud/application_default_credentials.json',
@@ -40,18 +41,48 @@ class VertexAIService {
         try {
           const adc = JSON.parse(fs.readFileSync(adcPath, 'utf8'));
 
-          // For user credentials, we need to use the refresh token to get an access token
-          if (adc.type === 'authorized_user' && adc.refresh_token) {
-            const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-              client_id: adc.client_id,
-              client_secret: adc.client_secret,
-              refresh_token: adc.refresh_token,
-              grant_type: 'refresh_token'
+          // For service account credentials
+          if (adc.type === 'service_account' && adc.private_key) {
+            const { google } = require('googleapis');
+            const auth = new google.auth.GoogleAuth({
+              credentials: adc,
+              scopes: ['https://www.googleapis.com/auth/cloud-platform']
             });
 
-            if (tokenResponse.data && tokenResponse.data.access_token) {
-              logger.info(`Successfully obtained access token from ADC at ${adcPath}`);
-              return tokenResponse.data.access_token;
+            const client = await auth.getClient();
+            const tokenResponse = await client.getAccessToken();
+
+            if (tokenResponse.token) {
+              logger.info(`Successfully obtained access token from service account at ${adcPath}`);
+              return tokenResponse.token;
+            }
+          }
+
+          // For user credentials, we need to use the refresh token to get an access token
+          if (adc.type === 'authorized_user' && adc.refresh_token) {
+            try {
+              const params = new URLSearchParams();
+              params.append('client_id', adc.client_id);
+              params.append('client_secret', adc.client_secret);
+              params.append('refresh_token', adc.refresh_token);
+              params.append('grant_type', 'refresh_token');
+
+              const tokenResponse = await axios.post('https://oauth2.googleapis.com/token',
+                params.toString(),
+                {
+                  headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                  }
+                }
+              );
+
+              if (tokenResponse.data && tokenResponse.data.access_token) {
+                logger.info(`Successfully obtained access token from user credentials at ${adcPath}`);
+                return tokenResponse.data.access_token;
+              }
+            } catch (refreshError) {
+              logger.warn(`Failed to refresh user token: ${refreshError.message}`);
+              continue; // Try next path
             }
           }
         } catch (e) {
@@ -169,12 +200,25 @@ class VertexAIService {
     const lastMessage = messages[messages.length - 1];
     const query = lastMessage.content.toLowerCase();
 
-    // Extract context from system messages if available
+    // Extract context from user messages (formatted prompt contains context)
     let contextInfo = '';
     for (const msg of messages) {
-      if (msg.role === 'system' && msg.content) {
-        contextInfo = msg.content.substring(0, 500);
+      if (msg.role === 'user' && msg.content) {
+        // Extract content between "Information:" and "Question:"
+        const infoMatch = msg.content.match(/Information:\s*([\s\S]*?)\s*Question:/i);
+        if (infoMatch && infoMatch[1]) {
+          contextInfo = infoMatch[1].trim();
+        }
         break;
+      }
+    }
+
+    // If we have actual context from the documents, use it!
+    if (contextInfo && contextInfo.length > 100 && !contextInfo.includes('No information available')) {
+      if (language === 'swahili') {
+        return `Kulingana na maudhui yaliyopakiwa:\n\n${contextInfo.substring(0, 800)}...\n\n(Kumbuka: Majibu kamili ya AI yanahitaji usanidi wa Google Cloud Vertex AI. Tafadhali pakia maudhui kwanza au sanidi akaunti za Vertex AI.)`;
+      } else {
+        return `Based on the uploaded content:\n\n${contextInfo.substring(0, 800)}...\n\n(Note: Full AI responses require Google Cloud Vertex AI configuration. The content above is from your uploaded materials.)`;
       }
     }
 

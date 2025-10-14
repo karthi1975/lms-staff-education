@@ -196,22 +196,44 @@ class ContentService {
     try {
       logger.info(`Processing content ${contentId} from ${filePath}`);
 
-      // Extract text from file
-      const text = await documentProcessor.processDocument(filePath);
+      // Extract and chunk document (returns array of chunk objects or string)
+      const processedData = await documentProcessor.processDocument(filePath);
 
-      if (!text || text.trim().length === 0) {
-        throw new Error('No text extracted from document');
+      // Handle both old string format and new chunked format
+      let chunks = [];
+      let fullText = '';
+
+      if (Array.isArray(processedData)) {
+        // New format: already chunked with metadata
+        chunks = processedData;
+        fullText = chunks.map(c => c.content || c).join('\n\n');
+      } else if (typeof processedData === 'string') {
+        // Old format: plain text that needs chunking
+        fullText = processedData;
+        if (!fullText || fullText.trim().length === 0) {
+          throw new Error('No text extracted from document');
+        }
+        const chunkSize = parseInt(process.env.CONTENT_CHUNK_SIZE || '1000');
+        const textChunks = this.chunkText(fullText, chunkSize);
+        chunks = textChunks.map((text, index) => ({
+          content: text,
+          metadata: {},
+          chunk_index: index,
+          total_chunks: textChunks.length
+        }));
+      } else {
+        throw new Error('Unexpected document processor output format');
+      }
+
+      if (chunks.length === 0) {
+        throw new Error('No chunks extracted from document');
       }
 
       // Update content_text
       await getPool().query(
         'UPDATE module_content SET content_text = $1 WHERE id = $2',
-        [text, contentId]
+        [fullText, contentId]
       );
-
-      // Chunk the text
-      const chunkSize = parseInt(process.env.CONTENT_CHUNK_SIZE || '1000');
-      const chunks = this.chunkText(text, chunkSize);
 
       logger.info(`Created ${chunks.length} chunks from content ${contentId}`);
 
@@ -229,24 +251,27 @@ class ContentService {
       // Generate embeddings and store in ChromaDB
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
+        const chunkText = chunk.content || chunk;
 
         // Generate embedding
-        const embeddings = await embeddingService.generateEmbeddings(chunk);
+        const embeddings = await embeddingService.generateEmbeddings(chunkText);
         const embedding = Array.isArray(embeddings) ? embeddings[0] : embeddings;
 
-        // Store in ChromaDB
+        // Store in ChromaDB with merged metadata
         await chromaService.addDocument(
           content.module_id,
-          chunk,
+          chunkText,
           embedding,
           {
             content_id: contentId,
             module_id: content.module_id,
             module_title: content.module_title,
             file_name: content.file_name,
+            original_file: content.original_name,  // Add original filename for source display
             chunk_index: i,
             total_chunks: chunks.length,
-            uploaded_at: content.uploaded_at
+            uploaded_at: content.uploaded_at,
+            ...chunk.metadata
           }
         );
       }

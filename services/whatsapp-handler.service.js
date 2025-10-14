@@ -8,6 +8,7 @@ const whatsappService = require('./whatsapp-adapter.service');
 const quizService = require('./quiz.service');
 const postgresService = require('./database/postgres.service');
 const moodleSyncService = require('./moodle-sync.service');
+const verificationService = require('./verification.service');
 const logger = require('../utils/logger');
 
 class WhatsAppHandlerService {
@@ -25,6 +26,26 @@ class WhatsAppHandlerService {
     try {
       // Mark as read
       await whatsappService.markAsRead(messageId);
+
+      // Check if user is pending verification
+      const normalizedPhone = this.normalizePhoneNumber(from);
+      if (verificationService.isPendingVerification(normalizedPhone)) {
+        // Handle verification code
+        const verificationResult = await verificationService.verifyCode(normalizedPhone, messageBody);
+
+        if (verificationResult.verified) {
+          // Send welcome message
+          await verificationService.sendWelcomeMessage(
+            verificationResult.phoneNumber,
+            verificationResult.name
+          );
+          logger.info(`✅ User ${verificationResult.name} verified and welcomed`);
+        } else {
+          // Send error message
+          await whatsappService.sendMessage(from, verificationResult.message);
+        }
+        return;
+      }
 
       // Get or create session
       const session = await this.getOrCreateSession(from);

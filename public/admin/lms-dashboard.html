@@ -748,7 +748,111 @@
 
         .chat-msg-text {
             font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Markdown styling for AI responses */
+        .chat-msg-text h1, .chat-msg-text h2, .chat-msg-text h3 {
+            margin-top: 12px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .chat-msg-text h1 {
+            font-size: 18px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 4px;
+        }
+
+        .chat-msg-text h2 {
+            font-size: 16px;
+            color: #374151;
+        }
+
+        .chat-msg-text h3 {
+            font-size: 15px;
+            color: #4b5563;
+        }
+
+        .chat-msg-text strong {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .chat-msg-text em {
+            font-style: italic;
+            color: #4b5563;
+        }
+
+        .chat-msg-text ul, .chat-msg-text ol {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        .chat-msg-text li {
+            margin: 4px 0;
             line-height: 1.5;
+        }
+
+        .chat-msg-text p {
+            margin: 8px 0;
+        }
+
+        .chat-msg-text code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: #dc2626;
+        }
+
+        .chat-msg-text pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+
+        .chat-msg-text pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .chat-msg-text blockquote {
+            border-left: 3px solid #667eea;
+            padding-left: 12px;
+            margin: 8px 0;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .chat-msg-text a {
+            color: #667eea;
+            text-decoration: underline;
+        }
+
+        .chat-msg-text a:hover {
+            color: #5568d3;
+        }
+
+        /* Numbered list styling */
+        .chat-msg-text ol {
+            counter-reset: item;
+        }
+
+        .chat-msg-text ol li {
+            display: block;
+        }
+
+        .chat-msg-text ol li::before {
+            content: counter(item) ". ";
+            counter-increment: item;
+            font-weight: 600;
+            color: #667eea;
         }
 
         .chat-msg-time {
@@ -1338,6 +1442,93 @@
         </div>
     </div>
 
+    <!-- Upload Quiz Modal -->
+    <div class="chat-modal" id="quizUploadModal">
+        <div class="chat-modal-content" style="max-width: 700px;">
+            <div class="chat-modal-header">
+                <div>
+                    <div class="chat-modal-title" id="quizUploadModalTitle">Upload Quiz</div>
+                    <div class="chat-modal-subtitle" id="quizUploadModalSubtitle">Upload quiz as JSON file</div>
+                </div>
+                <button class="chat-modal-close" onclick="closeQuizUploadModal()">×</button>
+            </div>
+
+            <div style="padding: 30px;">
+                <!-- Quiz Format Info -->
+                <div style="background:#e3f2fd; border-left:4px solid #1976d2; padding:15px; margin-bottom:20px; border-radius:4px;">
+                    <div style="font-weight:600; margin-bottom:8px; color:#1976d2;">📋 Quiz JSON Format:</div>
+                    <pre style="background:white; padding:10px; border-radius:4px; overflow-x:auto; font-size:12px; margin:10px 0;">
+{
+  "questions": [
+    {
+      "question": "What is the capital of France?",
+      "options": ["London", "Paris", "Berlin", "Madrid"],
+      "correctAnswer": 1,
+      "explanation": "Paris is the capital of France"
+    }
+  ]
+}</pre>
+                    <div style="font-size:13px; color:#555; margin-top:8px;">
+                        • <strong>correctAnswer</strong>: Index of correct option (0, 1, 2, 3)<br>
+                        • Each question must have 2-4 options<br>
+                        • <strong>explanation</strong> is optional
+                    </div>
+                </div>
+
+                <!-- File Drop Zone -->
+                <div id="quizDropZone"
+                     style="border:2px dashed #ccc; border-radius:8px; padding:40px; text-align:center; background:#f9f9f9; cursor:pointer; transition:all 0.3s;"
+                     ondragover="handleQuizDragOver(event)"
+                     ondragleave="handleQuizDragLeave(event)"
+                     ondrop="handleQuizDrop(event)"
+                     onclick="document.getElementById('quizFileInput').click()">
+                    <div style="font-size:48px; margin-bottom:15px;">📝</div>
+                    <div style="font-size:16px; color:#333; margin-bottom:8px;">Drop quiz JSON file here or click to browse</div>
+                    <div style="font-size:13px; color:#999;">Supported format: .json</div>
+                    <input type="file" id="quizFileInput" accept=".json" style="display:none;" onchange="handleQuizFileSelect(event)">
+                </div>
+
+                <!-- Selected Quiz File -->
+                <div id="selectedQuizFile" style="margin-top:20px; display:none;">
+                    <div style="background:white; border:1px solid #e0e0e0; border-radius:8px; padding:15px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <div style="font-size:24px;">📄</div>
+                                <div>
+                                    <div id="quizFileName" style="font-weight:600; color:#333;"></div>
+                                    <div id="quizFileSize" style="font-size:13px; color:#999; margin-top:2px;"></div>
+                                    <div id="quizQuestionCount" style="font-size:13px; color:#1976d2; margin-top:2px; font-weight:500;"></div>
+                                </div>
+                            </div>
+                            <button onclick="clearQuizFile()" style="background:none; border:none; color:#999; font-size:24px; cursor:pointer; padding:5px;"
+                                    title="Remove file">×</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Progress -->
+                <div id="quizUploadProgress" style="display:none; margin-top:20px;">
+                    <div style="width:100%; background:#e0e0e0; border-radius:20px; overflow:hidden; height:8px;">
+                        <div id="quizProgressBar" style="width:0%; background:#1976d2; height:100%; transition:width 0.3s;"></div>
+                    </div>
+                    <div id="quizProgressText" style="text-align: center; margin-top: 8px; font-size: 14px; color: #666;"></div>
+                </div>
+
+                <!-- Upload Button -->
+                <button id="quizUploadBtn" class="btn-primary-moodle" onclick="uploadQuizFile()" style="width: 100%; padding: 15px; font-size: 16px; margin-top:20px;" disabled>
+                    📤 Upload Quiz
+                </button>
+
+                <!-- Download Sample -->
+                <div style="text-align:center; margin-top:15px;">
+                    <button class="btn-moodle" onclick="downloadQuizSample()" style="padding:8px 16px; font-size:14px;">
+                        📥 Download Sample Quiz JSON
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/admin';
         let authToken = localStorage.getItem('adminToken');
@@ -1604,26 +1795,74 @@
         }
 
         // Chat Modal Functions
-        function openChatModal(moduleId, moduleTitle) {
+        async function openChatModal(moduleId, moduleTitle) {
             currentChatModuleId = moduleId;
             currentChatModuleTitle = moduleTitle;
 
             document.getElementById('chatModalTitle').textContent = `Test Chat - ${moduleTitle}`;
             document.getElementById('chatModalSubtitle').textContent = `Module ${moduleId}: Ask questions about uploaded documents`;
 
-            // Reset chat
+            // Clear chat area
             const messagesArea = document.getElementById('chatMessagesArea');
-            messagesArea.innerHTML = `
-                <div class="chat-msg">
-                    <div class="chat-msg-avatar">AI</div>
-                    <div class="chat-msg-bubble">
-                        <div class="chat-msg-text">Hello! I can answer questions about the content uploaded to <strong>${moduleTitle}</strong>. Try asking me about the training materials!</div>
-                        <div class="chat-msg-time">${formatTime()}</div>
-                    </div>
-                </div>
-            `;
+            messagesArea.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;">Loading chat history...</div>';
 
             document.getElementById('chatModal').classList.add('active');
+
+            // Load chat history from database
+            try {
+                const response = await fetch(`/api/chat/history?module_id=${moduleId}&user_id=1&limit=50`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Clear loading message
+                    messagesArea.innerHTML = '';
+
+                    if (data.messages && data.messages.length > 0) {
+                        // Display existing conversation history
+                        data.messages.forEach(msg => {
+                            const sender = msg.role === 'user' ? 'user' : 'assistant';
+                            let sources = null;
+                            if (msg.role === 'assistant' && msg.sources && msg.sources.length > 0) {
+                                // Extract titles and remove duplicates
+                                const allSources = msg.sources.map(s => s.title || 'Unknown');
+                                sources = [...new Set(allSources)];
+                            }
+                            addChatMessage(msg.content, sender, sources);
+                        });
+                    } else {
+                        // Show welcome message if no history
+                        messagesArea.innerHTML = `
+                            <div class="chat-msg">
+                                <div class="chat-msg-avatar">AI</div>
+                                <div class="chat-msg-bubble">
+                                    <div class="chat-msg-text">Hello! I can answer questions about the content uploaded to <strong>${moduleTitle}</strong>. Try asking me about the training materials!</div>
+                                    <div class="chat-msg-time">${formatTime()}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    throw new Error('Failed to load chat history');
+                }
+            } catch (error) {
+                console.error('Error loading chat history:', error);
+                // Show welcome message on error
+                messagesArea.innerHTML = `
+                    <div class="chat-msg">
+                        <div class="chat-msg-avatar">AI</div>
+                        <div class="chat-msg-bubble">
+                            <div class="chat-msg-text">Hello! I can answer questions about the content uploaded to <strong>${moduleTitle}</strong>. Try asking me about the training materials!</div>
+                            <div class="chat-msg-time">${formatTime()}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
             document.getElementById('chatInput').focus();
         }
 
@@ -1633,20 +1872,44 @@
             currentChatModuleTitle = null;
         }
 
-        function clearChatModal() {
+        async function clearChatModal() {
             if (!currentChatModuleId || !currentChatModuleTitle) return;
 
-            if (confirm('Are you sure you want to clear this chat history?')) {
-                const messagesArea = document.getElementById('chatMessagesArea');
-                messagesArea.innerHTML = `
-                    <div class="chat-msg">
-                        <div class="chat-msg-avatar">AI</div>
-                        <div class="chat-msg-bubble">
-                            <div class="chat-msg-text">Hello! I can answer questions about the content uploaded to <strong>${currentChatModuleTitle}</strong>. Try asking me about the training materials!</div>
-                            <div class="chat-msg-time">${formatTime()}</div>
-                        </div>
-                    </div>
-                `;
+            if (confirm('Are you sure you want to clear this chat history? This will delete the conversation memory.')) {
+                try {
+                    // Clear session in database
+                    const response = await fetch(`/api/chat/clear`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            user_id: 1,
+                            module_id: currentChatModuleId
+                        })
+                    });
+
+                    if (response.ok) {
+                        // Clear UI
+                        const messagesArea = document.getElementById('chatMessagesArea');
+                        messagesArea.innerHTML = `
+                            <div class="chat-msg">
+                                <div class="chat-msg-avatar">AI</div>
+                                <div class="chat-msg-bubble">
+                                    <div class="chat-msg-text">Hello! I can answer questions about the content uploaded to <strong>${currentChatModuleTitle}</strong>. Try asking me about the training materials!</div>
+                                    <div class="chat-msg-time">${formatTime()}</div>
+                                </div>
+                            </div>
+                        `;
+                        showSnackbar('Chat history cleared successfully', 'success');
+                    } else {
+                        showSnackbar('Failed to clear chat history', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error clearing chat:', error);
+                    showSnackbar('Error clearing chat history', 'error');
+                }
             }
         }
 
@@ -1693,6 +1956,7 @@
                     body: JSON.stringify({
                         message: message,
                         module_id: currentChatModuleId,
+                        user_id: 1,  // Default user ID for admin portal
                         useContext: true,
                         language: 'english'
                     })
@@ -1708,10 +1972,14 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    // Extract source titles from context
-                    const sources = result.context && result.context.length > 0
-                        ? result.context.map(doc => doc.title || doc.module || 'Unknown')
-                        : null;
+                    // Extract unique source titles from context
+                    let sources = null;
+                    if (result.context && result.context.length > 0) {
+                        // The server already provides title in each context document
+                        const allSources = result.context.map(doc => doc.title || 'Untitled');
+                        // Remove duplicates using Set
+                        sources = [...new Set(allSources)];
+                    }
                     addChatMessage(result.response, 'assistant', sources);
                 } else {
                     addChatMessage('Sorry, I encountered an error. Please try again.', 'assistant');
@@ -1727,6 +1995,63 @@
             }
         }
 
+        // Simple markdown parser for chat messages
+        function parseMarkdown(text) {
+            // Escape HTML first to prevent XSS
+            let html = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            // Parse markdown syntax
+            // Headers (must be at start of line)
+            html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+
+            // Bold: **text** or __text__
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+            // Italic: *text* or _text_ (but not inside bold)
+            html = html.replace(/(?<!\*)\*(?!\*)(.+?)\*(?!\*)/g, '<em>$1</em>');
+            html = html.replace(/(?<!_)_(?!_)(.+?)_(?!_)/g, '<em>$1</em>');
+
+            // Inline code: `code`
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Links: [text](url)
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+            // Bullet lists (- item or * item)
+            html = html.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+            // Numbered lists (1. item, 2. item, etc.)
+            html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+            // Find consecutive <li> tags and wrap in <ol>
+            html = html.replace(/(<li>[\s\S]+?<\/li>)(?!\s*<li>)/g, function(match) {
+                // Only wrap if not already in a list
+                if (!match.includes('<ul>') && !match.includes('<ol>')) {
+                    return '<ol>' + match + '</ol>';
+                }
+                return match;
+            });
+
+            // Paragraphs (double line breaks)
+            html = html.replace(/\n\n/g, '</p><p>');
+            html = '<p>' + html + '</p>';
+
+            // Single line breaks
+            html = html.replace(/\n/g, '<br>');
+
+            // Clean up empty paragraphs
+            html = html.replace(/<p><\/p>/g, '');
+            html = html.replace(/<p>\s*<\/p>/g, '');
+
+            return html;
+        }
+
         function addChatMessage(text, sender, sources = null) {
             const messagesArea = document.getElementById('chatMessagesArea');
             const msgDiv = document.createElement('div');
@@ -1738,15 +2063,18 @@
             if (sources && sources.length > 0) {
                 sourcesHtml = `
                     <div class="chat-sources">
-                        📚 Sources: ${sources.map(s => `<span class="source-badge">${s}</span>`).join('')}
+                        📚 Sources: ${sources.map(s => `<span class="source-badge">${escapeHtml(s)}</span>`).join('')}
                     </div>
                 `;
             }
 
+            // For user messages, just escape HTML. For AI messages, parse markdown
+            const formattedText = sender === 'user' ? escapeHtml(text) : parseMarkdown(text);
+
             msgDiv.innerHTML = `
                 <div class="chat-msg-avatar">${avatar.substring(0, 2)}</div>
                 <div class="chat-msg-bubble">
-                    <div class="chat-msg-text">${escapeHtml(text)}</div>
+                    <div class="chat-msg-text">${formattedText}</div>
                     ${sourcesHtml}
                     <div class="chat-msg-time">${formatTime()}</div>
                 </div>
@@ -1787,6 +2115,241 @@
             document.getElementById('uploadModal').classList.remove('active');
             currentUploadModuleId = null;
             selectedFiles = [];
+        }
+
+        // Quiz Upload Modal Functions
+        let currentQuizUploadModuleId = null;
+        let selectedQuizFile = null;
+        let quizData = null;
+
+        function openQuizUploadModal(moduleId, moduleTitle) {
+            currentQuizUploadModuleId = moduleId;
+            document.getElementById('quizUploadModalTitle').textContent = `Upload Quiz - ${moduleTitle}`;
+            document.getElementById('quizUploadModalSubtitle').textContent = `Module ${moduleId}: Upload quiz questions in JSON format`;
+            document.getElementById('quizUploadModal').classList.add('active');
+
+            // Reset state
+            clearQuizFile();
+        }
+
+        function closeQuizUploadModal() {
+            document.getElementById('quizUploadModal').classList.remove('active');
+            currentQuizUploadModuleId = null;
+            clearQuizFile();
+        }
+
+        function clearQuizFile() {
+            selectedQuizFile = null;
+            quizData = null;
+            document.getElementById('selectedQuizFile').style.display = 'none';
+            document.getElementById('quizUploadBtn').disabled = true;
+            document.getElementById('quizUploadProgress').style.display = 'none';
+            document.getElementById('quizFileInput').value = '';
+        }
+
+        function handleQuizDragOver(event) {
+            event.preventDefault();
+            const dropZone = document.getElementById('quizDropZone');
+            dropZone.style.borderColor = '#1976d2';
+            dropZone.style.background = '#e3f2fd';
+        }
+
+        function handleQuizDragLeave(event) {
+            const dropZone = document.getElementById('quizDropZone');
+            dropZone.style.borderColor = '#ccc';
+            dropZone.style.background = '#f9f9f9';
+        }
+
+        function handleQuizDrop(event) {
+            event.preventDefault();
+            const dropZone = document.getElementById('quizDropZone');
+            dropZone.style.borderColor = '#ccc';
+            dropZone.style.background = '#f9f9f9';
+
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                processQuizFile(files[0]);
+            }
+        }
+
+        function handleQuizFileSelect(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                processQuizFile(files[0]);
+            }
+        }
+
+        async function processQuizFile(file) {
+            // Validate file type
+            if (!file.name.endsWith('.json')) {
+                showSnackbar('❌ Only .json files are supported', 'error');
+                return;
+            }
+
+            // Validate file size (max 1MB)
+            if (file.size > 1024 * 1024) {
+                showSnackbar('❌ File too large. Maximum size is 1MB', 'error');
+                return;
+            }
+
+            try {
+                // Read and parse JSON
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                // Validate quiz structure
+                if (!data.questions || !Array.isArray(data.questions)) {
+                    showSnackbar('❌ Invalid quiz format: "questions" array is required', 'error');
+                    return;
+                }
+
+                if (data.questions.length === 0) {
+                    showSnackbar('❌ Quiz must contain at least one question', 'error');
+                    return;
+                }
+
+                // Validate each question
+                for (let i = 0; i < data.questions.length; i++) {
+                    const q = data.questions[i];
+                    if (!q.question || !q.options || !Array.isArray(q.options)) {
+                        showSnackbar(`❌ Question ${i + 1}: Invalid format`, 'error');
+                        return;
+                    }
+                    if (q.options.length < 2 || q.options.length > 4) {
+                        showSnackbar(`❌ Question ${i + 1}: Must have 2-4 options`, 'error');
+                        return;
+                    }
+                    if (q.correctAnswer === undefined || q.correctAnswer < 0 || q.correctAnswer >= q.options.length) {
+                        showSnackbar(`❌ Question ${i + 1}: Invalid correctAnswer index`, 'error');
+                        return;
+                    }
+                }
+
+                // Store data
+                selectedQuizFile = file;
+                quizData = data;
+
+                // Update UI
+                document.getElementById('quizFileName').textContent = file.name;
+                document.getElementById('quizFileSize').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+                document.getElementById('quizQuestionCount').textContent = `✓ ${data.questions.length} questions validated`;
+                document.getElementById('selectedQuizFile').style.display = 'block';
+                document.getElementById('quizUploadBtn').disabled = false;
+
+                showSnackbar(`✓ Quiz validated: ${data.questions.length} questions`, 'success');
+
+            } catch (error) {
+                console.error('Error processing quiz file:', error);
+                showSnackbar('❌ Invalid JSON file: ' + error.message, 'error');
+            }
+        }
+
+        async function uploadQuizFile() {
+            if (!selectedQuizFile || !quizData || !currentQuizUploadModuleId) {
+                showSnackbar('❌ Please select a quiz file first', 'error');
+                return;
+            }
+
+            const uploadBtn = document.getElementById('quizUploadBtn');
+            const progressDiv = document.getElementById('quizUploadProgress');
+            const progressBar = document.getElementById('quizProgressBar');
+            const progressText = document.getElementById('quizProgressText');
+
+            try {
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = 'Uploading...';
+                progressDiv.style.display = 'block';
+                progressBar.style.width = '30%';
+                progressText.textContent = 'Uploading quiz...';
+
+                const response = await fetch(`${API_BASE}/modules/${currentQuizUploadModuleId}/quiz/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(quizData)
+                });
+
+                progressBar.style.width = '70%';
+
+                const result = await response.json();
+
+                if (result.success) {
+                    progressBar.style.width = '100%';
+                    progressText.textContent = `✅ Quiz uploaded: ${quizData.questions.length} questions`;
+
+                    showSnackbar(`✅ Quiz uploaded successfully!`, 'success');
+
+                    setTimeout(() => {
+                        closeQuizUploadModal();
+                        loadCourses(); // Reload to show updated data
+                    }, 1500);
+
+                } else {
+                    throw new Error(result.error || 'Upload failed');
+                }
+
+            } catch (error) {
+                console.error('Quiz upload error:', error);
+                showSnackbar('❌ Upload failed: ' + error.message, 'error');
+                progressDiv.style.display = 'none';
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '📤 Upload Quiz';
+            }
+        }
+
+        function downloadQuizSample() {
+            const sample = {
+                "questions": [
+                    {
+                        "question": "What is the PRIMARY goal of effective classroom management?",
+                        "options": [
+                            "To maintain strict discipline",
+                            "To create a positive learning environment",
+                            "To reduce teacher workload",
+                            "To increase test scores"
+                        ],
+                        "correctAnswer": 1,
+                        "explanation": "The primary goal is to create a positive learning environment where students feel safe, engaged, and motivated to learn."
+                    },
+                    {
+                        "question": "Which strategy is MOST effective for preventing classroom disruptions?",
+                        "options": [
+                            "Setting clear expectations from day one",
+                            "Using harsh punishments",
+                            "Ignoring minor misbehaviors",
+                            "Letting students create their own rules"
+                        ],
+                        "correctAnswer": 0,
+                        "explanation": "Setting clear expectations and consistently enforcing them prevents confusion and reduces disruptions."
+                    },
+                    {
+                        "question": "What does 'proximity control' mean in classroom management?",
+                        "options": [
+                            "Keeping students close to the teacher's desk",
+                            "Moving near students to redirect behavior without verbal intervention",
+                            "Controlling classroom temperature",
+                            "Managing classroom seating arrangements"
+                        ],
+                        "correctAnswer": 1,
+                        "explanation": "Proximity control involves the teacher physically moving closer to students to prevent or redirect off-task behavior non-verbally."
+                    }
+                ]
+            };
+
+            const blob = new Blob([JSON.stringify(sample, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sample-quiz.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showSnackbar('📥 Sample quiz downloaded', 'success');
         }
 
         function handleDrop(event) {
@@ -1964,7 +2527,7 @@
 
         async function loadCourses() {
             try {
-                const response = await fetch(`${API_BASE}/courses`, {
+                const response = await fetch(`${API_BASE}/portal/courses`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
@@ -1987,39 +2550,45 @@
                 return;
             }
 
-            grid.innerHTML = courses.map(course => `
-                <div class="module-card">
-                    <div class="module-card-header">
-                        <div class="module-number">${course.course_code || 'COURSE'}</div>
-                        <div class="module-title">${course.course_name}</div>
-                        <div class="module-description">${course.description || 'No description'}</div>
-                    </div>
-                    <div class="module-card-body">
-                        <div class="module-stats">
-                            <div class="module-stat">
-                                <div class="module-stat-value">${course.module_count || 0}</div>
-                                <div class="module-stat-label">Modules</div>
+            grid.innerHTML = courses.map(course => {
+                // Safely get course name (handle both course_name and title)
+                const courseName = (course.course_name || course.title || 'Untitled Course').replace(/'/g, "\\'");
+                const courseCode = course.course_code || course.code || 'COURSE';
+
+                return `
+                    <div class="module-card">
+                        <div class="module-card-header">
+                            <div class="module-number">${courseCode}</div>
+                            <div class="module-title">${course.course_name || course.title || 'Untitled Course'}</div>
+                            <div class="module-description">${course.description || 'No description'}</div>
+                        </div>
+                        <div class="module-card-body">
+                            <div class="module-stats">
+                                <div class="module-stat">
+                                    <div class="module-stat-value">${course.module_count || 0}</div>
+                                    <div class="module-stat-label">Modules</div>
+                                </div>
+                                <div class="module-stat">
+                                    <div class="module-stat-value" style="font-size:16px; color:#5f6368;">${course.category || '-'}</div>
+                                    <div class="module-stat-label">Category</div>
+                                </div>
+                                <div class="module-stat">
+                                    <div class="module-stat-value" style="font-size:16px; color:#5f6368;">${course.source_display || 'Portal'}</div>
+                                    <div class="module-stat-label">Source</div>
+                                </div>
                             </div>
-                            <div class="module-stat">
-                                <div class="module-stat-value" style="font-size:16px; color:#5f6368;">${course.category || '-'}</div>
-                                <div class="module-stat-label">Category</div>
-                            </div>
-                            <div class="module-stat">
-                                <div class="module-stat-value" style="font-size:16px; color:#5f6368;">${course.source_display || 'Portal'}</div>
-                                <div class="module-stat-label">Source</div>
+                            <div class="module-actions" style="display:grid; grid-template-columns:1fr auto; gap:8px;">
+                                <button class="btn-primary-moodle" onclick="viewCourseModules(${course.id}, '${courseName}')" style="border-radius:20px;">
+                                    📋 View Modules
+                                </button>
+                                <button class="btn-icon btn-icon-danger" onclick="deleteCourse(${course.id}, '${courseName}');" title="Delete course">
+                                    🗑️
+                                </button>
                             </div>
                         </div>
-                        <div class="module-actions" style="display:grid; grid-template-columns:1fr auto; gap:8px;">
-                            <button class="btn-primary-moodle" onclick="viewCourseModules(${course.id}, '${course.course_name}')" style="border-radius:20px;">
-                                📋 View Modules
-                            </button>
-                            <button class="btn-icon btn-icon-danger" onclick="deleteCourse(${course.id}, '${course.course_name.replace(/'/g, "\\'")}');" title="Delete course">
-                                🗑️
-                            </button>
-                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // Course Modal Functions
@@ -2572,14 +3141,14 @@
 
         async function loadCourseModules(courseId) {
             try {
-                const response = await fetch(`${API_BASE}/portal/courses/${courseId}`, {
+                const response = await fetch(`${API_BASE}/portal/courses/${courseId}/modules`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
                 if (!response.ok) throw new Error('Failed to load course modules');
 
                 const result = await response.json();
-                const modules = result.data.modules || [];
+                const modules = result.data || [];
 
                 const modulesList = document.getElementById('courseModulesList');
 
@@ -2661,8 +3230,8 @@
                             <!-- Action Buttons -->
                             <div style="display:flex; gap:10px; border-top:2px dashed #ddd; padding-top:15px;">
                                 <button class="btn-primary-moodle" onclick="openUploadModal(${module.id}, '${module.module_name.replace(/'/g, "\\'")}')">📤 Upload Content</button>
+                                <button class="btn-primary-moodle" onclick="openQuizUploadModal(${module.id}, '${module.module_name.replace(/'/g, "\\'")}')">📝 Upload Quiz</button>
                                 <button class="btn-moodle" onclick="openChatModal(${module.id}, '${module.module_name.replace(/'/g, "\\'")}')">💬 AI Assistant</button>
-                                <button class="btn-moodle" onclick="testModuleQuiz(${module.id})">📝 Test Quiz</button>
                                 <button class="btn-moodle" onclick="toggleFilesSection(${module.id})" id="toggle_files_${module.id}">👁️ View Files</button>
                             </div>
                         </div>

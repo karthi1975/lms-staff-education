@@ -89,3 +89,6 @@ public/admin/courses.html
 
 # Routes temporary files
 routes/course.routes.js
+# Vertex AI Service Account Keys
+credentials/
+*.json
