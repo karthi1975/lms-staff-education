@@ -25,25 +25,32 @@ class MoodleOrchestratorService {
    */
   async initialize() {
     try {
-      // Load courses from database
+      // Load courses from database (use 'courses' table, not 'moodle_courses')
       const coursesResult = await postgresService.query(`
-        SELECT id, moodle_course_id, course_name, course_code
-        FROM moodle_courses
-        ORDER BY id
-      `);
+        SELECT id, code, title, description
+        FROM courses
+        WHERE is_active = true
+        ORDER BY sequence_order
+      `).catch(err => {
+        logger.warn('Courses table not ready, skipping moodle orchestrator initialization');
+        return { rows: [] };
+      });
 
       this.courses = [];
 
       for (const course of coursesResult.rows) {
-        // Load modules for this course
+        // Load modules for this course (use 'modules' table, not 'moodle_modules')
         const modulesResult = await postgresService.query(`
-          SELECT id, moodle_module_id, module_name, module_type, sequence_order
-          FROM moodle_modules
-          WHERE moodle_course_id = $1
+          SELECT id, code, title, description, sequence_order
+          FROM modules
+          WHERE course_id = $1
           ORDER BY sequence_order
-        `, [course.moodle_course_id]);
+        `, [course.id]).catch(err => {
+          logger.warn(`Modules table not ready for course ${course.id}`);
+          return { rows: [] };
+        });
 
-        // Load quizzes for each module
+        // Load quizzes for each module (check moodle_quizzes for compatibility)
         const modules = [];
         for (const module of modulesResult.rows) {
           const quizResult = await postgresService.query(`
@@ -51,23 +58,25 @@ class MoodleOrchestratorService {
             FROM moodle_quizzes
             WHERE moodle_module_id = $1
             LIMIT 1
-          `, [module.id]);
+          `, [module.id]).catch(err => {
+            logger.warn(`Quizzes table not ready for module ${module.id}`);
+            return { rows: [] };
+          });
 
           modules.push({
             id: module.id,
-            moodle_module_id: module.moodle_module_id,
-            name: module.module_name,
-            type: module.module_type,
+            name: module.title,
+            description: module.description,
             has_quiz: quizResult.rows.length > 0,
-            quiz_id: quizResult.rows.length > 0 ? quizResult.rows[0].moodle_quiz_id : null
+            quiz_id: quizResult.rows.length > 0 ? quizResult.rows[0].id : null
           });
         }
 
         this.courses.push({
           id: course.id,
-          moodle_course_id: course.moodle_course_id,
-          name: course.course_name,
-          code: course.course_code,
+          name: course.title,
+          code: course.code,
+          description: course.description,
           modules
         });
       }
@@ -193,16 +202,17 @@ class MoodleOrchestratorService {
    */
   async handleCourseSelection(userId, message, context) {
     // Parse course selection (could be list response or text)
-    const courseId = this.parseCourseFromMessage(message);
+    const courseIndex = this.parseCourseFromMessage(message);
 
-    if (!courseId) {
+    if (courseIndex === null || courseIndex < 1 || courseIndex > this.courses.length) {
       return {
         text: "Please select a course by number:\n" +
               this.courses.map((c, i) => `${i + 1}. ${c.name}`).join('\n')
       };
     }
 
-    const course = this.courses.find(c => c.id === courseId);
+    // Get course by index (1-based)
+    const course = this.courses[courseIndex - 1];
     if (!course) {
       return { text: "Invalid course selection. Please try again." };
     }
@@ -831,25 +841,19 @@ class MoodleOrchestratorService {
   }
 
   /**
-   * Parse course from message
+   * Parse course from message (returns 1-based index, not course ID)
    */
   parseCourseFromMessage(message) {
     const lowerMsg = message.toLowerCase().trim();
 
-    // Check for course ID from list response
-    if (message.startsWith('course_')) {
-      const id = parseInt(message.replace('course_', ''));
-      return id;
-    }
-
-    // Check for number
-    if (lowerMsg.match(/^[12]$/)) {
+    // Check for number (1-9)
+    if (lowerMsg.match(/^\d+$/)) {
       return parseInt(lowerMsg);
     }
 
     // Check for course name
     if (lowerMsg.includes('business')) return 1;
-    if (lowerMsg.includes('teacher')) return 2;
+    if (lowerMsg.includes('teacher')) return 1;
 
     return null;
   }

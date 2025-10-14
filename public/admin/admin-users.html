@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Users Management - Teachers Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #1f2937;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .breadcrumb {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            color: #9ca3af;
+        }
+
+        .search-filter {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-filter input, .search-filter select {
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+        }
+
+        .search-filter input {
+            flex: 1;
+        }
+
+        .users-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f9fafb;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-admin {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-instructor {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-viewer {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .badge-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+        }
+
+        .form-group small {
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="/admin/lms-dashboard.html">🏠 Home</a>
+            <span class="breadcrumb-separator">›</span>
+            <span class="breadcrumb-current">Admin Users</span>
+        </nav>
+
+        <header>
+            <h1>👨‍💼 Admin Users Management</h1>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="openAddAdminModal()">➕ Add Admin User</button>
+                <a href="lms-dashboard.html" class="btn btn-secondary">← Back to Dashboard</a>
+            </div>
+        </header>
+
+        <div id="alert" style="display: none;"></div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="totalAdmins">0</div>
+                <div class="stat-label">Total Admin Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeAdmins">0</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="adminCount">0</div>
+                <div class="stat-label">Admin Role</div>
+            </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="search-filter">
+            <input type="text" id="searchInput" placeholder="🔍 Search by name or email..." onkeyup="filterUsers()">
+            <select id="roleFilter" onchange="filterUsers()">
+                <option value="">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="instructor">Instructor</option>
+                <option value="viewer">Viewer</option>
+            </select>
+            <select id="statusFilter" onchange="filterUsers()">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+
+        <!-- Users Table -->
+        <div class="users-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Last Login</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add Admin User Modal -->
+    <div id="addAdminModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Add New Admin User</div>
+            <div class="form-group">
+                <label>First Name *</label>
+                <input type="text" id="firstName" placeholder="Enter first name" required>
+            </div>
+            <div class="form-group">
+                <label>Last Name *</label>
+                <input type="text" id="lastName" placeholder="Enter last name" required>
+            </div>
+            <div class="form-group">
+                <label>Email *</label>
+                <input type="email" id="email" placeholder="admin@school.edu" required>
+                <small>Will be used for login</small>
+            </div>
+            <div class="form-group">
+                <label>Password *</label>
+                <input type="password" id="password" placeholder="Minimum 8 characters" required>
+                <small>Min 8 characters, must include uppercase, lowercase, and number</small>
+            </div>
+            <div class="form-group">
+                <label>Role *</label>
+                <select id="role">
+                    <option value="viewer">Viewer (Read-only access)</option>
+                    <option value="instructor">Instructor (Can manage content)</option>
+                    <option value="admin">Admin (Full access)</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeAddAdminModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addAdminUser()">Add Admin User</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Delete Admin User?</div>
+            <p style="margin: 15px 0; color: #6b7280;">Are you sure you want to delete this admin user? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allAdmins = [];
+        let userToDelete = null;
+
+        // Load admin users on page load
+        window.onload = loadAdminUsers;
+
+        async function loadAdminUsers() {
+            try {
+                const authToken = localStorage.getItem('adminToken');
+
+                if (!authToken) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const response = await fetch('/api/admin/admin-users', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const result = await response.json();
+
+                if (!result.success) {
+                    showAlert(result.error || 'Failed to load admin users', 'error');
+                    return;
+                }
+
+                allAdmins = result.data || [];
+                displayUsers(allAdmins);
+                updateStats();
+            } catch (error) {
+                console.error('Error loading admin users:', error);
+                showAlert('Error loading admin users', 'error');
+            }
+        }
+
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No admin users found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => {
+                const lastLogin = user.last_login_at
+                    ? new Date(user.last_login_at).toLocaleDateString()
+                    : 'Never';
+
+                const roleBadge = {
+                    'admin': '<span class="badge badge-admin">Admin</span>',
+                    'instructor': '<span class="badge badge-instructor">Instructor</span>',
+                    'viewer': '<span class="badge badge-viewer">Viewer</span>'
+                };
+
+                const statusBadge = user.is_active
+                    ? '<span class="badge badge-active">Active</span>'
+                    : '<span class="badge badge-inactive">Inactive</span>';
+
+                return `
+                    <tr>
+                        <td>${user.name || 'N/A'}</td>
+                        <td>${user.email || 'N/A'}</td>
+                        <td>${roleBadge[user.role] || user.role}</td>
+                        <td>${lastLogin}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="toggleUserStatus(${user.id}, ${user.is_active})">${user.is_active ? 'Deactivate' : 'Activate'}</button>
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="openDeleteModal(${user.id}, '${user.name}')">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('totalAdmins').textContent = allAdmins.length;
+            document.getElementById('activeAdmins').textContent = allAdmins.filter(u => u.is_active).length;
+            document.getElementById('adminCount').textContent = allAdmins.filter(u => u.role === 'admin').length;
+        }
+
+        function filterUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            let filtered = allAdmins.filter(user => {
+                const matchesSearch = (user.name || '').toLowerCase().includes(searchTerm) ||
+                    (user.email || '').toLowerCase().includes(searchTerm);
+
+                if (!matchesSearch) return false;
+
+                if (roleFilter && user.role !== roleFilter) return false;
+
+                if (statusFilter === 'active' && !user.is_active) return false;
+                if (statusFilter === 'inactive' && user.is_active) return false;
+
+                return true;
+            });
+
+            displayUsers(filtered);
+        }
+
+        function openAddAdminModal() {
+            document.getElementById('addAdminModal').classList.add('active');
+        }
+
+        function closeAddAdminModal() {
+            document.getElementById('addAdminModal').classList.remove('active');
+            document.getElementById('firstName').value = '';
+            document.getElementById('lastName').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('role').value = 'viewer';
+        }
+
+        async function addAdminUser() {
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+
+            if (!firstName || !lastName || !email || !password) {
+                showAlert('Please fill in all required fields', 'error');
+                return;
+            }
+
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showAlert('Please enter a valid email address', 'error');
+                return;
+            }
+
+            // Validate password
+            if (password.length < 8) {
+                showAlert('Password must be at least 8 characters', 'error');
+                return;
+            }
+
+            if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+                showAlert('Password must include uppercase, lowercase, and number', 'error');
+                return;
+            }
+
+            try {
+                const authToken = localStorage.getItem('adminToken');
+
+                const response = await fetch('/api/admin/admin-users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        name: `${firstName} ${lastName}`,
+                        email,
+                        password,
+                        role
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(`✅ Admin user created successfully! Email: ${email}`, 'success');
+                    closeAddAdminModal();
+                    loadAdminUsers();
+                } else {
+                    showAlert(result.error || 'Failed to create admin user', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding admin user:', error);
+                showAlert('Error adding admin user: ' + error.message, 'error');
+            }
+        }
+
+        async function toggleUserStatus(userId, isActive) {
+            try {
+                const authToken = localStorage.getItem('adminToken');
+
+                const response = await fetch(`/api/admin/admin-users/${userId}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(`User ${isActive ? 'deactivated' : 'activated'} successfully`, 'success');
+                    loadAdminUsers();
+                } else {
+                    showAlert(result.error || 'Failed to update status', 'error');
+                }
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                showAlert('Error updating user status', 'error');
+            }
+        }
+
+        function openDeleteModal(userId, userName) {
+            userToDelete = userId;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            userToDelete = null;
+        }
+
+        async function confirmDelete() {
+            if (!userToDelete) return;
+
+            try {
+                const authToken = localStorage.getItem('adminToken');
+
+                const response = await fetch(`/api/admin/admin-users/${userToDelete}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Admin user deleted successfully', 'success');
+                    closeDeleteModal();
+                    loadAdminUsers();
+                } else {
+                    showAlert(result.error || 'Failed to delete user', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showAlert('Error deleting user', 'error');
+            }
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

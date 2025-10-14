@@ -1,0 +1,12 @@
+How it Works:
+
+  1. Click "Add User" button on the User Management page
+  2. WhatsApp User tab is selected by default (blue underline)
+  3. Enter Full Name (e.g., "John Smith")
+  4. Enter WhatsApp Number in E.164 format:
+    - Must start with +
+    - Include country code
+    - Examples shown: USA (+18016809129), Tanzania (+255123456789), Kenya (+254123456789)
+  5. Click "Send Verification Code"
+  6. User receives a code via WhatsApp
+  7. User replies "HI [code]" to activate their account

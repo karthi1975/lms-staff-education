@@ -74,6 +74,20 @@ class VerificationService {
         createdAt: new Date()
       });
 
+      // Get available courses from database
+      const coursesResult = await postgresService.query(
+        'SELECT code, title FROM courses ORDER BY sequence_order LIMIT 5'
+      );
+
+      let coursesText = '';
+      if (coursesResult.rows.length > 0) {
+        coursesText = coursesResult.rows.map((course, idx) =>
+          `${idx + 1}️⃣ ${course.title}`
+        ).join('\n');
+      } else {
+        coursesText = '📚 Training courses available after verification';
+      }
+
       // Send verification code via WhatsApp
       const message = `🎓 *Welcome to Teachers Training!*\n\n` +
         `Hello ${name}! 👋\n\n` +
@@ -81,12 +95,8 @@ class VerificationService {
         `To activate your account, reply with:\n` +
         `*HI ${code}*\n\n` +
         `This code expires in ${this.CODE_EXPIRY_MINUTES} minutes.\n\n` +
-        `After verification, you'll have access to 5 training modules:\n` +
-        `1️⃣ Introduction to Teaching\n` +
-        `2️⃣ Classroom Management\n` +
-        `3️⃣ Lesson Planning\n` +
-        `4️⃣ Assessment Strategies\n` +
-        `5️⃣ Technology in Education`;
+        `After verification, you'll have access to:\n` +
+        `${coursesText}`;
 
       await twilioWhatsAppService.sendMessage(normalizedPhone, message);
 
@@ -174,21 +184,35 @@ class VerificationService {
       }
 
       // Code is correct - create user account
+      // Get the first available module from any course
+      const firstModuleResult = await postgresService.query(
+        `SELECT m.id FROM modules m
+         JOIN courses c ON m.course_id = c.id
+         ORDER BY c.sequence_order, m.sequence_order
+         LIMIT 1`
+      );
+
+      const firstModuleId = firstModuleResult.rows.length > 0
+        ? firstModuleResult.rows[0].id
+        : null;
+
       const result = await postgresService.query(
         `INSERT INTO users (whatsapp_id, name, current_module_id, created_at, updated_at)
-         VALUES ($1, $2, 1, NOW(), NOW())
+         VALUES ($1, $2, $3, NOW(), NOW())
          RETURNING id, whatsapp_id, name`,
-        [normalizedPhone, verificationData.name]
+        [normalizedPhone, verificationData.name, firstModuleId]
       );
 
       const user = result.rows[0];
 
-      // Initialize Module 1 progress
-      await postgresService.query(
-        `INSERT INTO user_progress (user_id, module_id, status, progress_percentage, started_at, last_activity_at)
-         VALUES ($1, 1, 'not_started', 0, NOW(), NOW())`,
-        [user.id]
-      );
+      // Initialize first module progress (if exists)
+      if (firstModuleId) {
+        await postgresService.query(
+          `INSERT INTO user_progress (user_id, module_id, status, progress_percentage, started_at, last_activity_at)
+           VALUES ($1, $2, 'not_started', 0, NOW(), NOW())`,
+          [user.id, firstModuleId]
+        );
+      }
 
       // Clean up verification code
       this.verificationCodes.delete(normalizedPhone);
@@ -217,22 +241,36 @@ class VerificationService {
    */
   async sendWelcomeMessage(phoneNumber, name) {
     try {
+      // Get available courses and their modules
+      const coursesResult = await postgresService.query(`
+        SELECT c.id, c.code, c.title,
+               (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
+        FROM courses c
+        ORDER BY c.sequence_order
+        LIMIT 5
+      `);
+
+      let coursesText = '';
+      if (coursesResult.rows.length > 0) {
+        coursesText = coursesResult.rows.map((course, idx) => {
+          const moduleText = course.module_count > 0 ? ` (${course.module_count} modules)` : '';
+          return `${idx + 1}️⃣ ${course.title}${moduleText}`;
+        }).join('\n');
+      } else {
+        coursesText = '📚 Courses coming soon!';
+      }
+
       const welcomeMessage = `🎉 *Account Activated!*\n\n` +
         `Welcome ${name}! 👋\n\n` +
         `Your account has been successfully activated. You now have access to the Teachers Training program!\n\n` +
-        `*📚 Available Modules:*\n` +
-        `1️⃣ Introduction to Teaching\n` +
-        `2️⃣ Classroom Management\n` +
-        `3️⃣ Lesson Planning\n` +
-        `4️⃣ Assessment Strategies\n` +
-        `5️⃣ Technology in Education\n\n` +
+        `*📚 Available Courses:*\n` +
+        `${coursesText}\n\n` +
         `*🚀 Getting Started:*\n` +
-        `• Type *"module 1"* to begin your first module\n` +
-        `• Ask me any teaching questions anytime\n` +
+        `• Ask me questions about the course content\n` +
+        `• Type *"courses"* to see available courses\n` +
         `• Type *"progress"* to track your learning\n` +
         `• Type *"help"* for all available commands\n\n` +
-        `Complete modules in order to unlock the next one. Each module ends with a quiz!\n\n` +
-        `Ready to start? Type *"module 1"* now! 📖`;
+        `I'm here to help you learn! Ask me anything about the course material. 📖`;
 
       await twilioWhatsAppService.sendMessage(phoneNumber, welcomeMessage);
 

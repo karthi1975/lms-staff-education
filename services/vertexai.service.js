@@ -22,9 +22,29 @@ class VertexAIService {
 
   async getAccessToken() {
     try {
-      // First try to use Application Default Credentials file directly
       const fs = require('fs');
       const os = require('os');
+
+      // FIRST: Try GCP Metadata Server (for Compute Engine, Cloud Run, etc.)
+      // This automatically uses the service account attached to the VM/container
+      try {
+        const metadataUrl = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token';
+        const metadataResponse = await axios.get(metadataUrl, {
+          headers: { 'Metadata-Flavor': 'Google' },
+          timeout: 2000 // Fast timeout if not on GCP
+        });
+
+        if (metadataResponse.data && metadataResponse.data.access_token) {
+          logger.info('✅ Successfully obtained access token from GCP Metadata Server (Compute Engine)');
+          logger.info(`   Using service account: ${metadataResponse.data.email || 'default'}`);
+          return metadataResponse.data.access_token;
+        }
+      } catch (metadataError) {
+        // Not running on GCP or no service account attached - this is normal for local dev
+        logger.debug('Metadata server not available (not on GCP Compute Engine), trying other methods...');
+      }
+
+      // SECOND: Try to use Application Default Credentials file directly
 
       // Try multiple possible paths for ADC
       const adcPaths = [

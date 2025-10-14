@@ -113,10 +113,37 @@ CREATE TABLE IF NOT EXISTS coaching_events (
 CREATE INDEX idx_coaching_user ON coaching_events(user_id, sent_at);
 
 -- ============================================================
+-- COURSES TABLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS courses (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    category VARCHAR(100),
+    difficulty_level VARCHAR(20),
+    duration_weeks INTEGER,
+    sequence_order INTEGER DEFAULT 0,
+    moodle_course_id INTEGER,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_courses_sequence ON courses(sequence_order);
+CREATE INDEX idx_courses_active ON courses(is_active);
+
+CREATE TRIGGER update_courses_updated_at
+    BEFORE UPDATE ON courses
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
 -- MODULES TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS modules (
     id SERIAL PRIMARY KEY,
+    course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
     description TEXT,
     sequence_order INTEGER NOT NULL,
@@ -126,6 +153,7 @@ CREATE TABLE IF NOT EXISTS modules (
 );
 
 CREATE INDEX idx_modules_sequence ON modules(sequence_order);
+CREATE INDEX idx_modules_course ON modules(course_id);
 
 CREATE TRIGGER update_modules_updated_at
     BEFORE UPDATE ON modules
@@ -179,43 +207,7 @@ CREATE INDEX idx_progress_status ON user_progress(status);
 -- ============================================================
 -- SEED DATA
 -- ============================================================
-
--- Insert admin users with bcrypt hashed passwords
--- Password for all test users: "Admin123!"
--- Hash generated with: bcrypt.hash('Admin123!', 10)
-
-INSERT INTO admin_users (email, password_hash, name, role) VALUES
-('admin@school.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'System Admin', 'admin'),
-('principal@lincoln.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Dr. Margaret Anderson', 'admin'),
-('coordinator@district.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'John Williams', 'instructor'),
-('supervisor@training.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Lisa Chen', 'admin'),
-('instructor1@school.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Robert Johnson', 'instructor'),
-('instructor2@school.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Sarah Miller', 'instructor'),
-('viewer@district.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'James Thompson', 'viewer'),
-('qa_lead@training.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Emily Davis', 'admin'),
-('support@school.edu', '$2b$10$mDRhU21qYaVckm.qkvrN..Hpb150MAUMtWlfr1wdw64fndnjdoKEa', 'Michael Brown', 'viewer')
-ON CONFLICT (email) DO NOTHING;
-
--- Insert modules
-INSERT INTO modules (title, description, sequence_order) VALUES
-('Introduction to Teaching', 'Foundational concepts and principles of effective teaching', 1),
-('Classroom Management', 'Strategies for creating and maintaining positive learning environments', 2),
-('Lesson Planning', 'Designing effective, engaging, and standards-aligned lessons', 3),
-('Assessment Strategies', 'Formative and summative assessment techniques', 4),
-('Technology in Education', 'Integrating educational technology effectively', 5)
-ON CONFLICT DO NOTHING;
-
--- Insert sample WhatsApp users
-INSERT INTO users (whatsapp_id, name, current_module_id) VALUES
-('+1234567890', 'John Teacher', 1),
-('+0987654321', 'Jane Educator', 2),
-('+14155551234', 'Sarah Johnson', 3),
-('+14155551235', 'Michael Chen', 2),
-('+14155551236', 'Emily Rodriguez', 4),
-('+14155551237', 'David Kim', 1),
-('+14155551238', 'Maria Garcia', 2),
-('+14155551239', 'James Wilson', 3)
-ON CONFLICT (whatsapp_id) DO NOTHING;
+-- NO SEED DATA - Create admin users via API/curl after deployment
 
 -- Grant permissions
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO teachers_user;
