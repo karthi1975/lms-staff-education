@@ -121,45 +121,10 @@ app.get('/health-simple', (req, res) => {
   });
 });
 
-// WhatsApp Webhook Verification
-app.get('/webhook', (req, res) => {
-  try {
-    const challenge = whatsappService.verifyWebhook(req);
-    res.send(challenge);
-  } catch (error) {
-    logger.error('Webhook verification failed:', error);
-    res.sendStatus(403);
-  }
-});
-
-// WhatsApp Webhook Messages
-app.post('/webhook', async (req, res) => {
-  try {
-    console.log('Webhook received:', JSON.stringify(req.body, null, 2));
-    logger.info('Webhook received');
-
-    // Acknowledge receipt immediately
-    res.sendStatus(200);
-
-    // Process message asynchronously
-    const messageData = whatsappService.extractMessage(req.body);
-    console.log('Extracted message:', messageData);
-    logger.info('Extracted message:', messageData);
-
-    if (messageData) {
-      console.log('Processing WhatsApp message...');
-      // Use new WhatsApp handler for quiz and module flow
-      await whatsappHandler.handleMessage(messageData);
-      console.log('Message processed successfully');
-    } else {
-      console.log('No message data extracted from webhook');
-    }
-  } catch (error) {
-    console.error('Error processing webhook:', error);
-    logger.error('Error processing webhook:', error);
-    logger.error('Error stack:', error.stack);
-  }
-});
+// OLD WEBHOOK ENDPOINTS - DISABLED
+// Using /webhook/twilio instead (see routes/twilio-webhook.routes.js)
+// app.get('/webhook', ...)
+// app.post('/webhook', ...)
 
 // WhatsApp Message Status Callback (for Twilio)
 app.post('/webhook/status', async (req, res) => {
