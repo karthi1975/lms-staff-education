@@ -53,9 +53,10 @@ RUN npm ci --only=production && \
 # Copy application code (excluding node_modules from builder)
 COPY --chown=nodejs:nodejs . .
 
-# Create necessary directories
+# Create necessary directories with proper permissions
 RUN mkdir -p /app/cache /app/logs /app/uploads && \
-    chown -R nodejs:nodejs /app
+    chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app/uploads /app/logs /app/cache
 
 # Switch to non-root user
 USER nodejs
