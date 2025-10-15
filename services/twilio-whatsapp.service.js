@@ -23,9 +23,21 @@ class TwilioWhatsAppService {
   }
 
   /**
+   * Verify webhook (for GET requests during setup)
+   * Twilio doesn't use challenge-response like Meta, so this is a no-op
+   * @param {object} req - Express request object
+   * @returns {string} - Empty string (Twilio doesn't need verification response)
+   */
+  verifyWebhook(req) {
+    // Twilio doesn't use GET verification like Meta WhatsApp
+    // Just return success
+    return 'OK';
+  }
+
+  /**
    * Validate Twilio webhook signature
    * @param {string} twilioSignature - X-Twilio-Signature header
-   * 
+   *
    * @param {string} url - Full webhook URL
    * @param {object} params - Request body parameters
    * @returns {boolean} - True if signature is valid

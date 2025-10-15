@@ -78,6 +78,20 @@ class WhatsAppAdapterService {
   supportsInteractive() {
     return this.provider === 'meta';
   }
+
+  /**
+   * Extract message from webhook payload
+   */
+  extractMessage(body) {
+    return this.service.extractMessage(body);
+  }
+
+  /**
+   * Verify webhook
+   */
+  verifyWebhook(req) {
+    return this.service.verifyWebhook(req);
+  }
 }
 
 module.exports = new WhatsAppAdapterService();
