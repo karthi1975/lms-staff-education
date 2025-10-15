@@ -311,8 +311,13 @@ class MoodleOrchestratorService {
     responseText += `   • "How to identify opportunities?"\n`;
     responseText += `   • "Tell me about market research"\n\n`;
     responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    responseText += `📊 *Ready to Test Your Knowledge?*\n`;
-    responseText += `   Type: *"quiz"* or *"start quiz"*\n\n`;
+
+    // Only show quiz option if quiz is available
+    if (module.has_quiz) {
+      responseText += `📊 *Ready to Test Your Knowledge?*\n`;
+      responseText += `   Type: *"quiz"* or *"start quiz"*\n\n`;
+    }
+
     responseText += `🔄 *Need Help?*\n`;
     responseText += `   Type: *"menu"* to see options`;
 
@@ -385,9 +390,9 @@ class MoodleOrchestratorService {
 
       if (searchResults.length === 0) {
         return {
-          text: "I don't have specific information about that yet. " +
-                "Try asking about entrepreneurship, community needs, or business ideas!\n\n" +
-                "Type *'quiz please'* when you're ready to test your knowledge."
+          text: `📚 *${moduleName}*\n\n` +
+                `I couldn't find relevant content about "${query}" in this module.\n\n` +
+                `💡 Try asking different questions related to ${moduleName}, or type *'menu'* to explore other modules.`
         };
       }
 
@@ -401,8 +406,10 @@ class MoodleOrchestratorService {
         'english'
       );
 
-      // Track interaction
-      await this.trackLearningInteraction(userId, context.current_module_id, query, response);
+      // Track interaction (non-blocking, continues even if it fails)
+      this.trackLearningInteraction(userId, context.current_module_id, query, response).catch(err => {
+        logger.warn('Failed to track interaction (non-critical):', err.message);
+      });
 
       // Build source citations from search results metadata
       const sources = [];
@@ -441,8 +448,16 @@ class MoodleOrchestratorService {
       };
     } catch (error) {
       logger.error('Error processing content query:', error);
+      const contextData = this.parseContextData(context);
+      const moduleName = contextData.module_name || 'this module';
+
       return {
-        text: "Sorry, I couldn't process your question. Please try again or type 'menu' to go back."
+        text: `📚 *${moduleName}*\n\n` +
+              `I encountered an error while searching for content about your question.\n\n` +
+              `Please try:\n` +
+              `• Rephrasing your question\n` +
+              `• Asking about specific topics in ${moduleName}\n` +
+              `• Type *'menu'* to explore other modules`
       };
     }
   }
