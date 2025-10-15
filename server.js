@@ -11,7 +11,7 @@ require('dotenv').config();
 
 // Existing Services
 const orchestratorService = require('./services/orchestrator.service');
-const whatsappService = require('./services/whatsapp.service');
+const whatsappService = require('./services/whatsapp-adapter.service'); // Use adapter for both Meta and Twilio
 const whatsappHandler = require('./services/whatsapp-handler.service');
 const chromaService = require('./services/chroma.service');
 const neo4jService = require('./services/neo4j.service');
