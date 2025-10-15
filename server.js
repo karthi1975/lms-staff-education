@@ -150,6 +150,39 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
+// WhatsApp Message Status Callback (for Twilio)
+app.post('/webhook/status', async (req, res) => {
+  try {
+    const { MessageSid, MessageStatus, ErrorCode, ErrorMessage, To, From } = req.body;
+
+    logger.info('Message status update:', {
+      sid: MessageSid,
+      status: MessageStatus,
+      to: To,
+      from: From,
+      errorCode: ErrorCode,
+      errorMessage: ErrorMessage
+    });
+
+    // Log delivery status
+    if (MessageStatus === 'delivered') {
+      logger.info(`✅ Message ${MessageSid} delivered to ${To}`);
+    } else if (MessageStatus === 'failed') {
+      logger.error(`❌ Message ${MessageSid} failed: ${ErrorMessage} (Code: ${ErrorCode})`);
+    } else if (MessageStatus === 'sent') {
+      logger.info(`📤 Message ${MessageSid} sent to ${To}`);
+    } else if (MessageStatus === 'read') {
+      logger.info(`👁️ Message ${MessageSid} read by ${To}`);
+    }
+
+    // Acknowledge receipt
+    res.sendStatus(200);
+  } catch (error) {
+    logger.error('Error processing status callback:', error);
+    res.sendStatus(200); // Still acknowledge to prevent retries
+  }
+});
+
 // Admin API Routes
 // Get all modules
 app.get('/api/modules', async (req, res) => {
@@ -320,27 +353,30 @@ app.get('/api/users', async (req, res) => {
 // Add new user
 app.post('/api/users', async (req, res) => {
   try {
-    const { name, whatsapp_id } = req.body;
+    const { name, whatsapp_id, course_name } = req.body;
 
     if (!name || !whatsapp_id) {
       return res.status(400).json({ success: false, message: 'Name and WhatsApp ID required' });
     }
 
-    const result = await postgresService.query(
-      `INSERT INTO users (whatsapp_id, name, current_module_id, created_at, updated_at)
-       VALUES ($1, $2, 1, NOW(), NOW())
-       RETURNING id, whatsapp_id, name, current_module_id`,
-      [whatsapp_id, name]
-    );
+    // Use verification service to create user and send verification code
+    const verificationService = require('./services/verification.service');
+    const result = await verificationService.createUserAndSendCode(name, whatsapp_id);
 
-    // Initialize Module 1 progress
-    await postgresService.query(
-      `INSERT INTO user_progress (user_id, module_id, status, progress_percentage, started_at, last_activity_at)
-       VALUES ($1, 1, 'in_progress', 0, NOW(), NOW())`,
-      [result.rows[0].id]
-    );
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.message
+      });
+    }
 
-    res.json({ success: true, data: result.rows[0] });
+    res.json({
+      success: true,
+      verification_code: result.code,
+      phone_number: result.phoneNumber,
+      expires_at: result.expiresAt,
+      message: 'Verification code sent to user via WhatsApp'
+    });
   } catch (error) {
     logger.error('Error adding user:', error);
     res.status(500).json({ success: false, message: 'Failed to add user' });
