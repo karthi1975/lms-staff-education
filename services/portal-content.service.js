@@ -20,26 +20,28 @@ class PortalContentService {
   async createPortalCourse(courseData, adminUserId) {
     try {
       const result = await postgresService.pool.query(`
-        INSERT INTO moodle_courses (
-          moodle_course_id,
-          course_name,
-          course_code,
+        INSERT INTO courses (
+          title,
+          code,
           description,
           category,
-          source,
-          portal_created_by,
-          portal_created_at
+          difficulty_level,
+          duration_weeks,
+          sequence_order,
+          is_active
         ) VALUES (
-          (SELECT COALESCE(MAX(moodle_course_id), 0) + 1 FROM moodle_courses),
-          $1, $2, $3, $4, 'portal', $5, NOW()
+          $1, $2, $3, $4, $5, $6,
+          (SELECT COALESCE(MAX(sequence_order), 0) + 1 FROM courses),
+          true
         )
         RETURNING *
       `, [
-        courseData.course_name,
-        courseData.course_code || `PORTAL-${Date.now()}`,
+        courseData.course_name || courseData.title,
+        courseData.course_code || courseData.code || `PORTAL-${Date.now()}`,
         courseData.description || '',
         courseData.category || 'Portal Training',
-        adminUserId
+        courseData.difficulty_level || 'beginner',
+        courseData.duration_weeks || 4
       ]);
 
       const course = result.rows[0];
@@ -53,7 +55,7 @@ class PortalContentService {
         // Don't fail course creation if Neo4j fails
       }
 
-      logger.info(`Created portal course: ${courseData.course_name}`, {
+      logger.info(`Created portal course: ${courseData.course_name || courseData.title}`, {
         courseId: course.id,
         adminUserId
       });
@@ -70,9 +72,9 @@ class PortalContentService {
    */
   async createPortalModule(courseId, moduleData, adminUserId) {
     try {
-      // Get course moodle_course_id
+      // Verify course exists
       const courseResult = await postgresService.pool.query(
-        'SELECT moodle_course_id, source FROM moodle_courses WHERE id = $1',
+        'SELECT id FROM courses WHERE id = $1',
         [courseId]
       );
 
@@ -80,40 +82,31 @@ class PortalContentService {
         throw new Error('Course not found');
       }
 
-      const course = courseResult.rows[0];
-
       // Get next sequence order
       const seqResult = await postgresService.pool.query(`
         SELECT COALESCE(MAX(sequence_order), 0) + 1 as next_seq
-        FROM moodle_modules
-        WHERE moodle_course_id = $1
-      `, [course.moodle_course_id]);
+        FROM modules
+        WHERE course_id = $1
+      `, [courseId]);
 
       const sequenceOrder = moduleData.sequence_order || seqResult.rows[0].next_seq;
 
       const result = await postgresService.pool.query(`
-        INSERT INTO moodle_modules (
-          moodle_course_id,
-          moodle_module_id,
-          module_name,
-          module_type,
-          sequence_order,
+        INSERT INTO modules (
+          course_id,
+          title,
           description,
-          source,
-          portal_created_by,
-          portal_created_at
+          sequence_order,
+          is_active
         ) VALUES (
-          $1,
-          (SELECT COALESCE(MAX(moodle_module_id), 0) + 1 FROM moodle_modules WHERE moodle_course_id = $1),
-          $2, 'page', $3, $4, 'portal', $5, NOW()
+          $1, $2, $3, $4, true
         )
         RETURNING *
       `, [
-        course.moodle_course_id,
-        moduleData.module_name,
-        sequenceOrder,
+        courseId,
+        moduleData.module_name || moduleData.title,
         moduleData.description || '',
-        adminUserId
+        sequenceOrder
       ]);
 
       const module = result.rows[0];
@@ -127,7 +120,7 @@ class PortalContentService {
         // Don't fail module creation if Neo4j fails
       }
 
-      logger.info(`Created portal module: ${moduleData.module_name}`, {
+      logger.info(`Created portal module: ${moduleData.module_name || moduleData.title}`, {
         moduleId: module.id,
         courseId,
         adminUserId
@@ -142,15 +135,44 @@ class PortalContentService {
 
   /**
    * Upload content for a portal module
-   * Creates: PostgreSQL chunks + ChromaDB embeddings + Neo4j knowledge graph
+   * Creates: module_content record + ChromaDB embeddings + Neo4j knowledge graph
    */
   async uploadModuleContent(moduleId, filePath, fileMetadata, adminUserId) {
     try {
       logger.info(`Processing document for module ${moduleId}: ${fileMetadata.originalname}`);
 
+      // First, create the module_content record
+      const contentResult = await postgresService.pool.query(`
+        INSERT INTO module_content (
+          module_id,
+          file_name,
+          original_name,
+          file_path,
+          file_type,
+          file_size,
+          uploaded_by,
+          uploaded_at,
+          processed,
+          metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), false, $8)
+        RETURNING id
+      `, [
+        moduleId,
+        path.basename(filePath),
+        fileMetadata.originalname,
+        filePath,
+        fileMetadata.mimetype,
+        fileMetadata.size,
+        adminUserId,
+        JSON.stringify({ source: 'portal' })
+      ]);
+
+      const contentId = contentResult.rows[0].id;
+
       // Extract text from document
       const chunks = await documentProcessor.processDocument(filePath, {
         module_id: moduleId,
+        content_id: contentId,
         filename: fileMetadata.originalname,
         source: 'portal'
       });
@@ -162,70 +184,43 @@ class PortalContentService {
 
       logger.info(`Created ${chunks.length} chunks from document`);
 
-      // Store chunks in database and collect chunk IDs for graph
-      let storedChunks = 0;
+      // Extract full text for module_content.content_text
+      const fullText = chunks.map(c => c.content).join('\n\n');
+
+      // Store chunks and embeddings
       let storedEmbeddings = 0;
       const chunksWithIds = [];
 
-      for (const chunk of chunks) {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
         try {
-          // Store chunk in module_content_chunks table
-          const chunkResult = await postgresService.pool.query(`
-            INSERT INTO module_content_chunks (
-              moodle_module_id,
-              chunk_text,
-              chunk_order,
-              chunk_size,
-              metadata
-            ) VALUES ($1, $2, $3, $4, $5)
-            RETURNING id
-          `, [
-            moduleId,
+          // Store in ChromaDB for RAG
+          const embeddingId = await chromaService.addDocument(
             chunk.content,
-            chunk.chunk_index || storedChunks,
-            chunk.content.length,
-            JSON.stringify(chunk.metadata)
-          ]);
+            {
+              ...chunk.metadata,
+              module_id: moduleId,
+              content_id: contentId,
+              chunk_index: i,
+              source: 'portal'
+            }
+          );
 
-          const chunkId = chunkResult.rows[0].id;
-          storedChunks++;
-
-          // Add chunk_id to chunk object for Neo4j
+          // Collect for Neo4j graph
           chunksWithIds.push({
             ...chunk,
-            chunk_id: chunkId,
-            chunk_index: chunk.chunk_index || storedChunks - 1
+            chunk_id: `${contentId}-${i}`,
+            chunk_index: i,
+            embedding_id: embeddingId
           });
 
-          // Store in ChromaDB for RAG
-          try {
-            const embeddingId = await chromaService.addDocument(
-              chunk.content,
-              {
-                ...chunk.metadata,
-                chunk_id: chunkId,
-                module_id: moduleId,
-                source: 'portal'
-              }
-            );
-
-            // Update chunk with embedding_id
-            await postgresService.pool.query(`
-              UPDATE module_content_chunks
-              SET embedding_id = $1
-              WHERE id = $2
-            `, [embeddingId, chunkId]);
-
-            storedEmbeddings++;
-          } catch (embeddingError) {
-            logger.error('Error creating embedding:', embeddingError);
-          }
-        } catch (chunkError) {
-          logger.error('Error storing chunk:', chunkError);
+          storedEmbeddings++;
+        } catch (embeddingError) {
+          logger.error('Error creating embedding:', embeddingError);
         }
       }
 
-      logger.info(`Stored ${storedChunks} chunks and ${storedEmbeddings} embeddings for module ${moduleId}`);
+      logger.info(`Stored ${chunks.length} chunks and ${storedEmbeddings} embeddings for module ${moduleId}`);
 
       // Create knowledge graph in Neo4j
       let graphStats = { chunks: 0, topics: 0 };
@@ -237,15 +232,19 @@ class PortalContentService {
         // Don't fail the upload if Neo4j fails
       }
 
-      // Update module with content file path
+      // Update module_content with extracted text and chunk count
       await postgresService.pool.query(`
-        UPDATE moodle_modules
-        SET content_file_path = $1
-        WHERE id = $2
-      `, [filePath, moduleId]);
+        UPDATE module_content
+        SET content_text = $1,
+            chunk_count = $2,
+            processed = true,
+            processed_at = NOW()
+        WHERE id = $3
+      `, [fullText.substring(0, 100000), chunks.length, contentId]);
 
       return {
-        chunks: storedChunks,
+        contentId: contentId,
+        chunks: chunks.length,
         embeddings: storedEmbeddings,
         graph_nodes: graphStats.chunks,
         graph_topics: graphStats.topics
@@ -262,24 +261,21 @@ class PortalContentService {
    */
   async generateQuizForModule(moduleId, questionCount = 5, adminUserId) {
     try {
-      // Get module content chunks
-      const chunksResult = await postgresService.pool.query(`
-        SELECT chunk_text, metadata
-        FROM module_content_chunks
-        WHERE moodle_module_id = $1
-        ORDER BY chunk_order
-        LIMIT 10
+      // Get module content
+      const contentResult = await postgresService.pool.query(`
+        SELECT content_text
+        FROM module_content
+        WHERE module_id = $1
+        ORDER BY uploaded_at DESC
+        LIMIT 1
       `, [moduleId]);
 
-      if (chunksResult.rows.length === 0) {
+      if (contentResult.rows.length === 0) {
         throw new Error('No content found for module');
       }
 
-      // Combine chunks into context
-      const context = chunksResult.rows
-        .map(row => row.chunk_text)
-        .join('\n\n')
-        .substring(0, 8000); // Limit context size
+      // Get content text
+      const context = contentResult.rows[0].content_text.substring(0, 8000); // Limit context size
 
       // Generate quiz questions using Vertex AI
       const prompt = `Based on the following educational content, generate ${questionCount} multiple-choice quiz questions.
@@ -391,13 +387,11 @@ Requirements:
     try {
       const result = await postgresService.pool.query(`
         SELECT
-          mc.*,
-          au.name as created_by_name,
-          (SELECT COUNT(*) FROM moodle_modules mm WHERE mm.moodle_course_id = mc.moodle_course_id) as module_count
-        FROM moodle_courses mc
-        LEFT JOIN admin_users au ON mc.portal_created_by = au.id
-        WHERE mc.source = 'portal'
-        ORDER BY mc.created_at DESC
+          c.*,
+          (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
+        FROM courses c
+        WHERE c.is_active = true
+        ORDER BY c.created_at DESC
       `);
 
       return result.rows;
@@ -413,7 +407,7 @@ Requirements:
   async getCourseWithModules(courseId) {
     try {
       const courseResult = await postgresService.pool.query(`
-        SELECT * FROM moodle_courses WHERE id = $1
+        SELECT * FROM courses WHERE id = $1
       `, [courseId]);
 
       if (courseResult.rows.length === 0) {
@@ -424,13 +418,12 @@ Requirements:
 
       const modulesResult = await postgresService.pool.query(`
         SELECT
-          mm.*,
-          (SELECT COUNT(*) FROM module_content_chunks mcc WHERE mcc.moodle_module_id = mm.id) as chunk_count,
-          (SELECT COUNT(*) FROM moodle_quizzes mq WHERE mq.moodle_module_id = mm.id) as quiz_count
-        FROM moodle_modules mm
-        WHERE mm.moodle_course_id = $1
-        ORDER BY mm.sequence_order
-      `, [course.moodle_course_id]);
+          m.*,
+          (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count
+        FROM modules m
+        WHERE m.course_id = $1
+        ORDER BY m.sequence_order
+      `, [courseId]);
 
       return {
         ...course,
