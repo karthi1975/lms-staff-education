@@ -57,6 +57,17 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static('public'));
 
+// Request logging middleware for all webhook requests
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.path}`);
+  if (req.path.includes('webhook')) {
+    console.log(`  From IP: ${req.ip}`);
+    console.log(`  Body:`, JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
+
 // Add new authentication routes (non-breaking addition)
 app.use('/api', authRoutes);
 
