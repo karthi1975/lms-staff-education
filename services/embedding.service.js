@@ -30,6 +30,7 @@ class EmbeddingService {
 
       // Try multiple possible paths for ADC (Docker mounts to /home/nodejs)
       const adcPaths = [
+        '/home/nodejs/.gcp-creds/application_default_credentials.json',  // GCP cloud mount
         '/home/nodejs/.config/gcloud/application_default_credentials.json',
         `${os.homedir()}/.config/gcloud/application_default_credentials.json`,
         '/root/.config/gcloud/application_default_credentials.json',

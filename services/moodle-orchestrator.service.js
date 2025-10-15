@@ -373,12 +373,13 @@ class MoodleOrchestratorService {
     try {
       const contextData = this.parseContextData(context);
       const moduleName = contextData.module_name || 'Entrepreneurship & Business Ideas';
+      const moduleId = context.current_module_id;
 
-      logger.info(`RAG query: "${query}" for module: ${moduleName}`);
+      logger.info(`RAG query: "${query}" for module ID: ${moduleId}, name: ${moduleName}`);
 
-      // Search ChromaDB
+      // Search ChromaDB using module_id (integer) not module name (string)
       const searchResults = await chromaService.searchSimilar(query, {
-        filter: { module: moduleName },
+        module_id: moduleId,  // Use module_id instead of module name
         nResults: 3
       });
 
@@ -403,8 +404,40 @@ class MoodleOrchestratorService {
       // Track interaction
       await this.trackLearningInteraction(userId, context.current_module_id, query, response);
 
+      // Build source citations from search results metadata
+      const sources = [];
+      const seenSources = new Set(); // Deduplicate sources
+
+      for (const result of searchResults) {
+        if (result.metadata && result.metadata.filename) {
+          const sourceName = result.metadata.filename;
+          // Add chunk title if available for more specific citation
+          const chunkTitle = result.metadata.chunk_title;
+
+          const sourceKey = chunkTitle ? `${sourceName}:${chunkTitle}` : sourceName;
+
+          if (!seenSources.has(sourceKey)) {
+            seenSources.add(sourceKey);
+            if (chunkTitle && chunkTitle.trim() !== '') {
+              sources.push(`📄 ${sourceName} - ${chunkTitle}`);
+            } else {
+              sources.push(`📄 ${sourceName}`);
+            }
+          }
+        }
+      }
+
+      // Format response with sources
+      let responseText = response;
+
+      if (sources.length > 0) {
+        responseText += `\n\n📚 *Sources:*\n${sources.join('\n')}`;
+      }
+
+      responseText += `\n\n💡 _Ask another question or type *"quiz please"* to take the quiz!_`;
+
       return {
-        text: response + `\n\n💡 _Ask another question or type *"quiz please"* to take the quiz!_`
+        text: responseText
       };
     } catch (error) {
       logger.error('Error processing content query:', error);
