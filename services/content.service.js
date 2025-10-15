@@ -51,48 +51,20 @@ class ContentService {
   }
 
   /**
-   * Get all content for a module (supports both modules and moodle_modules)
+   * Get all content for a module
    */
   async getModuleContent(moduleId) {
     try {
-      // Check if this is a Moodle module
-      const moodleCheck = await getPool().query(
-        'SELECT id FROM moodle_modules WHERE id = $1',
+      // Get from module_content table
+      const result = await getPool().query(
+        `SELECT mc.*, au.name as uploaded_by_name, 'module_content' as content_type
+         FROM module_content mc
+         LEFT JOIN admin_users au ON mc.uploaded_by = au.id
+         WHERE mc.module_id = $1
+         ORDER BY mc.uploaded_at DESC`,
         [moduleId]
       );
-
-      if (moodleCheck.rows.length > 0) {
-        // This is a Moodle module - get content from module_content_chunks
-        // Group by original_file to show files, not individual chunks
-        const result = await getPool().query(
-          `SELECT
-            MIN(mcc.id) as id,
-            mcc.metadata->>'original_file' as original_name,
-            mcc.metadata->>'original_file' as file_name,
-            COUNT(*) as chunk_count,
-            MIN(mcc.created_at) as uploaded_at,
-            TRUE as processed,
-            'moodle_chunks' as content_type
-           FROM module_content_chunks mcc
-           WHERE mcc.moodle_module_id = $1
-           AND mcc.metadata->>'original_file' IS NOT NULL
-           GROUP BY mcc.metadata->>'original_file'
-           ORDER BY MIN(mcc.created_at) DESC`,
-          [moduleId]
-        );
-        return result.rows;
-      } else {
-        // Old module - get from module_content table
-        const result = await getPool().query(
-          `SELECT mc.*, au.name as uploaded_by_name, 'module_content' as content_type
-           FROM module_content mc
-           LEFT JOIN admin_users au ON mc.uploaded_by = au.id
-           WHERE mc.module_id = $1
-           ORDER BY mc.uploaded_at DESC`,
-          [moduleId]
-        );
-        return result.rows;
-      }
+      return result.rows;
     } catch (error) {
       logger.error(`Error fetching content for module ${moduleId}:`, error);
       throw error;
@@ -108,77 +80,45 @@ class ContentService {
     try {
       await client.query('BEGIN');
 
-      // Check if module exists in moodle_modules or modules table
-      let isMoodleModule = false;
-      let moduleCheck = await client.query(
-        'SELECT id, module_name FROM moodle_modules WHERE id = $1',
+      // Check if module exists
+      const moduleCheck = await client.query(
+        'SELECT id, title as module_name FROM modules WHERE id = $1',
         [moduleId]
       );
 
-      if (moduleCheck.rows.length > 0) {
-        isMoodleModule = true;
-      } else {
-        // Try old modules table
-        moduleCheck = await client.query(
-          'SELECT id, title as module_name FROM modules WHERE id = $1',
-          [moduleId]
-        );
-
-        if (moduleCheck.rows.length === 0) {
-          throw new Error(`Module ${moduleId} not found`);
-        }
+      if (moduleCheck.rows.length === 0) {
+        throw new Error(`Module ${moduleId} not found`);
       }
 
       const moduleName = moduleCheck.rows[0].module_name;
 
-      // For Moodle modules, skip module_content table and process directly
-      if (isMoodleModule) {
-        // Create a temporary content object for tracking
-        const tempContent = {
-          id: `temp_${Date.now()}`,
-          module_id: moduleId,
-          file_name: file.filename,
-          original_name: file.originalname,
-          file_path: file.path
-        };
+      // Insert into module_content table
+      const contentResult = await client.query(
+        `INSERT INTO module_content
+         (module_id, file_name, original_name, file_path, file_type, file_size, uploaded_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          moduleId,
+          file.filename,
+          file.originalname,
+          file.path,
+          file.mimetype,
+          file.size,
+          uploadedById
+        ]
+      );
 
-        // Process file asynchronously
-        this.processMoodleContentDirect(moduleId, file.path, moduleName, file.originalname)
-          .catch(error => {
-            logger.error(`Error processing Moodle content for module ${moduleId}:`, error);
-          });
+      const content = contentResult.rows[0];
 
-        await client.query('COMMIT');
-        return tempContent;
-      } else {
-        // For old modules, use module_content table
-        const contentResult = await client.query(
-          `INSERT INTO module_content
-           (module_id, file_name, original_name, file_path, file_type, file_size, uploaded_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING *`,
-          [
-            moduleId,
-            file.filename,
-            file.originalname,
-            file.path,
-            file.mimetype,
-            file.size,
-            uploadedById
-          ]
-        );
+      // Process file asynchronously
+      this.processContent(content.id, file.path)
+        .catch(error => {
+          logger.error(`Error processing content ${content.id}:`, error);
+        });
 
-        const content = contentResult.rows[0];
-
-        // Process file asynchronously
-        this.processContent(content.id, file.path)
-          .catch(error => {
-            logger.error(`Error processing content ${content.id}:`, error);
-          });
-
-        await client.query('COMMIT');
-        return content;
-      }
+      await client.query('COMMIT');
+      return content;
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -557,7 +497,6 @@ class ContentService {
 
   /**
    * Delete content and its embeddings
-   * Handles both old module_content and Moodle module_content_chunks
    */
   async deleteContent(contentId) {
     const client = await getPool().connect();
@@ -565,49 +504,7 @@ class ContentService {
     try {
       await client.query('BEGIN');
 
-      // First check if this is a Moodle module chunk
-      const chunkCheck = await client.query(
-        `SELECT mcc.id, mcc.metadata->>'original_file' as original_file, mcc.moodle_module_id
-         FROM module_content_chunks mcc
-         WHERE mcc.id = $1`,
-        [contentId]
-      );
-
-      if (chunkCheck.rows.length > 0) {
-        // This is a Moodle module - delete all chunks with same original_file
-        const chunk = chunkCheck.rows[0];
-        const originalFile = chunk.original_file;
-        const moduleId = chunk.moodle_module_id;
-
-        logger.info(`Deleting Moodle module file: ${originalFile} from module ${moduleId}`);
-
-        // Delete from ChromaDB using metadata filter
-        try {
-          await chromaService.deleteByMetadata({
-            module_id: moduleId,
-            original_file: originalFile
-          });
-          logger.info(`Deleted embeddings for ${originalFile} from ChromaDB`);
-        } catch (error) {
-          logger.warn(`Could not delete embeddings for ${originalFile}:`, error.message);
-        }
-
-        // Delete all chunks with same original_file from database
-        const deleteResult = await client.query(
-          `DELETE FROM module_content_chunks
-           WHERE moodle_module_id = $1
-           AND metadata->>'original_file' = $2`,
-          [moduleId, originalFile]
-        );
-
-        logger.info(`Deleted ${deleteResult.rowCount} chunks for file ${originalFile}`);
-
-        await client.query('COMMIT');
-        logger.info(`Successfully deleted Moodle file: ${originalFile}`);
-        return;
-      }
-
-      // Otherwise, check old module_content table
+      // Check module_content table
       const result = await client.query(
         'SELECT * FROM module_content WHERE id = $1',
         [contentId]
