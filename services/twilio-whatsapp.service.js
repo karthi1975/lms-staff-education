@@ -74,6 +74,12 @@ class TwilioWhatsAppService {
    */
   extractMessage(body) {
     try {
+      // Validate required fields
+      if (!body || !body.From || !body.MessageSid) {
+        logger.warn('Missing required fields in Twilio webhook:', body);
+        return null;
+      }
+
       const from = body.From; // e.g., whatsapp:+1234567890
       const to = body.To; // e.g., whatsapp:+14155238886
       const messageBody = body.Body || '';
@@ -81,7 +87,10 @@ class TwilioWhatsAppService {
       const numMedia = parseInt(body.NumMedia || '0');
 
       // Extract phone number from WhatsApp format
-      const phoneNumber = from.replace('whatsapp:', '');
+      // Handle both "whatsapp:+1234" and "whatsapp: +1234" (with space)
+      const phoneNumber = from.replace(/^whatsapp:\s*/, '').trim();
+
+      logger.info(`Extracted Twilio message from ${phoneNumber}: "${messageBody}"`);
 
       // Handle button/list responses
       let interactive = null;
@@ -115,6 +124,7 @@ class TwilioWhatsAppService {
       };
     } catch (error) {
       logger.error('Error extracting Twilio message:', error);
+      logger.error('Webhook body was:', JSON.stringify(body));
       return null;
     }
   }
