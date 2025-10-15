@@ -92,3 +92,4 @@ routes/course.routes.js
 # Vertex AI Service Account Keys
 credentials/
 *.json
+.env.twilio

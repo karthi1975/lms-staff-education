@@ -41,7 +41,7 @@ class MoodleOrchestratorService {
       for (const course of coursesResult.rows) {
         // Load modules for this course (use 'modules' table, not 'moodle_modules')
         const modulesResult = await postgresService.query(`
-          SELECT id, code, title, description, sequence_order
+          SELECT id, title, description, sequence_order
           FROM modules
           WHERE course_id = $1
           ORDER BY sequence_order

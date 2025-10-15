@@ -13,8 +13,8 @@ PROJECT_ID="lms-tanzania-consultant"
 INSTANCE_NAME="teachers-training"
 ZONE="us-east5-a"
 MACHINE_TYPE="e2-standard-4"
-GITHUB_REPO="https://github.com/YOUR_USERNAME/teachers_training.git"  # UPDATE THIS!
-GITHUB_BRANCH="main"  # or master
+GITHUB_REPO="https://github.com/karthi1975/lms-staff-education.git"
+GITHUB_BRANCH="master"
 
 echo "Configuration:"
 echo "  Project: $PROJECT_ID"
@@ -90,7 +90,50 @@ gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="
 "
 
 echo ""
-echo "Step 7: Starting Docker containers..."
+echo "Step 7: Creating .env file..."
+gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="
+    cd ~/teachers_training
+    cat > .env << 'ENVEOF'
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=teachers_training
+DB_USER=teachers_user
+DB_PASSWORD=teachers_pass_2024
+
+# Neo4j
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=neo4j_pass_2024
+
+# ChromaDB
+CHROMA_URL=http://localhost:8000
+
+# JWT
+JWT_SECRET=your_super_secret_jwt_key_change_in_production
+JWT_EXPIRES_IN=24h
+
+# Server
+PORT=3000
+NODE_ENV=production
+
+# Vertex AI (update with your project details)
+GOOGLE_CLOUD_PROJECT=lms-tanzania-consultant
+VERTEX_AI_LOCATION=us-central1
+
+# Session
+SESSION_TTL_HOURS=24
+NUDGE_INACTIVITY_HOURS=48
+
+# Quiz
+QUIZ_PASS_THRESHOLD=0.7
+MAX_QUIZ_ATTEMPTS=2
+ENVEOF
+    echo '✅ .env file created'
+"
+
+echo ""
+echo "Step 8: Starting Docker containers..."
 gcloud compute ssh $INSTANCE_NAME --zone=$ZONE --command="
     cd ~/teachers_training
     sudo docker-compose up -d

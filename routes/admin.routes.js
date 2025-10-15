@@ -511,15 +511,13 @@ router.get('/portal/courses/:courseId/modules', authMiddleware.authenticateToken
         m.id,
         m.id as moodle_module_id,
         m.course_id,
-        m.code as module_code,
+        CONCAT('MOD-', m.id) as module_code,
         m.title as module_name,
         m.description,
         m.sequence_order,
-        m.duration_weeks,
         m.is_active,
         m.created_at,
-        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count,
-        (SELECT COUNT(*) FROM module_content_chunks mcc WHERE mcc.module_id = m.id) as chunk_count
+        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count
       FROM modules m
       WHERE m.course_id = $1
       ORDER BY m.sequence_order
@@ -542,7 +540,7 @@ router.get('/portal/courses/:courseId/modules', authMiddleware.authenticateToken
  */
 router.post('/modules', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const { course_id, code, title, description, sequence_order, duration_weeks } = req.body;
+    const { course_id, title, description, sequence_order } = req.body;
     const postgresService = require('../services/database/postgres.service');
 
     if (!course_id || !title) {
@@ -550,10 +548,10 @@ router.post('/modules', authMiddleware.authenticateToken, async (req, res) => {
     }
 
     const result = await postgresService.pool.query(`
-      INSERT INTO modules (course_id, code, title, description, sequence_order, duration_weeks)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO modules (course_id, title, description, sequence_order)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [course_id, code, title, description, sequence_order, duration_weeks || 2]);
+    `, [course_id, title, description, sequence_order || 1]);
 
     res.json({
       success: true,
@@ -574,7 +572,7 @@ router.post('/modules', authMiddleware.authenticateToken, async (req, res) => {
 router.post('/portal/courses/:courseId/modules', authMiddleware.authenticateToken, async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { module_name, module_code, description, sequence_order, duration_weeks } = req.body;
+    const { module_name, description, sequence_order } = req.body;
     const postgresService = require('../services/database/postgres.service');
 
     if (!module_name) {
@@ -601,13 +599,11 @@ router.post('/portal/courses/:courseId/modules', authMiddleware.authenticateToke
       moduleSeq = seqResult.rows[0].next_seq;
     }
 
-    const code = module_code || `MODULE-${Date.now()}`;
-
     const result = await postgresService.pool.query(`
-      INSERT INTO modules (course_id, code, title, description, sequence_order, duration_weeks)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO modules (course_id, title, description, sequence_order)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [courseId, code, module_name, description, moduleSeq, duration_weeks || 2]);
+    `, [courseId, module_name, description, moduleSeq]);
 
     res.json({
       success: true,

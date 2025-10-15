@@ -1,4 +1,4 @@
-#!/bin/bash
+ ./start-fresh-local.sh#!/bin/bash
 
 # Fresh local setup: Install dependencies and start Docker
 
