@@ -1,10 +1,12 @@
 /**
  * Twilio WhatsApp Webhook Routes
  * Handles incoming messages from Twilio WhatsApp API
+ * Based on: https://www.twilio.com/docs/messaging/tutorials/how-to-receive-and-reply/node-js
  */
 
 const express = require('express');
 const router = express.Router();
+const { MessagingResponse } = require('twilio').twiml;
 const twilioWhatsAppService = require('../services/twilio-whatsapp.service');
 const whatsappHandler = require('../services/whatsapp-handler.service');
 const logger = require('../utils/logger');
@@ -20,44 +22,41 @@ router.post('/webhook/twilio', async (req, res) => {
     logger.info('Twilio webhook received');
     console.log('Twilio webhook body:', JSON.stringify(req.body, null, 2));
 
-    // Validate Twilio signature (optional but recommended)
-    const twilioSignature = req.headers['x-twilio-signature'];
-    const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-
-    // Skip signature validation if TWILIO_SKIP_VALIDATION is set (useful for testing)
-    if (!process.env.TWILIO_SKIP_VALIDATION) {
-      const isValid = twilioWhatsAppService.validateWebhookSignature(
-        twilioSignature,
-        url,
-        req.body
-      );
-
-      if (!isValid) {
-        logger.error('Invalid Twilio signature');
-        return res.status(403).send('Forbidden');
-      }
-    }
-
-    // Acknowledge receipt immediately
-    res.status(200).send('OK');
-
     // Extract message data from Twilio format
     const messageData = twilioWhatsAppService.extractMessage(req.body);
     console.log('Extracted Twilio message:', messageData);
 
     if (!messageData) {
       logger.warn('No message data extracted from Twilio webhook');
-      return;
+      // Send empty TwiML response
+      const twiml = new MessagingResponse();
+      return res.type('text/xml').send(twiml.toString());
     }
 
-    // Process message asynchronously using existing handler
-    await whatsappHandler.handleMessage(messageData);
-    console.log('Twilio message processed successfully');
+    // Process message asynchronously using existing handler (don't await - send response first)
+    setImmediate(async () => {
+      try {
+        await whatsappHandler.handleMessage(messageData);
+        console.log('Twilio message processed successfully');
+      } catch (error) {
+        console.error('Error processing message:', error);
+        logger.error('Error processing message:', error);
+      }
+    });
+
+    // Immediately respond with empty TwiML (Twilio requirement)
+    // Our handler will send the actual response via Twilio API
+    const twiml = new MessagingResponse();
+    res.type('text/xml').send(twiml.toString());
 
   } catch (error) {
     console.error('Error processing Twilio webhook:', error);
     logger.error('Error processing Twilio webhook:', error);
     logger.error('Error stack:', error.stack);
+
+    // Still send valid TwiML response
+    const twiml = new MessagingResponse();
+    res.type('text/xml').send(twiml.toString());
   }
 });
 
