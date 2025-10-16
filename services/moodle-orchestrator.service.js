@@ -372,7 +372,7 @@ class MoodleOrchestratorService {
   }
 
   /**
-   * Process content query with RAG
+   * Process content query with RAG + GraphDB
    */
   async processContentQuery(userId, query, context) {
     try {
@@ -380,15 +380,32 @@ class MoodleOrchestratorService {
       const moduleName = contextData.module_name || 'Entrepreneurship & Business Ideas';
       const moduleId = context.current_module_id;
 
-      logger.info(`RAG query: "${query}" for module ID: ${moduleId}, name: ${moduleName}`);
+      logger.info(`RAG+GraphDB query: "${query}" for module ID: ${moduleId}, name: ${moduleName}`);
 
-      // Search ChromaDB using module_id (integer) not module name (string)
+      // Step 1: Search ChromaDB using module_id (integer) not module name (string)
       const searchResults = await chromaService.searchSimilar(query, {
         module_id: moduleId,  // Use module_id instead of module name
         nResults: 3
       });
 
       if (searchResults.length === 0) {
+        // Try to get related content from Neo4j GraphDB as fallback
+        const neo4jService = require('./neo4j.service');
+        try {
+          const relatedModules = await neo4jService.getRelatedContent(moduleId, 3);
+          if (relatedModules.length > 0) {
+            let fallbackText = `📚 *${moduleName}*\n\n`;
+            fallbackText += `I couldn't find content about "${query}" in this module, but here are related topics you might find helpful:\n\n`;
+            relatedModules.forEach(rm => {
+              fallbackText += `📖 ${rm.module_name} (${rm.shared_topics} related topics)\n`;
+            });
+            fallbackText += `\n💡 Try asking questions about these related modules, or type *'menu'* to explore.`;
+            return { text: fallbackText };
+          }
+        } catch (neo4jError) {
+          logger.warn('Neo4j fallback failed (non-critical):', neo4jError.message);
+        }
+
         return {
           text: `📚 *${moduleName}*\n\n` +
                 `I couldn't find relevant content about "${query}" in this module.\n\n` +
@@ -396,22 +413,51 @@ class MoodleOrchestratorService {
         };
       }
 
-      // Build RAG context
+      // Step 2: Build RAG context from ChromaDB results
       const ragContext = searchResults.map(r => r.content).join('\n\n---\n\n');
 
-      // Generate response with Vertex AI
+      // Step 3: Enrich with Neo4j GraphDB context (topics, relationships)
+      let graphContext = '';
+      const neo4jService = require('./neo4j.service');
+      try {
+        // Get related modules from Neo4j based on shared topics
+        const relatedModules = await neo4jService.getRelatedContent(moduleId, 3);
+        if (relatedModules.length > 0) {
+          graphContext = `\n\n[Related Topics: ${relatedModules.map(rm => rm.module_name).join(', ')}]`;
+          logger.info(`Neo4j enrichment: Found ${relatedModules.length} related modules`);
+        }
+
+        // Get content graph for additional context
+        const contentGraph = await neo4jService.getModuleContentGraph(moduleId);
+        if (contentGraph && contentGraph.topics && contentGraph.topics.length > 0) {
+          const topicNames = contentGraph.topics.slice(0, 5).map(t => t.name).join(', ');
+          graphContext += `\n[Key Topics: ${topicNames}]`;
+          logger.info(`Neo4j enrichment: Found ${contentGraph.topics.length} topics for module`);
+        }
+      } catch (neo4jError) {
+        logger.warn('Neo4j enrichment failed (continuing with RAG only):', neo4jError.message);
+        // Continue without graph enrichment - not critical
+      }
+
+      // Step 4: Generate response with Vertex AI (RAG + Graph context)
+      const enrichedContext = ragContext + graphContext;
       const response = await vertexAIService.generateEducationalResponse(
         query,
-        ragContext,
+        enrichedContext,
         'english'
       );
 
-      // Track interaction (non-blocking, continues even if it fails)
+      // Step 5: Track interaction in PostgreSQL and Neo4j (non-blocking)
       this.trackLearningInteraction(userId, context.current_module_id, query, response).catch(err => {
-        logger.warn('Failed to track interaction (non-critical):', err.message);
+        logger.warn('Failed to track PostgreSQL interaction (non-critical):', err.message);
       });
 
-      // Build source citations from search results metadata
+      // Track in Neo4j graph for behavioral analysis
+      neo4jService.trackContentInteraction(userId, `module_${moduleId}`, 'query').catch(err => {
+        logger.warn('Failed to track Neo4j interaction (non-critical):', err.message);
+      });
+
+      // Step 6: Build source citations from ChromaDB search results
       const sources = [];
       const seenSources = new Set(); // Deduplicate sources
 
@@ -434,7 +480,7 @@ class MoodleOrchestratorService {
         }
       }
 
-      // Format response with sources
+      // Step 7: Format response with sources and graph-based suggestions
       let responseText = response;
 
       if (sources.length > 0) {
