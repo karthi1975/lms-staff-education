@@ -734,11 +734,14 @@
                     const pin = result.data.pin;
                     const expiresAt = new Date(result.data.expiresAt).toLocaleString();
 
+                    // Close add user modal FIRST
+                    closeAddUserModal();
+
+                    // THEN show PIN modal (persistent - stays until manually closed)
                     showPinModal(name, phone, pin, expiresAt);
 
-                    // Close add user modal and reload users
-                    closeAddUserModal();
-                    loadUsers();
+                    // Note: We don't reload users here to avoid interfering with PIN modal
+                    // The modal will be manually closed by admin, then they can refresh if needed
                 } else {
                     showAlert(result.error || 'Failed to enroll user', 'error');
                 }
@@ -937,6 +940,9 @@
         function closePinModal() {
             document.getElementById('pinModal').classList.remove('active');
             window.currentPin = null;
+
+            // Reload users after PIN modal is closed
+            loadUsers();
         }
 
         function copyPinToClipboard() {
