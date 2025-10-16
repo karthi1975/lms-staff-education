@@ -137,9 +137,12 @@ class PortalContentService {
    * Upload content for a portal module
    * Creates: module_content record + ChromaDB embeddings + Neo4j knowledge graph
    */
-  async uploadModuleContent(moduleId, filePath, fileMetadata, adminUserId) {
+  async uploadModuleContent(moduleId, filePath, fileMetadata, adminUserId, originalFile = null) {
     try {
-      logger.info(`Processing document for module ${moduleId}: ${fileMetadata.originalname}`);
+      // Use provided original_file or fall back to uploaded filename
+      const sourceFile = originalFile || fileMetadata.originalname;
+
+      logger.info(`Processing document for module ${moduleId}: ${sourceFile}`);
 
       // First, create the module_content record
       const contentResult = await postgresService.pool.query(`
@@ -159,12 +162,12 @@ class PortalContentService {
       `, [
         moduleId,
         path.basename(filePath),
-        fileMetadata.originalname,
+        sourceFile,  // Use source file name
         filePath,
         fileMetadata.mimetype,
         fileMetadata.size,
         adminUserId,
-        JSON.stringify({ source: 'portal' })
+        JSON.stringify({ source: 'portal', original_file: sourceFile })
       ]);
 
       const contentId = contentResult.rows[0].id;
@@ -173,7 +176,8 @@ class PortalContentService {
       const chunks = await documentProcessor.processDocument(filePath, {
         module_id: moduleId,
         content_id: contentId,
-        filename: fileMetadata.originalname,
+        filename: sourceFile,  // Use source file name
+        original_file: sourceFile,  // Add original_file metadata
         source: 'portal'
       });
 

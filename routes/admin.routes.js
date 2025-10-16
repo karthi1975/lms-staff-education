@@ -642,6 +642,7 @@ router.post('/portal/courses/:courseId/modules/:moduleId/upload',
   async (req, res) => {
     try {
       const { moduleId } = req.params;
+      const { original_file } = req.body;  // Accept original_file from form data
       const adminUserId = req.user.id;
 
       if (!req.file) {
@@ -652,7 +653,8 @@ router.post('/portal/courses/:courseId/modules/:moduleId/upload',
         parseInt(moduleId),
         req.file.path,
         req.file,
-        adminUserId
+        adminUserId,
+        original_file  // Pass original_file to service
       );
 
       res.json({
