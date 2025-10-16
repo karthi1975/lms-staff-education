@@ -93,3 +93,6 @@ routes/course.routes.js
 credentials/
 *.json
 .env.twilio
+
+TWILIO_*.md
+USER_ADDITION_GUIDE.md
