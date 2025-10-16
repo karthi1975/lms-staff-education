@@ -399,15 +399,15 @@
             <!-- WhatsApp User Form -->
             <div id="formWhatsApp" class="user-form">
                 <p style="margin-bottom: 20px; color: #6b7280; font-size: 14px;">
-                    Creates a user account for WhatsApp-based learning. A verification code will be sent via WhatsApp.
+                    Creates a user account for WhatsApp-based learning. A 4-digit PIN will be generated for activation.
                 </p>
                 <div class="form-group">
                     <label>Full Name *</label>
-                    <input type="text" id="whatsappUserName" placeholder="e.g., John Smith">
+                    <input type="text" id="whatsappUserName" placeholder="e.g., Karthi Jeyabalan">
                 </div>
                 <div class="form-group">
                     <label>WhatsApp Number (E.164 format) *</label>
-                    <input type="text" id="whatsappUserPhone" placeholder="+1234567890" pattern="\+[0-9]+" title="Must start with + followed by country code and number">
+                    <input type="text" id="whatsappUserPhone" placeholder="+18016809129" pattern="\+[0-9]+" title="Must start with + followed by country code and number">
                     <small style="color: #6b7280; font-size: 12px;">
                         📞 Must include country code. Examples:<br>
                         • USA: +18016809129<br>
@@ -416,11 +416,11 @@
                     </small>
                 </div>
                 <div style="background: #fef3c7; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; color: #92400e;">
-                    ⚠️ <strong>Note:</strong> User will receive a verification code via WhatsApp. They must reply with "HI [code]" to activate their account.
+                    ⚠️ <strong>New PIN System:</strong> User will be assigned a 4-digit PIN. You must share this PIN with them offline (SMS/email). User messages WhatsApp bot and sends PIN to activate.
                 </div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="addWhatsAppUser()">Send Verification Code</button>
+                    <button class="btn btn-primary" onclick="addWhatsAppUser()">Enroll User & Get PIN</button>
                 </div>
             </div>
 
@@ -471,6 +471,48 @@
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
                 <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN Display Modal (stays open until manually closed) -->
+    <div id="pinModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header" style="background: #10b981; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0; font-size: 20px;">✅ User Enrolled Successfully!</h2>
+            </div>
+            <div class="modal-body" style="text-align: center; padding: 30px;">
+                <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <div style="font-size: 14px; color: #065f46; margin-bottom: 10px; font-weight: 600;">USER DETAILS</div>
+                    <div style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 5px;" id="pinUserName"></div>
+                    <div style="font-size: 14px; color: #6b7280;" id="pinUserPhone"></div>
+                </div>
+
+                <div style="background: #fef3c7; border: 3px dashed #f59e0b; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+                    <div style="font-size: 14px; color: #92400e; margin-bottom: 10px; font-weight: 600;">📌 4-DIGIT PIN</div>
+                    <div style="font-size: 48px; font-weight: 700; color: #111827; letter-spacing: 8px; font-family: monospace;" id="pinValue"></div>
+                    <div style="font-size: 12px; color: #92400e; margin-top: 10px;">
+                        <span style="font-weight: 600;">⏰ Expires:</span> <span id="pinExpiry"></span>
+                    </div>
+                </div>
+
+                <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; text-align: left; margin-bottom: 20px; border-radius: 4px;">
+                    <div style="font-weight: 600; color: #991b1b; margin-bottom: 8px;">⚠️ IMPORTANT INSTRUCTIONS:</div>
+                    <ol style="color: #991b1b; font-size: 14px; margin: 0; padding-left: 20px; line-height: 1.6;">
+                        <li><strong>Share this PIN</strong> with the user via SMS or email</li>
+                        <li>User must message <strong>+1 806 515 7636</strong> on WhatsApp</li>
+                        <li>Bot will prompt for PIN</li>
+                        <li>User sends PIN to activate account</li>
+                        <li><strong>PIN expires in 7 days</strong></li>
+                    </ol>
+                </div>
+
+                <button class="btn btn-primary" onclick="copyPinToClipboard()" style="margin-right: 10px;">
+                    📋 Copy PIN
+                </button>
+                <button class="btn btn-secondary" onclick="closePinModal()">
+                    Close
+                </button>
             </div>
         </div>
     </div>
@@ -672,8 +714,8 @@
             try {
                 const authToken = localStorage.getItem('adminToken');
 
-                // Use the verification endpoint to send WhatsApp code
-                const response = await fetch('/api/admin/users/register-with-verification', {
+                // Use the new PIN enrollment endpoint
+                const response = await fetch('/api/admin/users/enroll', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -688,27 +730,21 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    const verificationCode = result.data.verificationCode;
-                    let message = `✅ WhatsApp user registered! Verification code sent to ${phone}`;
+                    // Show PIN to admin in persistent modal
+                    const pin = result.data.pin;
+                    const expiresAt = new Date(result.data.expiresAt).toLocaleString();
 
-                    // Show code in development mode
-                    if (verificationCode) {
-                        message += `\n\nVerification Code: ${verificationCode}\n(User should reply: HI ${verificationCode})`;
-                    }
+                    showPinModal(name, phone, pin, expiresAt);
 
-                    showAlert(message, 'success');
+                    // Close add user modal and reload users
                     closeAddUserModal();
-
-                    // Don't reload immediately - user hasn't verified yet
-                    setTimeout(() => {
-                        loadUsers();
-                    }, 2000);
+                    loadUsers();
                 } else {
-                    showAlert(result.error || 'Failed to register user', 'error');
+                    showAlert(result.error || 'Failed to enroll user', 'error');
                 }
             } catch (error) {
-                console.error('Error adding WhatsApp user:', error);
-                showAlert('Error adding user: ' + error.message, 'error');
+                console.error('Error enrolling WhatsApp user:', error);
+                showAlert('Error enrolling user: ' + error.message, 'error');
             }
         }
 
@@ -886,8 +922,62 @@
             }, 3000);
         }
 
-        // Cache buster - Updated 2025-10-14 17:30 - SIMPLIFIED status logic: just use is_active for ALL users
-        console.log('User Management v4 - Status based on is_active field only (no 7-day check)');
+        // PIN Modal Functions
+        function showPinModal(name, phone, pin, expiresAt) {
+            document.getElementById('pinUserName').textContent = name;
+            document.getElementById('pinUserPhone').textContent = phone;
+            document.getElementById('pinValue').textContent = pin;
+            document.getElementById('pinExpiry').textContent = expiresAt;
+            document.getElementById('pinModal').classList.add('active');
+
+            // Store PIN for copy function
+            window.currentPin = pin;
+        }
+
+        function closePinModal() {
+            document.getElementById('pinModal').classList.remove('active');
+            window.currentPin = null;
+        }
+
+        function copyPinToClipboard() {
+            if (window.currentPin) {
+                navigator.clipboard.writeText(window.currentPin).then(() => {
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = '✅ Copied!';
+                    btn.style.background = '#10b981';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '#667eea';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    alert('PIN: ' + window.currentPin);
+                });
+            }
+        }
+
+        // Close modals on outside click
+        document.getElementById('addUserModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAddUserModal();
+            }
+        });
+
+        document.getElementById('deleteModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeleteModal();
+            }
+        });
+
+        document.getElementById('pinModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePinModal();
+            }
+        });
+
+        // Cache buster - Updated 2025-10-16 - PIN enrollment system with persistent modal
+        console.log('User Management v5 - PIN enrollment system active');
     </script>
 </body>
 </html>
