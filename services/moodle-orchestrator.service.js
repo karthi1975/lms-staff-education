@@ -462,8 +462,11 @@ class MoodleOrchestratorService {
       const seenSources = new Set(); // Deduplicate sources
 
       for (const result of searchResults) {
-        if (result.metadata && result.metadata.filename) {
-          const sourceName = result.metadata.filename;
+        if (result.metadata) {
+          // Use original_file (UI uploads) or filename (script uploads)
+          const sourceName = result.metadata.original_file || result.metadata.filename;
+          if (!sourceName) continue;
+
           // Add chunk title if available for more specific citation
           const chunkTitle = result.metadata.chunk_title;
 
