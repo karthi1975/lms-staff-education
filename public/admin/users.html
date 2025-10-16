@@ -415,6 +415,49 @@
         </div>
     </div>
 
+    <!-- PIN Display Modal (stays open until closed) -->
+    <div class="modal" id="pinModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header" style="background: #10b981; color: white;">
+                <h2>✅ User Enrolled Successfully!</h2>
+                <button class="close-btn" onclick="closePinModal()" style="color: white;">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center; padding: 30px;">
+                <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <div style="font-size: 14px; color: #065f46; margin-bottom: 10px;">USER DETAILS</div>
+                    <div style="font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 5px;" id="pinUserName"></div>
+                    <div style="font-size: 14px; color: #6b7280;" id="pinUserPhone"></div>
+                </div>
+
+                <div style="background: #fef3c7; border: 3px dashed #f59e0b; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+                    <div style="font-size: 14px; color: #92400e; margin-bottom: 10px; font-weight: 600;">📌 4-DIGIT PIN</div>
+                    <div style="font-size: 48px; font-weight: 700; color: #111827; letter-spacing: 8px; font-family: monospace;" id="pinValue"></div>
+                    <div style="font-size: 12px; color: #92400e; margin-top: 10px;">
+                        <span style="font-weight: 600;">⏰ Expires:</span> <span id="pinExpiry"></span>
+                    </div>
+                </div>
+
+                <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 15px; text-align: left; margin-bottom: 20px; border-radius: 4px;">
+                    <div style="font-weight: 600; color: #991b1b; margin-bottom: 8px;">⚠️ IMPORTANT INSTRUCTIONS:</div>
+                    <ol style="color: #991b1b; font-size: 14px; margin: 0; padding-left: 20px; line-height: 1.6;">
+                        <li><strong>Share this PIN</strong> with the user via SMS or email</li>
+                        <li>User must message <strong>+1 806 515 7636</strong> on WhatsApp</li>
+                        <li>Bot will prompt for PIN</li>
+                        <li>User sends PIN to activate account</li>
+                        <li><strong>PIN expires in 7 days</strong></li>
+                    </ol>
+                </div>
+
+                <button class="btn btn-primary" onclick="copyPinToClipboard()" style="margin-right: 10px; background: #667eea;">
+                    📋 Copy PIN
+                </button>
+                <button class="btn btn-secondary" onclick="closePinModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/admin';
         let allUsers = [];
@@ -640,15 +683,10 @@
                 const pin = result.data.pin;
                 const expiresAt = new Date(result.data.expiresAt).toLocaleString();
 
-                alert(
-                    `✅ User "${name}" enrolled successfully!\n\n` +
-                    `📌 PIN: ${pin}\n` +
-                    `⏰ Expires: ${expiresAt}\n\n` +
-                    `⚠️ IMPORTANT: Share this PIN with the user via SMS or email.\n` +
-                    `The user will need this PIN to activate their WhatsApp access.`
-                );
+                // Create custom modal for PIN display (stays open until user closes it)
+                showPinModal(name, phoneNumber, pin, expiresAt);
 
-                // Close modal and reload users
+                // Close add user modal and reload users
                 closeAddUserModal();
                 await loadUsers();
 
@@ -684,6 +722,41 @@
             }, 5000);
         }
 
+        // PIN Modal Functions
+        function showPinModal(name, phone, pin, expiresAt) {
+            document.getElementById('pinUserName').textContent = name;
+            document.getElementById('pinUserPhone').textContent = phone;
+            document.getElementById('pinValue').textContent = pin;
+            document.getElementById('pinExpiry').textContent = expiresAt;
+            document.getElementById('pinModal').classList.add('active');
+
+            // Store PIN for copy function
+            window.currentPin = pin;
+        }
+
+        function closePinModal() {
+            document.getElementById('pinModal').classList.remove('active');
+            window.currentPin = null;
+        }
+
+        function copyPinToClipboard() {
+            if (window.currentPin) {
+                navigator.clipboard.writeText(window.currentPin).then(() => {
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = '✅ Copied!';
+                    btn.style.background = '#10b981';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '#667eea';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    alert('PIN: ' + window.currentPin);
+                });
+            }
+        }
+
         // Close modals on outside click
         document.getElementById('progressModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -694,6 +767,12 @@
         document.getElementById('addUserModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeAddUserModal();
+            }
+        });
+
+        document.getElementById('pinModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePinModal();
             }
         });
     </script>
