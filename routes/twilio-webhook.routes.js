@@ -1,5 +1,5 @@
 /**
- * Twilio WhatsApp Webhook Routes
+ * Twilio WhatsApp Webhook Routes - WITH EDUCATION FLOW
  * Handles incoming messages from Twilio WhatsApp API
  * Based on: https://www.twilio.com/docs/messaging/tutorials/how-to-receive-and-reply/node-js
  */
@@ -13,13 +13,13 @@ const logger = require('../utils/logger');
 
 /**
  * @route POST /webhook/twilio
- * @desc Receive WhatsApp messages from Twilio
+ * @desc Receive WhatsApp messages from Twilio - WITH EDUCATION FLOW
  * @access Public (validated by Twilio signature)
  */
 router.post('/webhook/twilio', async (req, res) => {
   try {
     // Log incoming webhook
-    logger.info('Twilio webhook received');
+    logger.info('📚 Twilio webhook received - EDUCATION MODE');
     console.log('Twilio webhook body:', JSON.stringify(req.body, null, 2));
 
     // Extract message data from Twilio format
@@ -33,24 +33,24 @@ router.post('/webhook/twilio', async (req, res) => {
       return res.type('text/xml').send(twiml.toString());
     }
 
-    // Process message asynchronously using existing handler (don't await - send response first)
+    // Process message with education handler
     setImmediate(async () => {
       try {
         await whatsappHandler.handleMessage(messageData);
-        console.log('Twilio message processed successfully');
+        logger.info('✅ Education message processed successfully');
+        console.log('✅ Education message processed successfully');
       } catch (error) {
-        console.error('Error processing message:', error);
-        logger.error('Error processing message:', error);
+        console.error('❌ Error processing education message:', error);
+        logger.error('Error processing education message:', error);
       }
     });
 
     // Immediately respond with empty TwiML (Twilio requirement)
-    // Our handler will send the actual response via Twilio API
     const twiml = new MessagingResponse();
     res.type('text/xml').send(twiml.toString());
 
   } catch (error) {
-    console.error('Error processing Twilio webhook:', error);
+    console.error('❌ Error processing Twilio webhook:', error);
     logger.error('Error processing Twilio webhook:', error);
     logger.error('Error stack:', error.stack);
 

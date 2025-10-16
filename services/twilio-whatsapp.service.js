@@ -141,8 +141,17 @@ class TwilioWhatsAppService {
     }
 
     try {
-      // Ensure to number has whatsapp: prefix
-      const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+      // Clean and format phone number
+      // First remove any existing whatsapp: prefix and spaces
+      let cleanNumber = to.replace(/^whatsapp:\s*/i, '').replace(/\s+/g, '').trim();
+
+      // Ensure + prefix for international numbers
+      if (!cleanNumber.includes('+')) {
+        cleanNumber = `+${cleanNumber}`;
+      }
+
+      // Add whatsapp: prefix (no space!)
+      const toNumber = `whatsapp:${cleanNumber}`;
       const fromNumber = this.whatsappNumber;
 
       const message = await this.client.messages.create({
@@ -231,7 +240,12 @@ class TwilioWhatsAppService {
     }
 
     try {
-      const toNumber = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+      // Clean and format phone number (same logic as sendMessage)
+      let cleanNumber = to.replace(/^whatsapp:\s*/i, '').replace(/\s+/g, '').trim();
+      if (!cleanNumber.includes('+')) {
+        cleanNumber = `+${cleanNumber}`;
+      }
+      const toNumber = `whatsapp:${cleanNumber}`;
       const fromNumber = this.whatsappNumber;
 
       const message = await this.client.messages.create({
