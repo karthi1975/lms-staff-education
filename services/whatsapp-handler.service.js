@@ -27,26 +27,75 @@ class WhatsAppHandlerService {
       // Mark as read
       await whatsappService.markAsRead(messageId);
 
-      // Check if user is pending verification
+      // Normalize phone number
       const normalizedPhone = this.normalizePhoneNumber(from);
-      if (verificationService.isPendingVerification(normalizedPhone)) {
-        // Handle verification code
-        const verificationResult = await verificationService.verifyCode(normalizedPhone, messageBody);
 
-        if (verificationResult.verified) {
-          // Send welcome message
-          await verificationService.sendWelcomeMessage(
-            verificationResult.phoneNumber,
-            verificationResult.name
-          );
-          logger.info(`✅ User ${verificationResult.name} verified and welcomed`);
-        } else {
-          // Send error message
-          await whatsappService.sendMessage(from, verificationResult.message);
-        }
+      // Check enrollment status via enrollment service (NEW PIN SYSTEM)
+      const enrollmentService = require('./enrollment.service');
+      const enrollmentStatus = await enrollmentService.getEnrollmentStatus(normalizedPhone);
+
+      // Case 1: User not enrolled at all
+      if (!enrollmentStatus.enrolled) {
+        await whatsappService.sendMessage(from,
+          '❌ This number is not enrolled.\n\n' +
+          'Please contact your administrator to register for the Teachers Training program.'
+        );
+        logger.info(`Unenrolled user attempted access: ${normalizedPhone}`);
         return;
       }
 
+      // Case 2: User is blocked
+      if (enrollmentStatus.status === 'blocked') {
+        await whatsappService.sendMessage(from,
+          '🔒 Your account is blocked.\n\n' +
+          'Please contact your administrator for assistance.'
+        );
+        logger.warn(`Blocked user attempted access: ${normalizedPhone}`);
+        return;
+      }
+
+      // Case 3: User is pending (needs to verify PIN)
+      if (enrollmentStatus.status === 'pending' && !enrollmentStatus.isVerified) {
+        // Check if message is a 4-digit PIN
+        if (/^\d{4}$/.test(messageBody.trim())) {
+          // Verify PIN
+          const verificationResult = await enrollmentService.verifyUserPIN(normalizedPhone, messageBody.trim());
+
+          if (verificationResult.verified) {
+            // PIN verified successfully - send welcome message
+            const welcomeMessage =
+              `🎉 *Account Activated!*\n\n` +
+              `Welcome ${verificationResult.name}! You now have access to the Teachers Training program!\n\n` +
+              `📚 *Available Courses:*\n` +
+              `1️⃣ Business Studies & Entrepreneurship (5 modules)\n\n` +
+              `🚀 *Getting Started:*\n` +
+              `• Ask me questions about the course content\n` +
+              `• Type *'courses'* to see available courses\n` +
+              `• Type *'progress'* to track your learning\n` +
+              `• Type *'help'* for all available commands\n\n` +
+              `I'm here to help you learn! 📖`;
+
+            await whatsappService.sendMessage(from, welcomeMessage);
+            logger.info(`✅ User ${verificationResult.name} (${normalizedPhone}) verified via PIN and welcomed`);
+            return;
+          } else {
+            // PIN verification failed - send error message
+            await whatsappService.sendMessage(from, verificationResult.message);
+            return;
+          }
+        } else {
+          // Not a PIN - prompt for PIN
+          await whatsappService.sendMessage(from,
+            `Welcome ${enrollmentStatus.name}! 👋\n\n` +
+            `Please verify your identity by sending your *4-digit PIN*.\n\n` +
+            `Your administrator should have provided this PIN to you.\n\n` +
+            `❓ Lost your PIN? Contact your administrator.`
+          );
+          return;
+        }
+      }
+
+      // Case 4: User is verified and active - proceed to normal chat
       // Get or create session
       const session = await this.getOrCreateSession(from);
 
@@ -160,7 +209,7 @@ class WhatsAppHandlerService {
   }
 
   /**
-   * Get or create user session
+   * Get user session (NO AUTO-CREATE - users must be enrolled first)
    */
   async getOrCreateSession(phoneNumber) {
     // Normalize phone number
@@ -177,35 +226,9 @@ class WhatsAppHandlerService {
     );
 
     if (result.rows.length === 0) {
-      // Create new user with normalized phone
-      const newUserResult = await postgresService.query(
-        `INSERT INTO users (whatsapp_id, name, current_module_id)
-         VALUES ($1, $2, 1)
-         RETURNING id, name, current_module_id`,
-        [normalizedPhone, `User ${normalizedPhone.slice(-4)}`]
-      );
-
-      const user = newUserResult.rows[0];
-
-      // Initialize module 1 progress
-      await postgresService.query(
-        `INSERT INTO user_progress (user_id, module_id, status, progress_percentage)
-         VALUES ($1, 1, 'in_progress', 0)
-         ON CONFLICT (user_id, module_id) DO NOTHING`,
-        [user.id]
-      );
-
-      const session = {
-        userId: user.id,
-        phoneNumber: normalizedPhone,
-        name: user.name,
-        currentModule: user.current_module_id,
-        quizState: null,
-        lastActivity: new Date()
-      };
-
-      this.userSessions.set(normalizedPhone, session);
-      return session;
+      // User should have been enrolled - this shouldn't happen if enrollment flow is working
+      logger.error(`Session requested for unenrolled user: ${normalizedPhone}`);
+      throw new Error('User not enrolled. This should have been caught by enrollment check.');
     }
 
     const user = result.rows[0];

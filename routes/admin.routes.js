@@ -5,6 +5,7 @@ const path = require('path');
 const contentService = require('../services/content.service');
 const portalContentService = require('../services/portal-content.service');
 const verificationService = require('../services/verification.service');
+const enrollmentService = require('../services/enrollment.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
@@ -833,6 +834,169 @@ router.get('/users/pending-verification', authMiddleware.authenticateToken, asyn
 
   } catch (error) {
     logger.error('Error fetching pending verifications:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== PIN ENROLLMENT SYSTEM ====================
+
+/**
+ * @route POST /api/admin/users/enroll
+ * @desc Enroll new user with PIN (replaces old verification system)
+ * @access Admin
+ */
+router.post('/users/enroll', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { name, phoneNumber, customPin } = req.body;
+    const adminId = req.user.id;
+
+    if (!name || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name and phone number are required'
+      });
+    }
+
+    const result = await enrollmentService.enrollUser(name, phoneNumber, adminId, customPin);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+        data: {
+          userId: result.userId,
+          phoneNumber: result.phoneNumber,
+          pin: result.pin, // 4-digit PIN for admin to share with user
+          expiresAt: result.expiresAt
+        }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.message,
+        userId: result.userId,
+        status: result.status
+      });
+    }
+
+  } catch (error) {
+    logger.error('Error enrolling user:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/users/:phoneNumber/reset-pin
+ * @desc Reset user's PIN
+ * @access Admin
+ */
+router.post('/users/:phoneNumber/reset-pin', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { phoneNumber } = req.params;
+    const { customPin } = req.body;
+    const adminId = req.user.id;
+
+    const result = await enrollmentService.resetPIN(phoneNumber, adminId, customPin);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+        data: {
+          userId: result.userId,
+          pin: result.pin,
+          expiresAt: result.expiresAt
+        }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.message
+      });
+    }
+
+  } catch (error) {
+    logger.error('Error resetting PIN:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/users/:phoneNumber/enrollment-status
+ * @desc Get enrollment status for a user
+ * @access Admin
+ */
+router.get('/users/:phoneNumber/enrollment-status', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { phoneNumber } = req.params;
+
+    const result = await enrollmentService.getEnrollmentStatus(phoneNumber);
+
+    if (result.enrolled) {
+      res.json({
+        success: true,
+        data: {
+          userId: result.userId,
+          name: result.name,
+          status: result.status,
+          isVerified: result.isVerified,
+          attemptsRemaining: result.attemptsRemaining,
+          pinExpiresAt: result.pinExpiresAt,
+          enrolledAt: result.enrolledAt
+        }
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: result.message
+      });
+    }
+
+  } catch (error) {
+    logger.error('Error getting enrollment status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/users/:phoneNumber/unblock
+ * @desc Unblock a blocked user
+ * @access Admin
+ */
+router.post('/users/:phoneNumber/unblock', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { phoneNumber } = req.params;
+    const adminId = req.user.id;
+
+    const result = await enrollmentService.unblockUser(phoneNumber, adminId);
+
+    res.json(result);
+
+  } catch (error) {
+    logger.error('Error unblocking user:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/users/:userId/enrollment-history
+ * @desc Get enrollment history for a user (audit trail)
+ * @access Admin
+ */
+router.get('/users/:userId/enrollment-history', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 50;
+
+    const history = await enrollmentService.getEnrollmentHistory(parseInt(userId), limit);
+
+    res.json({
+      success: true,
+      data: history
+    });
+
+  } catch (error) {
+    logger.error('Error getting enrollment history:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
