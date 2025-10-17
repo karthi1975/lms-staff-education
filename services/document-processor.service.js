@@ -1,5 +1,8 @@
 const pdfParse = require('pdf-parse');
 const fs = require('fs').promises;
+const fsSync = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 const logger = require('../utils/logger');
 
 // Try to load mammoth, but make it optional
@@ -10,6 +13,14 @@ try {
   logger.warn('Mammoth not available - DOCX support disabled');
 }
 
+// Try to load Tesseract for OCR
+let Tesseract = null;
+try {
+  Tesseract = require('tesseract.js');
+} catch (err) {
+  logger.warn('Tesseract.js not available - OCR support disabled');
+}
+
 class DocumentProcessorService {
   constructor() {
     // Chunking configuration
@@ -17,6 +28,9 @@ class DocumentProcessorService {
     this.chunkOverlap = 200; // Overlap between chunks for context continuity
     this.maxChunkSize = 4000; // Maximum characters per chunk
     this.minChunkSize = 50; // Minimum characters per chunk (lowered for smaller documents)
+
+    // OCR configuration
+    this.ocrThresholdCharsPerPage = 100; // If less than 100 chars per page, use OCR
   }
 
   /**
@@ -52,10 +66,39 @@ class DocumentProcessorService {
    */
   async extractText(filePath) {
     const fileContent = await fs.readFile(filePath);
-    
+
     if (filePath.toLowerCase().endsWith('.pdf')) {
+      // Try standard text extraction first
       const pdfData = await pdfParse(fileContent);
-      return pdfData.text;
+      const text = pdfData.text;
+
+      // Check if PDF is image-based (low text extraction)
+      const fileStats = fsSync.statSync(filePath);
+      const estimatedPages = Math.max(1, Math.floor(fileStats.size / (1024 * 50))); // ~50KB per page estimate
+      const avgCharsPerPage = text.length / estimatedPages;
+
+      logger.info(`PDF text extraction: ${text.length} chars, ${estimatedPages} pages (est), ${avgCharsPerPage.toFixed(0)} chars/page`);
+
+      // If very low text per page, likely image-based PDF - use OCR
+      if (avgCharsPerPage < this.ocrThresholdCharsPerPage) {
+        logger.warn(`Low text density detected (${avgCharsPerPage.toFixed(0)} chars/page) - attempting OCR`);
+
+        if (Tesseract) {
+          try {
+            const ocrText = await this.extractTextWithOCR(filePath);
+            if (ocrText && ocrText.length > text.length) {
+              logger.info(`OCR successful: extracted ${ocrText.length} chars (vs ${text.length} from PDF text)`);
+              return ocrText;
+            }
+          } catch (ocrError) {
+            logger.error('OCR failed, using original text extraction:', ocrError.message);
+          }
+        } else {
+          logger.warn('OCR not available - install tesseract.js for image-based PDF support');
+        }
+      }
+
+      return text;
     } else if (filePath.toLowerCase().endsWith('.txt') || filePath.toLowerCase().endsWith('.md')) {
       return fileContent.toString('utf-8');
     } else if (filePath.toLowerCase().endsWith('.docx')) {
@@ -70,6 +113,53 @@ class DocumentProcessorService {
     }
 
     return fileContent.toString('utf-8');
+  }
+
+  /**
+   * Extract text from image-based PDF using OCR
+   */
+  async extractTextWithOCR(filePath) {
+    const tmpDir = '/tmp/ocr_' + Date.now();
+
+    try {
+      // Create temp directory for images
+      execSync(`mkdir -p ${tmpDir}`);
+
+      // Convert PDF pages to images using pdftoppm
+      const outputPrefix = path.join(tmpDir, 'page');
+      execSync(`pdftoppm -png "${filePath}" "${outputPrefix}"`);
+
+      // Get all generated images
+      const imageFiles = fsSync.readdirSync(tmpDir)
+        .filter(f => f.endsWith('.png'))
+        .sort()
+        .map(f => path.join(tmpDir, f));
+
+      logger.info(`OCR: Processing ${imageFiles.length} pages`);
+
+      // Run OCR on each image
+      let fullText = '';
+      for (let i = 0; i < imageFiles.length; i++) {
+        const imagePath = imageFiles[i];
+        logger.info(`OCR: Processing page ${i + 1}/${imageFiles.length}`);
+
+        const { data: { text } } = await Tesseract.recognize(imagePath, 'eng', {
+          logger: () => {} // Suppress verbose Tesseract logs
+        });
+
+        fullText += text + '\n\n';
+      }
+
+      return fullText;
+
+    } finally {
+      // Cleanup temp directory
+      try {
+        execSync(`rm -rf ${tmpDir}`);
+      } catch (cleanupError) {
+        logger.warn('Failed to cleanup OCR temp directory:', cleanupError.message);
+      }
+    }
   }
 
   /**
