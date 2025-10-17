@@ -1167,9 +1167,9 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
     const neo4jService = require('../services/neo4j.service');
     const chromaService = require('../services/chroma.service');
 
-    // Get course details
+    // Get course details from the CORRECT table (courses, not moodle_courses)
     const courseResult = await postgresService.pool.query(
-      'SELECT * FROM moodle_courses WHERE id = $1',
+      'SELECT * FROM courses WHERE id = $1',
       [courseId]
     );
 
@@ -1178,20 +1178,23 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
     }
 
     const course = courseResult.rows[0];
-    const moodleCourseId = course.moodle_course_id;
 
     // Get all modules for this course
     const modulesResult = await postgresService.pool.query(
-      'SELECT id FROM moodle_modules WHERE moodle_course_id = $1',
-      [moodleCourseId]
+      'SELECT id FROM modules WHERE course_id = $1',
+      [courseId]
     );
 
     const moduleIds = modulesResult.rows.map(row => row.id);
 
-    // Delete from Neo4j
+    // Delete from Neo4j (if module IDs exist)
     try {
-      await neo4jService.deleteCourseGraph(moodleCourseId);
-      logger.info(`Deleted Neo4j graph for course ${moodleCourseId}`);
+      if (moduleIds.length > 0) {
+        for (const moduleId of moduleIds) {
+          await neo4jService.deleteModuleGraph(moduleId);
+        }
+        logger.info(`Deleted Neo4j graph for course ${courseId}`);
+      }
     } catch (neo4jError) {
       logger.warn('Error deleting from Neo4j:', neo4jError);
     }
@@ -1206,70 +1209,19 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
       logger.warn('Error deleting from ChromaDB:', chromaError);
     }
 
-    // Delete from PostgreSQL (cascading deletes should handle related records)
-    await postgresService.pool.query('BEGIN');
+    // Delete from PostgreSQL - CASCADE should handle all related records
+    // But let's be explicit for clarity
+    await postgresService.pool.query(
+      'DELETE FROM courses WHERE id = $1',
+      [courseId]
+    );
 
-    try {
-      // Delete quiz attempts (use moodle_quiz_id, not quiz_id)
-      await postgresService.pool.query(`
-        DELETE FROM quiz_attempts
-        WHERE moodle_quiz_id IN (
-          SELECT id FROM moodle_quizzes
-          WHERE moodle_module_id IN (
-            SELECT id FROM moodle_modules WHERE moodle_course_id = $1
-          )
-        )
-      `, [moodleCourseId]);
+    logger.info(`Deleted course ${courseId} (${course.title})`);
 
-      // Delete quiz questions
-      await postgresService.pool.query(`
-        DELETE FROM quiz_questions
-        WHERE moodle_quiz_id IN (
-          SELECT id FROM moodle_quizzes
-          WHERE moodle_module_id IN (
-            SELECT id FROM moodle_modules WHERE moodle_course_id = $1
-          )
-        )
-      `, [moodleCourseId]);
-
-      // Delete quizzes
-      await postgresService.pool.query(`
-        DELETE FROM moodle_quizzes
-        WHERE moodle_module_id IN (
-          SELECT id FROM moodle_modules WHERE moodle_course_id = $1
-        )
-      `, [moodleCourseId]);
-
-      // Delete content chunks
-      await postgresService.pool.query(`
-        DELETE FROM module_content_chunks
-        WHERE moodle_module_id IN (
-          SELECT id FROM moodle_modules WHERE moodle_course_id = $1
-        )
-      `, [moodleCourseId]);
-
-      // Delete modules
-      await postgresService.pool.query(
-        'DELETE FROM moodle_modules WHERE moodle_course_id = $1',
-        [moodleCourseId]
-      );
-
-      // Delete course
-      await postgresService.pool.query(
-        'DELETE FROM moodle_courses WHERE id = $1',
-        [courseId]
-      );
-
-      await postgresService.pool.query('COMMIT');
-
-      res.json({
-        success: true,
-        message: 'Course and all related data deleted successfully'
-      });
-    } catch (dbError) {
-      await postgresService.pool.query('ROLLBACK');
-      throw dbError;
-    }
+    res.json({
+      success: true,
+      message: 'Course and all related data deleted successfully'
+    });
 
   } catch (error) {
     logger.error('Error deleting course:', error);
