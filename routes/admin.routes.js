@@ -1044,9 +1044,9 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
 
     const postgresService = require('../services/database/postgres.service');
 
-    // Get module details to get moodle_module_id
+    // Get module details
     const moduleResult = await postgresService.pool.query(
-      'SELECT id FROM moodle_modules WHERE id = $1',
+      'SELECT id FROM modules WHERE id = $1',
       [moduleId]
     );
 
@@ -1057,12 +1057,10 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
       });
     }
 
-    const moodleModuleId = moduleResult.rows[0].id;
-
     // Check if quiz already exists for this module
     let quizResult = await postgresService.pool.query(
-      'SELECT id FROM moodle_quizzes WHERE moodle_module_id = $1',
-      [moodleModuleId]
+      'SELECT id FROM quizzes WHERE module_id = $1',
+      [moduleId]
     );
 
     let quizId;
@@ -1073,7 +1071,7 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
 
       // Delete existing questions
       await postgresService.pool.query(
-        'DELETE FROM quiz_questions WHERE moodle_quiz_id = $1',
+        'DELETE FROM quiz_questions WHERE quiz_id = $1',
         [quizId]
       );
 
@@ -1081,22 +1079,20 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
     } else {
       // Create new quiz
       quizResult = await postgresService.pool.query(`
-        INSERT INTO moodle_quizzes (
-          moodle_module_id,
-          quiz_name,
+        INSERT INTO quizzes (
+          module_id,
+          title,
           time_limit_minutes,
           pass_percentage,
-          max_attempts,
-          source
-        ) VALUES ($1, $2, $3, $4, $5, $6)
+          max_attempts
+        ) VALUES ($1, $2, $3, $4, $5)
         RETURNING id
       `, [
-        moodleModuleId,
+        moduleId,
         `Module ${moduleId} Quiz`,
         30, // 30 minutes default
         70, // 70% pass threshold
-        999, // unlimited attempts
-        'portal'
+        999  // unlimited attempts
       ]);
 
       quizId = quizResult.rows[0].id;
@@ -1109,15 +1105,14 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
       const q = questions[i];
       const result = await postgresService.pool.query(`
         INSERT INTO quiz_questions (
-          moodle_quiz_id,
+          quiz_id,
           question_text,
           question_type,
           options,
           correct_answer,
           explanation,
-          points,
-          source
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          points
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
       `, [
         quizId,
@@ -1126,8 +1121,7 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
         JSON.stringify(q.options),
         q.correctAnswer.toString(),
         q.explanation || null,
-        1.0,
-        'portal'
+        1.0
       ]);
 
       insertedQuestions.push({
