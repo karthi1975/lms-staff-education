@@ -1,0 +1,53 @@
+--- Fix quiz upload modal to show correct module ID ---
+
+Add better debugging and module ID display to help identify upload issues.
+
+LOCATION: public/admin/lms-dashboard.html around line 2125-2128
+
+BEFORE:
+```javascript
+function openQuizUploadModal(moduleId, moduleTitle) {
+    currentQuizUploadModuleId = moduleId;
+    document.getElementById('quizUploadModalTitle').textContent = `Upload Quiz - ${moduleTitle}`;
+    document.getElementById('quizUploadModalSubtitle').textContent = `Module ${moduleId}: Upload quiz questions in JSON format`;
+    document.getElementById('quizUploadModal').classList.add('active');
+
+    // Reset state
+    clearQuizFile();
+}
+```
+
+AFTER:
+```javascript
+function openQuizUploadModal(moduleId, moduleTitle) {
+    currentQuizUploadModuleId = moduleId;
+    console.log('📝 Opening quiz upload modal for Module ID:', moduleId, 'Title:', moduleTitle);
+
+    document.getElementById('quizUploadModalTitle').textContent = `Upload Quiz - ${moduleTitle}`;
+    document.getElementById('quizUploadModalSubtitle').textContent = `Database Module ID: ${moduleId} | Upload quiz questions in JSON format`;
+    document.getElementById('quizUploadModal').classList.add('active');
+
+    // Reset state
+    clearQuizFile();
+}
+```
+
+CHANGES:
+1. Added console.log to show which module ID is being used
+2. Updated subtitle to clearly show "Database Module ID: ${moduleId}"
+3. This helps administrators see the actual database ID being used for upload
+
+ALSO UPDATE THE UPLOAD FUNCTION (around line 2265):
+
+BEFORE:
+```javascript
+const response = await fetch(`${API_BASE}/modules/${currentQuizUploadModuleId}/quiz/upload`, {
+```
+
+AFTER:
+```javascript
+console.log('🚀 Uploading quiz to module ID:', currentQuizUploadModuleId);
+const response = await fetch(`${API_BASE}/modules/${currentQuizUploadModuleId}/quiz/upload`, {
+```
+
+This will help debug which module ID is actually being sent to the API.

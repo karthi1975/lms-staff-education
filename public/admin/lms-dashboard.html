@@ -2124,8 +2124,10 @@
 
         function openQuizUploadModal(moduleId, moduleTitle) {
             currentQuizUploadModuleId = moduleId;
+            console.log('📝 Opening quiz upload modal for Module ID:', moduleId, 'Title:', moduleTitle);
+
             document.getElementById('quizUploadModalTitle').textContent = `Upload Quiz - ${moduleTitle}`;
-            document.getElementById('quizUploadModalSubtitle').textContent = `Module ${moduleId}: Upload quiz questions in JSON format`;
+            document.getElementById('quizUploadModalSubtitle').textContent = `Database Module ID: ${moduleId} | Upload quiz questions in JSON format`;
             document.getElementById('quizUploadModal').classList.add('active');
 
             // Reset state
@@ -2262,6 +2264,7 @@
                 progressBar.style.width = '30%';
                 progressText.textContent = 'Uploading quiz...';
 
+                console.log('🚀 Uploading quiz to module ID:', currentQuizUploadModuleId);
                 const response = await fetch(`${API_BASE}/modules/${currentQuizUploadModuleId}/quiz/upload`, {
                     method: 'POST',
                     headers: {
