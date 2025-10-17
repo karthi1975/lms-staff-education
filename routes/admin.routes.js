@@ -1105,6 +1105,7 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
       const q = questions[i];
       const result = await postgresService.pool.query(`
         INSERT INTO quiz_questions (
+          module_id,
           quiz_id,
           question_text,
           question_type,
@@ -1112,9 +1113,10 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
           correct_answer,
           explanation,
           points
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
       `, [
+        moduleId,
         quizId,
         q.question,
         'multichoice',
