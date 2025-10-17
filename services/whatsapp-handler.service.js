@@ -215,11 +215,8 @@ class WhatsAppHandlerService {
     // Normalize phone number
     const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
 
-    if (this.userSessions.has(normalizedPhone)) {
-      return this.userSessions.get(normalizedPhone);
-    }
-
-    // Try both with and without + prefix
+    // Always fetch from database to ensure we have the latest user_id
+    // This prevents issues when a user is deleted and re-registered with the same phone
     const result = await postgresService.query(
       'SELECT id, name, current_module_id FROM users WHERE whatsapp_id = $1 OR whatsapp_id = $2',
       [normalizedPhone, phoneNumber]
@@ -232,6 +229,22 @@ class WhatsAppHandlerService {
     }
 
     const user = result.rows[0];
+
+    // Check if cached session exists and has the same user_id
+    if (this.userSessions.has(normalizedPhone)) {
+      const cachedSession = this.userSessions.get(normalizedPhone);
+      if (cachedSession.userId === user.id) {
+        // Update activity timestamp and return cached session
+        cachedSession.lastActivity = new Date();
+        return cachedSession;
+      } else {
+        // User was deleted and re-registered - invalidate old session
+        logger.info(`User ${normalizedPhone} re-registered with new ID (old: ${cachedSession.userId}, new: ${user.id})`);
+        this.userSessions.delete(normalizedPhone);
+      }
+    }
+
+    // Create new session
     const session = {
       userId: user.id,
       phoneNumber: normalizedPhone,

@@ -1,0 +1,29 @@
+
+⏺ Perfect! ✅ ChromaDB is installed (version 1.1.1). The chroma CLI is in /home/karthi/.local/bin. Now let's add it to PATH
+  and create the systemd service:
+
+⏺ Bash(gcloud compute ssh teachers-training --zone=us-east5-a --command=" timeout: 1m 0s
+      echo '🔧 Setting up ChromaDB service...'…)
+  ⎿  🔧 Setting up ChromaDB service...
+
+     📌 Testing chroma CLI...
+     … +7 lines (ctrl+o to expand)
+
+⏺ Excellent! Now let's create the systemd service for ChromaDB:
+
+✶ Creating ChromaDB systemd service… (esc to interrupt · ctrl+t to hide todos)
+  ⎿  ☒ Backup current ChromaDB data from Docker volume
+     ☒ Install ChromaDB natively on GCP VM
+     ☐ Create ChromaDB systemd service for auto-start
+     ☐ Update docker-compose.yml to remove ChromaDB container
+     ☐ Update environment variables to point to native ChromaDB
+     ☐ Re-index all data to native ChromaDB
+     ☐ Run sanity checks - ChromaDB connection
+     ☐ Run sanity checks - PostgreSQL in Docker
+     ☐ Run sanity checks - Neo4j in Docker
+     ☐ Run sanity checks - Chat API with sources
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>  
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (shift+tab to cycle)                                                   ⧉ In document-processor.service.js

@@ -742,6 +742,9 @@ class Neo4jService {
   async getModuleContentGraph(moduleId) {
     const session = this.driver.session();
     try {
+      // Ensure moduleId is an integer
+      const moduleIdInt = parseInt(moduleId, 10);
+
       const result = await session.run(
         `MATCH (m:Module {id: $moduleId})
         OPTIONAL MATCH (m)-[:HAS_CONTENT]->(chunk:ContentChunk)
@@ -751,7 +754,7 @@ class Neo4jService {
           collect(DISTINCT chunk) as chunks,
           collect(DISTINCT topic) as topics,
           collect(DISTINCT {chunk: chunk, topic: topic}) as relationships`,
-        { moduleId }
+        { moduleId: moduleIdInt }
       );
 
       if (result.records.length === 0) {
@@ -834,6 +837,10 @@ class Neo4jService {
   async getRelatedContent(moduleId, limit = 5) {
     const session = this.driver.session();
     try {
+      // Ensure moduleId is an integer, not a float or string
+      const moduleIdInt = parseInt(moduleId, 10);
+      const limitInt = parseInt(limit, 10);
+
       const result = await session.run(
         `MATCH (m:Module {id: $moduleId})-[:COVERS_TOPIC]->(topic:Topic)
         MATCH (topic)<-[:COVERS_TOPIC]-(related:Module)
@@ -844,7 +851,7 @@ class Neo4jService {
         RETURN related.id as module_id,
                related.name as module_name,
                shared_topics`,
-        { moduleId, limit }
+        { moduleId: moduleIdInt, limit: limitInt }
       );
 
       return result.records.map(record => ({

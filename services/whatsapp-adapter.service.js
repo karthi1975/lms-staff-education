@@ -23,9 +23,72 @@ class WhatsAppAdapterService {
 
   /**
    * Send text message
+   * Automatically chunks messages longer than 1500 characters
    */
   async sendMessage(to, text) {
-    return await this.service.sendMessage(to, text);
+    const MAX_LENGTH = 1500; // Safe limit below Twilio's 1600 char limit
+
+    // If message is short enough, send directly
+    if (text.length <= MAX_LENGTH) {
+      return await this.service.sendMessage(to, text);
+    }
+
+    // Split long messages into chunks
+    const chunks = this.splitMessage(text, MAX_LENGTH);
+    const results = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const prefix = chunks.length > 1 ? `📄 Part ${i + 1}/${chunks.length}\n\n` : '';
+      const result = await this.service.sendMessage(to, prefix + chunk);
+      results.push(result);
+
+      // Add small delay between chunks to ensure proper ordering
+      if (i < chunks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    return results[0]; // Return first result for compatibility
+  }
+
+  /**
+   * Split message into chunks while preserving paragraphs
+   */
+  splitMessage(text, maxLength) {
+    const chunks = [];
+    let currentChunk = '';
+
+    // Split by paragraphs first (double newline)
+    const paragraphs = text.split(/\n\n+/);
+
+    for (const paragraph of paragraphs) {
+      // If single paragraph is too long, split by sentences
+      if (paragraph.length > maxLength) {
+        const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
+
+        for (const sentence of sentences) {
+          if (currentChunk.length + sentence.length + 2 > maxLength) {
+            if (currentChunk) chunks.push(currentChunk.trim());
+            currentChunk = sentence;
+          } else {
+            currentChunk += (currentChunk ? ' ' : '') + sentence;
+          }
+        }
+      } else {
+        // Try to add paragraph to current chunk
+        if (currentChunk.length + paragraph.length + 2 > maxLength) {
+          if (currentChunk) chunks.push(currentChunk.trim());
+          currentChunk = paragraph;
+        } else {
+          currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+        }
+      }
+    }
+
+    if (currentChunk) chunks.push(currentChunk.trim());
+
+    return chunks.length > 0 ? chunks : [text.substring(0, maxLength)];
   }
 
   /**

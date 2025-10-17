@@ -335,9 +335,13 @@ app.post('/api/users', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name and WhatsApp ID required' });
     }
 
-    // Use verification service to create user and send verification code
-    const verificationService = require('./services/verification.service');
-    const result = await verificationService.createUserAndSendCode(name, whatsapp_id);
+    // Use enrollment service to create user and send PIN
+    const enrollmentService = require('./services/enrollment.service');
+
+    // Get admin ID from authenticated session or use default
+    const adminId = req.user?.id || 1; // Default to admin ID 1 if not authenticated
+
+    const result = await enrollmentService.enrollUser(name, whatsapp_id, adminId);
 
     if (!result.success) {
       return res.status(400).json({
@@ -348,10 +352,11 @@ app.post('/api/users', async (req, res) => {
 
     res.json({
       success: true,
-      verification_code: result.code,
+      pin: result.pin,
+      user_id: result.userId,
       phone_number: result.phoneNumber,
       expires_at: result.expiresAt,
-      message: 'Verification code sent to user via WhatsApp'
+      message: 'User enrolled successfully. Share PIN with user: ' + result.pin
     });
   } catch (error) {
     logger.error('Error adding user:', error);
@@ -546,14 +551,21 @@ app.post('/api/chat', async (req, res) => {
       if (searchResults && searchResults.length > 0) {
         contextDocuments = searchResults.map(doc => {
           // Extract meaningful title from metadata
-          // Priority: original_file > filename > title > chunk_title
+          // Priority: source > original_file > filename > title > chunk_title
           let displayTitle = 'Untitled';
+          let sourceFile = null;
 
-          if (doc.metadata?.original_file) {
-            displayTitle = doc.metadata.original_file;
+          if (doc.metadata?.source) {
+            // Remove timestamp prefix if present (e.g., "1234567890-file.pdf" -> "file.pdf")
+            sourceFile = doc.metadata.source.replace(/^\d+-/, '');
+            displayTitle = sourceFile;
+          } else if (doc.metadata?.original_file) {
+            sourceFile = doc.metadata.original_file;
+            displayTitle = sourceFile;
           } else if (doc.metadata?.filename) {
             // Remove timestamp prefix if present (e.g., "1234567890-file.pdf" -> "file.pdf")
-            displayTitle = doc.metadata.filename.replace(/^\d+-/, '');
+            sourceFile = doc.metadata.filename.replace(/^\d+-/, '');
+            displayTitle = sourceFile;
           } else if (doc.metadata?.title) {
             displayTitle = doc.metadata.title;
           } else if (doc.metadata?.chunk_title && doc.metadata.chunk_title.length < 50) {
@@ -565,7 +577,10 @@ app.post('/api/chat', async (req, res) => {
             content: doc.content,
             module: doc.metadata?.module_name || doc.metadata?.module || 'unknown',
             title: displayTitle,
-            source: 'vector_db'
+            sourceFile: sourceFile,
+            source: 'vector_db',
+            chunkIndex: doc.metadata?.chunk_index,
+            moduleId: doc.metadata?.module_id
           };
         });
 
@@ -634,6 +649,22 @@ app.post('/api/chat', async (req, res) => {
       }
     }
 
+    // Add source citations to response if we have sources
+    if (contextDocuments.length > 0) {
+      const uniqueSources = [];
+      const seenFiles = new Set();
+      contextDocuments.forEach(doc => {
+        if (doc.sourceFile && !seenFiles.has(doc.sourceFile)) {
+          seenFiles.add(doc.sourceFile);
+          uniqueSources.push(doc.sourceFile);
+        }
+      });
+
+      if (uniqueSources.length > 0) {
+        response += `\n\n📚 Sources:\n${uniqueSources.map(source => `📄 ${source}`).join('\n')}`;
+      }
+    }
+
     // Save messages to chat history
     if (session) {
       try {
@@ -648,14 +679,23 @@ app.post('/api/chat', async (req, res) => {
           { language }
         );
 
-        // Save assistant response
+        // Save assistant response with de-duplicated sources
+        const uniqueSources = [];
+        const seenFiles = new Set();
+        contextDocuments.forEach(doc => {
+          if (doc.sourceFile && !seenFiles.has(doc.sourceFile)) {
+            seenFiles.add(doc.sourceFile);
+            uniqueSources.push({ title: doc.title, module: doc.module, sourceFile: doc.sourceFile });
+          }
+        });
+
         await chatHistoryService.saveMessage(
           session.id,
           user_id,
           'assistant',
           response,
           module_id,
-          contextDocuments.map(doc => ({ title: doc.title, module: doc.module })),
+          uniqueSources,
           { language, hasContext: !!context }
         );
 
