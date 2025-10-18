@@ -20,9 +20,9 @@ async function reprocessAllContent() {
 
     // Get all content files with 0 chunks
     const result = await postgresService.query(`
-      SELECT id, file_path, module_id, original_filename
+      SELECT id, file_path, module_id, original_name, file_name
       FROM module_content
-      WHERE chunk_count = 0 OR processing_status != 'completed'
+      WHERE chunk_count = 0 OR processed = false
       ORDER BY module_id, id
     `);
 
@@ -38,7 +38,7 @@ async function reprocessAllContent() {
     let failed = 0;
 
     for (const file of files) {
-      console.log(`\n📄 Processing: ${file.original_filename} (Module ${file.module_id})`);
+      console.log(`\n📄 Processing: ${file.original_name} (Module ${file.module_id})`);
       console.log(`   File Path: ${file.file_path}`);
 
       try {
@@ -52,7 +52,7 @@ async function reprocessAllContent() {
         } catch (err) {
           console.log(`   ⚠️  File not found at: ${filePath}`);
           // Try without timestamp prefix
-          const filenameWithoutTimestamp = file.original_filename;
+          const filenameWithoutTimestamp = file.original_name;
           const altPath = path.join(path.dirname(filePath), filenameWithoutTimestamp);
           try {
             await fs.access(altPath);
@@ -68,7 +68,7 @@ async function reprocessAllContent() {
         // Update status to processing
         await postgresService.query(
           `UPDATE module_content
-           SET processing_status = 'processing', updated_at = NOW()
+           SET processed = false, uploaded_at = NOW()
            WHERE id = $1`,
           [file.id]
         );
@@ -77,8 +77,8 @@ async function reprocessAllContent() {
         const metadata = {
           module_id: file.module_id,
           content_id: file.id,
-          original_file: file.original_filename,
-          source: file.original_filename
+          original_file: file.original_name,
+          source: file.original_name
         };
 
         console.log('   🔄 Extracting text and creating chunks...');
@@ -88,9 +88,9 @@ async function reprocessAllContent() {
           console.log('   ❌ No chunks generated');
           await postgresService.query(
             `UPDATE module_content
-             SET processing_status = 'failed',
+             SET processed = false,
                  chunk_count = 0,
-                 updated_at = NOW()
+                 uploaded_at = NOW()
              WHERE id = $1`,
             [file.id]
           );
@@ -118,9 +118,9 @@ async function reprocessAllContent() {
         await postgresService.query(
           `UPDATE module_content
            SET chunk_count = $1,
-               processing_status = 'completed',
+               processed = true,
                processed_at = NOW(),
-               updated_at = NOW()
+               uploaded_at = NOW()
            WHERE id = $2`,
           [chunks.length, file.id]
         );
@@ -132,8 +132,8 @@ async function reprocessAllContent() {
         console.log(`   ❌ Error: ${error.message}`);
         await postgresService.query(
           `UPDATE module_content
-           SET processing_status = 'failed',
-               updated_at = NOW()
+           SET processed = false,
+               uploaded_at = NOW()
            WHERE id = $1`,
           [file.id]
         );
