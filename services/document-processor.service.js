@@ -39,7 +39,7 @@ class DocumentProcessorService {
   async processDocument(filePath, metadata = {}) {
     try {
       // Extract text based on file type
-      const text = await this.extractText(filePath);
+      const text = await this.extractText(filePath, metadata.skipOCR);
       
       if (!text || text.length < this.minChunkSize) {
         logger.warn(`Document too short for processing: ${filePath}`);
@@ -64,7 +64,7 @@ class DocumentProcessorService {
   /**
    * Extract text from various file formats
    */
-  async extractText(filePath) {
+  async extractText(filePath, skipOCR = false) {
     const fileContent = await fs.readFile(filePath);
 
     if (filePath.toLowerCase().endsWith('.pdf')) {
@@ -79,8 +79,8 @@ class DocumentProcessorService {
 
       logger.info(`PDF text extraction: ${text.length} chars, ${estimatedPages} pages (est), ${avgCharsPerPage.toFixed(0)} chars/page`);
 
-      // If very low text per page, likely image-based PDF - use OCR
-      if (avgCharsPerPage < this.ocrThresholdCharsPerPage) {
+      // If very low text per page, likely image-based PDF - use OCR (unless skipOCR is true)
+      if (avgCharsPerPage < this.ocrThresholdCharsPerPage && !skipOCR) {
         logger.warn(`Low text density detected (${avgCharsPerPage.toFixed(0)} chars/page) - attempting OCR`);
 
         if (Tesseract) {
