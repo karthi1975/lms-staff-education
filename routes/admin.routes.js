@@ -1253,13 +1253,35 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
         [moduleIds]
       );
 
-      // Delete physical files
+      // Delete physical files - try multiple path variations
       for (const row of contentResult.rows) {
-        try {
-          await fs.unlink(row.file_path);
-          deletedFiles++;
-        } catch (fileError) {
-          logger.warn(`Could not delete file ${row.file_path}:`, fileError.message);
+        const filePath = row.file_path;
+        let deleted = false;
+
+        // Try paths in order:
+        // 1. Original path as-is
+        // 2. If absolute, extract filename and try uploads/ directory
+        const pathsToTry = [filePath];
+
+        if (path.isAbsolute(filePath)) {
+          const filename = path.basename(filePath);
+          pathsToTry.push(`uploads/${filename}`);
+        }
+
+        for (const tryPath of pathsToTry) {
+          try {
+            await fs.unlink(tryPath);
+            deletedFiles++;
+            deleted = true;
+            logger.info(`Deleted file: ${tryPath}`);
+            break;
+          } catch (fileError) {
+            // Continue to next path variant
+          }
+        }
+
+        if (!deleted) {
+          logger.warn(`Could not delete file at any path: ${filePath}`);
         }
       }
 

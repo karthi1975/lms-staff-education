@@ -802,6 +802,33 @@ class Neo4jService {
   }
 
   /**
+   * Delete module and all related graph data (content chunks, topics)
+   */
+  async deleteModuleGraph(moduleId) {
+    const session = this.driver.session();
+    try {
+      await session.run(
+        `MATCH (m:Module {id: $moduleId})
+        OPTIONAL MATCH (m)-[:HAS_CONTENT]->(chunk:ContentChunk)
+        OPTIONAL MATCH (m)-[:COVERS_TOPIC]->(topic:Topic)
+        DETACH DELETE m, chunk`,
+        { moduleId }
+      );
+
+      // Clean up orphaned topics
+      await session.run(
+        `MATCH (topic:Topic)
+        WHERE NOT exists((topic)<-[:COVERS_TOPIC]-())
+        DELETE topic`
+      );
+
+      logger.info(`Deleted module graph for module_id: ${moduleId}`);
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
    * Search content by topic
    */
   async searchByTopic(topicName, limit = 10) {

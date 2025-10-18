@@ -25,7 +25,7 @@ const logger = require('../utils/logger');
 const execAsync = promisify(exec);
 
 // Configuration
-const PDF_PATH = '/app/business_studies_f2.pdf';
+const PDF_PATH = 'uploads/BUSINESS_STUDIES_F2.pdf';  // Changed to relative path
 const PDF_NAME = 'BUSINESS STUDIES F2.pdf';
 const TEMP_DIR = '/tmp/business_studies_ocr';
 const CHUNK_SIZE = 1000; // Characters per chunk
