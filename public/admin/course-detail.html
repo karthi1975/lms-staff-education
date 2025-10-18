@@ -603,6 +603,32 @@
         </div>
     </div>
 
+    <!-- Processing Status Modal -->
+    <div class="modal" id="processingModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Processing Content for <span id="processingModuleTitle"></span></h2>
+                <button class="modal-close" onclick="closeProcessingModal()" id="processingCloseBtn" style="display: none;">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center; padding: 40px;">
+                <div class="spinner" id="processingSpinner"></div>
+                <h3 id="processingStatus" style="margin: 20px 0; color: #667eea;">Initializing...</h3>
+                <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: left; margin-top: 20px;">
+                    <div id="processingLog" style="font-family: monospace; font-size: 13px; line-height: 1.8; color: #374151; max-height: 300px; overflow-y: auto;">
+                        <p style="color: #6b7280;">⏳ Waiting to start...</p>
+                    </div>
+                </div>
+                <div id="processingResult" style="display: none; margin-top: 20px;">
+                    <div style="background: #d1fae5; border: 1px solid #a7f3d0; padding: 16px; border-radius: 6px; margin-bottom: 16px;">
+                        <p style="color: #065f46; font-weight: 600;">✅ Processing Complete!</p>
+                        <p id="processingStats" style="color: #065f46; margin-top: 8px; font-size: 14px;"></p>
+                    </div>
+                    <button class="btn btn-primary" onclick="closeProcessingModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Upload Content Modal -->
     <div class="modal" id="uploadModal">
         <div class="modal-content">
@@ -735,7 +761,17 @@
                             </svg>
                             Upload Content
                         </button>
-                        <button class="btn btn-primary btn-sm" onclick="viewModuleContent(${module.id})">
+                        <button class="btn btn-primary btn-sm" onclick="processModuleContent(${module.id}, '${escapeHtml(module.title)}')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M12 1v6m0 6v6"></path>
+                                <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path>
+                                <path d="M1 12h6m6 0h6"></path>
+                                <path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path>
+                            </svg>
+                            Process Files
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="viewModuleContent(${module.id})">
                             View Content
                         </button>
                     </div>
@@ -910,6 +946,171 @@
 
         function viewModuleContent(moduleId) {
             window.location.href = `module-detail.html?id=${moduleId}`;
+        }
+
+        async function processModuleContent(moduleId, moduleTitle) {
+            // Open processing modal
+            document.getElementById('processingModuleTitle').textContent = moduleTitle;
+            document.getElementById('processingStatus').textContent = 'Initializing...';
+            document.getElementById('processingLog').innerHTML = '<p style="color: #6b7280;">⏳ Starting content processing...</p>';
+            document.getElementById('processingResult').style.display = 'none';
+            document.getElementById('processingSpinner').style.display = 'block';
+            document.getElementById('processingCloseBtn').style.display = 'none';
+            document.getElementById('processingModal').classList.add('active');
+
+            try {
+                // Call API to trigger processing
+                const response = await fetch(`${API_BASE}/modules/${moduleId}/process-content`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to start processing');
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Start polling for progress
+                    pollProcessingStatus(moduleId, moduleTitle);
+                } else {
+                    throw new Error(result.error || 'Processing failed to start');
+                }
+
+            } catch (error) {
+                console.error('Error starting processing:', error);
+                document.getElementById('processingStatus').textContent = '❌ Error';
+                document.getElementById('processingStatus').style.color = '#ef4444';
+                addProcessingLog(`❌ Error: ${error.message}`, 'error');
+                document.getElementById('processingSpinner').style.display = 'none';
+                document.getElementById('processingCloseBtn').style.display = 'block';
+            }
+        }
+
+        function addProcessingLog(message, type = 'info') {
+            const logEl = document.getElementById('processingLog');
+            const colors = {
+                info: '#6b7280',
+                success: '#10b981',
+                warning: '#f59e0b',
+                error: '#ef4444'
+            };
+            const p = document.createElement('p');
+            p.style.color = colors[type] || colors.info;
+            p.textContent = message;
+            logEl.appendChild(p);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        let pollInterval = null;
+
+        async function pollProcessingStatus(moduleId, moduleTitle) {
+            let pollCount = 0;
+            const maxPolls = 600; // 10 minutes max (1 poll per second)
+
+            pollInterval = setInterval(async () => {
+                pollCount++;
+
+                if (pollCount > maxPolls) {
+                    clearInterval(pollInterval);
+                    document.getElementById('processingStatus').textContent = '⏱️ Timeout';
+                    document.getElementById('processingStatus').style.color = '#f59e0b';
+                    addProcessingLog('⚠️ Processing timeout - please check manually', 'warning');
+                    document.getElementById('processingSpinner').style.display = 'none';
+                    document.getElementById('processingCloseBtn').style.display = 'block';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE}/modules/${moduleId}/processing-status`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) return;
+
+                    const data = await response.json();
+
+                    if (data.status) {
+                        updateProcessingUI(data.status, moduleTitle);
+                    }
+
+                } catch (error) {
+                    console.error('Error polling status:', error);
+                }
+            }, 1000); // Poll every second
+        }
+
+        function updateProcessingUI(status, moduleTitle) {
+            const { stage, progress, message, completed, error, stats } = status;
+
+            // Update status text
+            if (completed) {
+                clearInterval(pollInterval);
+                document.getElementById('processingStatus').textContent = '✅ Complete';
+                document.getElementById('processingStatus').style.color = '#10b981';
+                document.getElementById('processingSpinner').style.display = 'none';
+                document.getElementById('processingCloseBtn').style.display = 'block';
+
+                // Show results
+                const resultDiv = document.getElementById('processingResult');
+                const statsP = document.getElementById('processingStats');
+                statsP.innerHTML = `
+                    📄 Processed ${stats.totalFiles || 0} file(s)<br>
+                    🧩 Created ${stats.totalChunks || 0} chunks<br>
+                    🔗 Indexed in ChromaDB and Neo4j
+                `;
+                resultDiv.style.display = 'block';
+
+                addProcessingLog(`✅ Processing complete for "${moduleTitle}"`, 'success');
+
+                // Reload course data to update module stats
+                setTimeout(() => loadCourse(), 2000);
+
+            } else if (error) {
+                clearInterval(pollInterval);
+                document.getElementById('processingStatus').textContent = '❌ Failed';
+                document.getElementById('processingStatus').style.color = '#ef4444';
+                document.getElementById('processingSpinner').style.display = 'none';
+                document.getElementById('processingCloseBtn').style.display = 'block';
+                addProcessingLog(`❌ Error: ${error}`, 'error');
+
+            } else {
+                // Update progress
+                document.getElementById('processingStatus').textContent = message || `Processing... ${progress || 0}%`;
+
+                // Add stage-specific log messages
+                if (message && !document.getElementById('processingLog').textContent.includes(message)) {
+                    let emoji = '⚙️';
+                    let logType = 'info';
+
+                    if (message.includes('OCR')) {
+                        emoji = '📝';
+                    } else if (message.includes('chunk')) {
+                        emoji = '🧩';
+                    } else if (message.includes('embed')) {
+                        emoji = '🔗';
+                    } else if (message.includes('index')) {
+                        emoji = '💾';
+                    } else if (message.includes('complete')) {
+                        emoji = '✅';
+                        logType = 'success';
+                    }
+
+                    addProcessingLog(`${emoji} ${message}`, logType);
+                }
+            }
+        }
+
+        function closeProcessingModal() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+            document.getElementById('processingModal').classList.remove('active');
         }
 
         function showAlert(message, type) {

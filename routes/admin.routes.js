@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const contentService = require('../services/content.service');
 const portalContentService = require('../services/portal-content.service');
+const contentProcessorService = require('../services/content-processor.service');
 const verificationService = require('../services/verification.service');
 const enrollmentService = require('../services/enrollment.service');
 const authMiddleware = require('../middleware/auth.middleware');
@@ -670,6 +671,62 @@ router.post('/portal/courses/:courseId/modules/:moduleId/upload',
     }
   }
 );
+
+/**
+ * @route POST /api/admin/modules/:moduleId/process-content
+ * @desc Trigger background processing of all content files for a module
+ * @access Admin
+ */
+router.post('/modules/:moduleId/process-content', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const adminUserId = req.user.id;
+
+    logger.info(`Triggering content processing for module ${moduleId}`);
+
+    // Start background processing (non-blocking)
+    await contentProcessorService.startBackgroundProcessing(parseInt(moduleId), adminUserId);
+
+    res.json({
+      success: true,
+      message: 'Content processing started in background',
+      moduleId: parseInt(moduleId)
+    });
+
+  } catch (error) {
+    logger.error(`Error starting content processing for module ${req.params.moduleId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/modules/:moduleId/processing-status
+ * @desc Get current processing status for a module
+ * @access Admin
+ */
+router.get('/modules/:moduleId/processing-status', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const status = contentProcessorService.getStatus(parseInt(moduleId));
+
+    if (!status) {
+      return res.json({
+        success: true,
+        status: null,
+        message: 'No processing in progress'
+      });
+    }
+
+    res.json({
+      success: true,
+      status: status
+    });
+
+  } catch (error) {
+    logger.error(`Error fetching processing status for module ${req.params.moduleId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 /**
  * @route GET /api/admin/modules/:moduleId/graph
