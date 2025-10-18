@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Detail - Teachers Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .course-code {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+            background: #f3f4f6;
+            padding: 4px 12px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .breadcrumb {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .course-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 15px 0;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .info-item label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #9ca3af;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item span {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .modules-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            font-size: 18px;
+            color: #1f2937;
+        }
+
+        .module-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .module-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.2s;
+        }
+
+        .module-card:hover {
+            border-color: #667eea;
+            background: #f9fafb;
+        }
+
+        .module-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .module-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .module-sequence {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .module-description {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .module-meta {
+            display: flex;
+            gap: 20px;
+            padding: 12px 0;
+            border-top: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+
+        .module-meta span {
+            color: #6b7280;
+        }
+
+        .module-meta strong {
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .module-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: #1f2937;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        .modal-close:hover {
+            color: #1f2937;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group small {
+            display: block;
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f9fafb;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #ede9fe;
+        }
+
+        .upload-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            opacity: 0.5;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .selected-file {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f3f4f6;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .selected-file.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.active {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .empty-state p {
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span>/</span>
+            <a href="courses.html">Courses</a>
+            <span>/</span>
+            <span id="breadcrumbCourse">...</span>
+        </nav>
+
+        <!-- Alert Messages -->
+        <div id="alertSuccess" class="alert alert-success"></div>
+        <div id="alertError" class="alert alert-error"></div>
+
+        <!-- Course Header -->
+        <header>
+            <div class="header-top">
+                <div>
+                    <h1 id="courseTitle">Loading...</h1>
+                    <span class="course-code" id="courseCode"></span>
+                </div>
+                <div class="header-actions">
+                    <a href="courses.html" class="btn btn-secondary">Back to Courses</a>
+                    <button class="btn btn-primary" onclick="openCreateModuleModal()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add Module
+                    </button>
+                </div>
+            </div>
+
+            <p id="courseDescription" style="color: #6b7280; margin-bottom: 15px;"></p>
+
+            <div class="course-info">
+                <div class="info-item">
+                    <label>Category</label>
+                    <span id="courseCategory">-</span>
+                </div>
+                <div class="info-item">
+                    <label>Difficulty</label>
+                    <span id="courseDifficulty">-</span>
+                </div>
+                <div class="info-item">
+                    <label>Duration</label>
+                    <span id="courseDuration">-</span>
+                </div>
+                <div class="info-item">
+                    <label>Total Modules</label>
+                    <span id="totalModules">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Modules Section -->
+        <div class="modules-section">
+            <div class="section-header">
+                <h2>Course Modules</h2>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading active" id="loadingState">
+                <div class="spinner"></div>
+                <p>Loading modules...</p>
+            </div>
+
+            <!-- Module List -->
+            <div class="module-list" id="moduleList"></div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                </svg>
+                <h3>No modules yet</h3>
+                <p>Add your first module to organize course content</p>
+                <button class="btn btn-primary" onclick="openCreateModuleModal()">Add Module</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Module Modal -->
+    <div class="modal" id="moduleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Module</h2>
+                <button class="modal-close" onclick="closeModuleModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="moduleForm">
+                    <div class="form-group">
+                        <label for="moduleTitle">Module Title *</label>
+                        <input type="text" id="moduleTitle" required placeholder="e.g., Production">
+                        <small>A clear, descriptive title for this module</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="moduleDescription">Description</label>
+                        <textarea id="moduleDescription" placeholder="What will students learn in this module?"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="moduleSequence">Sequence Order</label>
+                        <input type="number" id="moduleSequence" min="1" value="1">
+                        <small>Order in which this module appears in the course</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModuleModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveModule()">Create Module</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Content Modal -->
+    <div class="modal" id="uploadModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Upload Content to <span id="uploadModuleTitle"></span></h2>
+                <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h3 style="margin-bottom: 8px;">Drop file here or click to browse</h3>
+                    <p style="color: #6b7280; font-size: 14px;">Supported: PDF, DOCX, TXT (Max 100MB)</p>
+                </div>
+
+                <input type="file" id="fileInput" class="file-input" accept=".pdf,.docx,.txt" onchange="handleFileSelect(event)">
+
+                <div class="selected-file" id="selectedFile">
+                    <p><strong id="fileName"></strong></p>
+                    <p style="color: #6b7280; font-size: 13px; margin-top: 4px;" id="fileSize"></p>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="uploadStatus" style="margin-top: 8px; font-size: 13px;"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeUploadModal()">Cancel</button>
+                <button class="btn btn-success" id="uploadButton" onclick="uploadFile()" disabled>Upload & Process</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        const token = localStorage.getItem('adminToken');
+        let currentCourse = null;
+        let currentModules = [];
+        let currentModuleId = null;
+        let selectedFile = null;
+
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        // Get course ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const courseId = urlParams.get('id');
+
+        if (!courseId) {
+            window.location.href = 'courses.html';
+        }
+
+        // Load course on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCourse();
+            setupDragDrop();
+        });
+
+        async function loadCourse() {
+            try {
+                const response = await fetch(`${API_BASE}/courses/${courseId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load course');
+
+                const data = await response.json();
+                currentCourse = data.data.course;
+                currentModules = data.data.modules || [];
+
+                // Update course info
+                document.getElementById('courseTitle').textContent = currentCourse.title;
+                document.getElementById('courseCode').textContent = currentCourse.code;
+                document.getElementById('courseDescription').textContent = currentCourse.description || 'No description';
+                document.getElementById('breadcrumbCourse').textContent = currentCourse.title;
+
+                document.getElementById('courseCategory').textContent = currentCourse.category || 'N/A';
+                document.getElementById('courseDifficulty').textContent = capitalize(currentCourse.difficulty_level) || 'N/A';
+                document.getElementById('courseDuration').textContent = currentCourse.duration_weeks ? `${currentCourse.duration_weeks} weeks` : 'N/A';
+                document.getElementById('totalModules').textContent = currentModules.length;
+
+                // Update sequence order input
+                document.getElementById('moduleSequence').value = currentModules.length + 1;
+
+                renderModules();
+                document.getElementById('loadingState').classList.remove('active');
+            } catch (error) {
+                console.error('Error loading course:', error);
+                showAlert('Error loading course: ' + error.message, 'error');
+                document.getElementById('loadingState').classList.remove('active');
+            }
+        }
+
+        function renderModules() {
+            const moduleList = document.getElementById('moduleList');
+
+            if (currentModules.length === 0) {
+                moduleList.innerHTML = '';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+
+            moduleList.innerHTML = currentModules.map(module => `
+                <div class="module-card">
+                    <div class="module-header">
+                        <div>
+                            <div class="module-title">${escapeHtml(module.title)}</div>
+                            <div class="module-description">${escapeHtml(module.description || 'No description')}</div>
+                        </div>
+                        <span class="module-sequence">Module ${module.sequence_order}</span>
+                    </div>
+
+                    <div class="module-meta">
+                        <span><strong>${module.content_count || 0}</strong> content files</span>
+                        <span>Created ${formatDate(module.created_at)}</span>
+                    </div>
+
+                    <div class="module-actions">
+                        <button class="btn btn-success btn-sm" onclick="openUploadModal(${module.id}, '${escapeHtml(module.title)}')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            Upload Content
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="viewModuleContent(${module.id})">
+                            View Content
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openCreateModuleModal() {
+            document.getElementById('moduleForm').reset();
+            document.getElementById('moduleSequence').value = currentModules.length + 1;
+            document.getElementById('moduleModal').classList.add('active');
+        }
+
+        function closeModuleModal() {
+            document.getElementById('moduleModal').classList.remove('active');
+        }
+
+        async function saveModule() {
+            const moduleData = {
+                course_id: courseId,
+                title: document.getElementById('moduleTitle').value,
+                description: document.getElementById('moduleDescription').value,
+                sequence_order: parseInt(document.getElementById('moduleSequence').value)
+            };
+
+            if (!moduleData.title) {
+                showAlert('Please enter a module title', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/modules`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(moduleData)
+                });
+
+                if (!response.ok) throw new Error('Failed to create module');
+
+                const result = await response.json();
+                showAlert(result.message || 'Module created successfully!', 'success');
+                closeModuleModal();
+                loadCourse();
+            } catch (error) {
+                console.error('Error saving module:', error);
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+
+        function openUploadModal(moduleId, moduleTitle) {
+            currentModuleId = moduleId;
+            document.getElementById('uploadModuleTitle').textContent = moduleTitle;
+            document.getElementById('selectedFile').classList.remove('active');
+            document.getElementById('uploadButton').disabled = true;
+            selectedFile = null;
+            document.getElementById('uploadModal').classList.add('active');
+        }
+
+        function closeUploadModal() {
+            document.getElementById('uploadModal').classList.remove('active');
+        }
+
+        function setupDragDrop() {
+            const uploadArea = document.getElementById('uploadArea');
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileSelect({ target: { files } });
+                }
+            });
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            const allowedTypes = ['.pdf', '.docx', '.txt'];
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.includes(ext)) {
+                showAlert('Invalid file type. Please upload PDF, DOCX, or TXT files.', 'error');
+                return;
+            }
+
+            // Validate file size (100MB max)
+            if (file.size > 100 * 1024 * 1024) {
+                showAlert('File too large. Maximum size is 100MB.', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('selectedFile').classList.add('active');
+            document.getElementById('uploadButton').disabled = false;
+        }
+
+        async function uploadFile() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('original_file', selectedFile.name);
+
+            const uploadButton = document.getElementById('uploadButton');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const uploadStatus = document.getElementById('uploadStatus');
+
+            uploadButton.disabled = true;
+            progressBar.classList.add('active');
+            uploadStatus.textContent = 'Uploading...';
+
+            try {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total) * 100;
+                        progressFill.style.width = percent + '%';
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        const result = JSON.parse(xhr.responseText);
+                        uploadStatus.textContent = 'Processing content... (OCR, chunking, embedding)';
+                        uploadStatus.style.color = '#667eea';
+
+                        setTimeout(() => {
+                            showAlert('Content uploaded and processing started!', 'success');
+                            closeUploadModal();
+                            loadCourse();
+                        }, 1000);
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    throw new Error('Upload failed');
+                });
+
+                xhr.open('POST', `${API_BASE}/portal/courses/${courseId}/modules/${currentModuleId}/upload`);
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                xhr.send(formData);
+
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                showAlert('Error uploading file: ' + error.message, 'error');
+                uploadButton.disabled = false;
+                progressBar.classList.remove('active');
+                uploadStatus.textContent = '';
+            }
+        }
+
+        function viewModuleContent(moduleId) {
+            window.location.href = `module-detail.html?id=${moduleId}`;
+        }
+
+        function showAlert(message, type) {
+            const alertId = type === 'success' ? 'alertSuccess' : 'alertError';
+            const alertEl = document.getElementById(alertId);
+            alertEl.textContent = message;
+            alertEl.classList.add('active');
+
+            setTimeout(() => {
+                alertEl.classList.remove('active');
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function capitalize(str) {
+            if (!str) return str;
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Close modals on outside click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
