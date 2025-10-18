@@ -39,7 +39,9 @@ class DocumentProcessorService {
   async processDocument(filePath, metadata = {}) {
     try {
       // Extract text based on file type
-      const text = await this.extractText(filePath, metadata.skipOCR);
+      // ocrPageLimit: 5 for fast classification, 0 for full processing, -1 to skip OCR
+      const ocrPageLimit = metadata.ocrPageLimit !== undefined ? metadata.ocrPageLimit : 0;
+      const text = await this.extractText(filePath, ocrPageLimit);
       
       if (!text || text.length < this.minChunkSize) {
         logger.warn(`Document too short for processing: ${filePath}`);
@@ -63,8 +65,10 @@ class DocumentProcessorService {
 
   /**
    * Extract text from various file formats
+   * @param {string} filePath - Path to file
+   * @param {number} ocrPageLimit - Max pages for OCR (0=all pages, 5=fast classification, -1=skip OCR)
    */
-  async extractText(filePath, skipOCR = false) {
+  async extractText(filePath, ocrPageLimit = 0) {
     const fileContent = await fs.readFile(filePath);
 
     if (filePath.toLowerCase().endsWith('.pdf')) {
@@ -79,13 +83,14 @@ class DocumentProcessorService {
 
       logger.info(`PDF text extraction: ${text.length} chars, ${estimatedPages} pages (est), ${avgCharsPerPage.toFixed(0)} chars/page`);
 
-      // If very low text per page, likely image-based PDF - use OCR (unless skipOCR is true)
-      if (avgCharsPerPage < this.ocrThresholdCharsPerPage && !skipOCR) {
-        logger.warn(`Low text density detected (${avgCharsPerPage.toFixed(0)} chars/page) - attempting OCR`);
+      // If very low text per page, likely image-based PDF - use OCR (unless ocrPageLimit is -1)
+      if (avgCharsPerPage < this.ocrThresholdCharsPerPage && ocrPageLimit !== -1) {
+        const limitMsg = ocrPageLimit > 0 ? ` (limited to first ${ocrPageLimit} pages)` : '';
+        logger.warn(`Low text density detected (${avgCharsPerPage.toFixed(0)} chars/page) - attempting OCR${limitMsg}`);
 
         if (Tesseract) {
           try {
-            const ocrText = await this.extractTextWithOCR(filePath);
+            const ocrText = await this.extractTextWithOCR(filePath, ocrPageLimit);
             if (ocrText && ocrText.length > text.length) {
               logger.info(`OCR successful: extracted ${ocrText.length} chars (vs ${text.length} from PDF text)`);
               return ocrText;
@@ -117,8 +122,10 @@ class DocumentProcessorService {
 
   /**
    * Extract text from image-based PDF using OCR
+   * @param {string} filePath - Path to PDF file
+   * @param {number} maxPages - Maximum pages to OCR (0 = all pages, default for classification is 5)
    */
-  async extractTextWithOCR(filePath) {
+  async extractTextWithOCR(filePath, maxPages = 0) {
     const tmpDir = '/tmp/ocr_' + Date.now();
 
     try {
@@ -127,7 +134,13 @@ class DocumentProcessorService {
 
       // Convert PDF pages to images using pdftoppm
       const outputPrefix = path.join(tmpDir, 'page');
-      execSync(`pdftoppm -png "${filePath}" "${outputPrefix}"`);
+
+      // Limit pages if maxPages is set (for fast classification)
+      const pdfToPpmCmd = maxPages > 0
+        ? `pdftoppm -png -l ${maxPages} "${filePath}" "${outputPrefix}"`  // -l limits pages
+        : `pdftoppm -png "${filePath}" "${outputPrefix}"`;  // Process all pages
+
+      execSync(pdfToPpmCmd);
 
       // Get all generated images
       const imageFiles = fsSync.readdirSync(tmpDir)
@@ -135,13 +148,14 @@ class DocumentProcessorService {
         .sort()
         .map(f => path.join(tmpDir, f));
 
-      logger.info(`OCR: Processing ${imageFiles.length} pages`);
+      const pagesToProcess = maxPages > 0 ? Math.min(imageFiles.length, maxPages) : imageFiles.length;
+      logger.info(`OCR: Processing ${pagesToProcess}/${imageFiles.length} pages`);
 
-      // Run OCR on each image
+      // Run OCR on each image (limited by maxPages)
       let fullText = '';
-      for (let i = 0; i < imageFiles.length; i++) {
+      for (let i = 0; i < pagesToProcess; i++) {
         const imagePath = imageFiles[i];
-        logger.info(`OCR: Processing page ${i + 1}/${imageFiles.length}`);
+        logger.info(`OCR: Processing page ${i + 1}/${pagesToProcess}`);
 
         const { data: { text } } = await Tesseract.recognize(imagePath, 'eng', {
           logger: () => {} // Suppress verbose Tesseract logs

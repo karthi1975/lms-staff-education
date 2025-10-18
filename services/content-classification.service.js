@@ -105,11 +105,11 @@ class ContentClassificationService {
    */
   async extractTextSample(filePath, maxWords = 3000) {
     try {
-      // Use existing document processor WITHOUT OCR for classification (OCR happens later during processing)
+      // Use existing document processor WITH LIMITED OCR for classification (5 pages max)
       const chunks = await documentProcessor.processDocument(filePath, {
-        chunkSize: 10000,  // Get larger chunks for sampling
-        maxChunks: 3,      // Take first 3 chunks
-        skipOCR: true      // CRITICAL: Skip OCR during classification to prevent blocking
+        chunkSize: 10000,    // Get larger chunks for sampling
+        maxChunks: 3,        // Take first 3 chunks
+        ocrPageLimit: 5      // FAST: OCR only first 5 pages for classification (~25 seconds vs 60+ min)
       });
 
       if (!chunks || chunks.length === 0) {
