@@ -6,6 +6,7 @@
 const postgresService = require('../services/database/postgres.service');
 const documentProcessor = require('../services/document-processor.service');
 const chromaService = require('../services/chroma.service');
+const neo4jService = require('../services/neo4j.service');
 const logger = require('../utils/logger');
 const fs = require('fs').promises;
 const path = require('path');
@@ -22,6 +23,11 @@ async function reprocessAllContent() {
     console.log('🔄 Initializing ChromaDB collection...');
     await chromaService.initialize();
     console.log('✅ ChromaDB initialized\n');
+
+    // Initialize Neo4j for knowledge graph
+    console.log('🔄 Initializing Neo4j knowledge graph...');
+    await neo4jService.initialize();
+    console.log('✅ Neo4j initialized\n');
 
     // Get all content files with 0 chunks
     const result = await postgresService.query(`
@@ -118,6 +124,21 @@ async function reprocessAllContent() {
         }
 
         console.log(`   ✅ Stored ${embeddingCount} embeddings in ChromaDB`);
+
+        // Create Neo4j knowledge graph
+        console.log('   🔄 Creating Neo4j knowledge graph...');
+        try {
+          const chunksWithIds = chunks.map((chunk, idx) => ({
+            ...chunk,
+            chunk_id: `${file.id}_chunk_${idx}`,
+            chunk_index: idx
+          }));
+
+          const graphStats = await neo4jService.createContentGraph(file.module_id, chunksWithIds);
+          console.log(`   ✅ Created knowledge graph: ${graphStats.chunks} nodes, ${graphStats.topics} topic relationships`);
+        } catch (graphError) {
+          console.log(`   ⚠️  Neo4j graph creation skipped: ${graphError.message}`);
+        }
 
         // Update database
         await postgresService.query(
