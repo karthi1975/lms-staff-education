@@ -1083,7 +1083,7 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
           module_id,
           title,
           time_limit_minutes,
-          pass_percentage,
+          pass_threshold,
           max_attempts
         ) VALUES ($1, $2, $3, $4, $5)
         RETURNING id
