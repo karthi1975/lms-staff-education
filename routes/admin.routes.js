@@ -1223,6 +1223,7 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
     const postgresService = require('../services/database/postgres.service');
     const neo4jService = require('../services/neo4j.service');
     const chromaService = require('../services/chroma.service');
+    const fs = require('fs').promises;
 
     // Get course details from the CORRECT table (courses, not moodle_courses)
     const courseResult = await postgresService.pool.query(
@@ -1243,6 +1244,29 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
     );
 
     const moduleIds = modulesResult.rows.map(row => row.id);
+
+    // Get all content files to delete from filesystem
+    let deletedFiles = 0;
+    if (moduleIds.length > 0) {
+      const contentResult = await postgresService.pool.query(
+        'SELECT file_path FROM module_content WHERE module_id = ANY($1)',
+        [moduleIds]
+      );
+
+      // Delete physical files
+      for (const row of contentResult.rows) {
+        try {
+          await fs.unlink(row.file_path);
+          deletedFiles++;
+        } catch (fileError) {
+          logger.warn(`Could not delete file ${row.file_path}:`, fileError.message);
+        }
+      }
+
+      if (deletedFiles > 0) {
+        logger.info(`Deleted ${deletedFiles} physical file(s) from uploads/`);
+      }
+    }
 
     // Delete from Neo4j (if module IDs exist)
     try {
@@ -1277,7 +1301,9 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
 
     res.json({
       success: true,
-      message: 'Course and all related data deleted successfully'
+      message: `Course and all related data deleted successfully (${deletedFiles} file(s) removed)`,
+      deletedFiles: deletedFiles,
+      deletedModules: moduleIds.length
     });
 
   } catch (error) {
