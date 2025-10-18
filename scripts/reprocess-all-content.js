@@ -18,6 +18,11 @@ async function reprocessAllContent() {
     await postgresService.initialize();
     console.log('✅ Database connected\n');
 
+    // IMPORTANT: Initialize ChromaDB collection
+    console.log('🔄 Initializing ChromaDB collection...');
+    await chromaService.initialize();
+    console.log('✅ ChromaDB initialized\n');
+
     // Get all content files with 0 chunks
     const result = await postgresService.query(`
       SELECT id, file_path, module_id, original_name, file_name
