@@ -99,8 +99,8 @@ class WhatsAppHandlerService {
       // Get or create session
       const session = await this.getOrCreateSession(from);
 
-      // Use Moodle Orchestrator for new flow
-      const moodleOrchestrator = require('./moodle-orchestrator.service');
+      // Use Course Orchestrator for new flow
+      const courseOrchestrator = require('./course-orchestrator.service');
 
       // Handle interactive list and button responses
       let processedMessage = messageBody;
@@ -110,7 +110,7 @@ class WhatsAppHandlerService {
         processedMessage = interactive.button_reply.id; // e.g., "answer_A", "answer_B"
       }
 
-      const response = await moodleOrchestrator.handleMessage(
+      const response = await courseOrchestrator.handleMessage(
         session.userId,
         from,
         processedMessage
@@ -189,8 +189,8 @@ class WhatsAppHandlerService {
    * Format quiz question
    */
   formatQuizQuestion(question, currentNum, total) {
-    const moodleOrchestrator = require('./moodle-orchestrator.service');
-    return moodleOrchestrator.formatQuestionForWhatsApp(question, currentNum, total);
+    const courseOrchestrator = require('./course-orchestrator.service');
+    return courseOrchestrator.formatQuestionForWhatsApp(question, currentNum, total);
   }
 
   /**
@@ -477,7 +477,7 @@ class WhatsAppHandlerService {
   }
 
   /**
-   * Send quiz question (OLD - for legacy quiz service, not used with moodle-orchestrator)
+   * Send quiz question (OLD - for legacy quiz service, not used with course-orchestrator)
    */
   async sendQuizQuestionLegacy(from, session) {
     if (!session.quizState) {
