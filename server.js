@@ -773,9 +773,10 @@ async function startServer() {
     // Initialize orchestrator (which initializes other services)
     await orchestratorService.initialize();
 
-    // Initialize Moodle orchestrator (loads quiz questions)
-    const moodleOrchestrator = require('./services/moodle-orchestrator.service');
-    await moodleOrchestrator.initialize();
+    // Initialize Moodle orchestrator (loads quiz questions) - DISABLED
+    // User doesn't need Moodle quiz integration
+    // const moodleOrchestrator = require('./services/moodle-orchestrator.service');
+    // await moodleOrchestrator.initialize();
     
     app.listen(PORT, () => {
       logger.info(`🚀 Teachers Training Server running on port ${PORT}`);
