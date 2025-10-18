@@ -62,6 +62,7 @@ services:
       - ./public:/app/public
       - ./routes:/app/routes
       - ./services:/app/services
+      - ./scripts:/app/scripts
       - ./server.js:/app/server.js
       - ./credentials:/app/credentials:ro
       - ~/.config/gcloud:/home/nodejs/.config/gcloud:ro
