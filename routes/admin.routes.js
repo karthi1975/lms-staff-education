@@ -7,6 +7,7 @@ const portalContentService = require('../services/portal-content.service');
 const contentProcessorService = require('../services/content-processor.service');
 const verificationService = require('../services/verification.service');
 const enrollmentService = require('../services/enrollment.service');
+const contentClassificationService = require('../services/content-classification.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
