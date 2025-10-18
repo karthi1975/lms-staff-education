@@ -378,7 +378,8 @@ class MoodleOrchestratorService {
     try {
       const contextData = this.parseContextData(context);
       const moduleName = contextData.module_name || 'Entrepreneurship & Business Ideas';
-      const moduleId = context.current_module_id;
+      // Ensure moduleId is an integer (PostgreSQL may return numeric types)
+      const moduleId = parseInt(context.current_module_id, 10);
 
       logger.info(`RAG+GraphDB query: "${query}" for module ID: ${moduleId}, name: ${moduleName}`);
 
