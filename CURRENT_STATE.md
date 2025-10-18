@@ -17,8 +17,10 @@
   - Node.js App (Express server)
 - **Deployment Method**: Git pull + Docker restart
 
-### Database Status ✅
-- **PostgreSQL**: Clean slate (0 courses, 0 modules)
+### Database Status ✅ **VERIFIED CLEAN - 2025-10-17 14:30 UTC**
+- **PostgreSQL**: Clean slate (0 courses, 0 modules, 0 quizzes) - **VERIFIED ON GCP**
+- **Neo4j**: Empty knowledge graph (0 nodes) - **VERIFIED ON GCP**
+- **ChromaDB**: Fresh instance with no embeddings - **VERIFIED ON GCP**
 - **Schema**: Up-to-date with all tables
   - `courses` (not moodle_courses - old schema removed)
   - `modules` (not moodle_modules)
@@ -133,11 +135,13 @@ sudo docker exec teachers_training-postgres-1 psql -U teachers_user -d teachers_
 - `QUICK_START_ENROLLMENT.md` - Quick reference for enrollment
 - `COMPLETE_QUIZ_UPLOAD_FIX.md` - Quiz upload fix documentation
 - `FIX_GCP_MERGE_CONFLICT.md` - GCP deployment conflict resolution
+- `GCP_DATABASE_CLEANUP_REPORT.md` - **NEW** - Database cleanup verification (2025-10-17)
 
 ### Helper Scripts
 - `test-enrollment-flow.sh` - Test enrollment → PIN verification → activation
 - `RESOLVE_GCP_MERGE_CONFLICT.sh` - Automated GCP update script
-- `test-gcp-courses-ui.js` - Playwright test for GCP UI
+- `test-gcp-courses-ui.js` - Playwright test for GCP UI (with auto-login)
+- `verify-gcp-clean.sh` - Verify GCP database is clean via API
 
 ---
 
@@ -170,10 +174,12 @@ sudo docker exec teachers_training-postgres-1 psql -U teachers_user -d teachers_
 
 ## Known Issues & Solutions
 
-### Issue 1: Browser Shows Cached Courses
-- **Symptom**: Courses appear in UI but database is empty
-- **Cause**: Browser caching
-- **Solution**: Hard refresh (`Ctrl + Shift + R`) or open in incognito mode
+### Issue 1: ~~Browser Shows Cached Courses~~ **RESOLVED** ✅
+- **Symptom**: Courses appeared in UI even in different browser
+- **Root Cause**: GCP database still had 2 old courses (not browser cache)
+- **Solution**: Cleaned all 3 databases on GCP (PostgreSQL, Neo4j, ChromaDB)
+- **Verification**: Playwright test confirmed 0 courses in UI and API
+- **See**: `GCP_DATABASE_CLEANUP_REPORT.md` for full details
 
 ### Issue 2: GCP Merge Conflicts
 - **Symptom**: `git pull` shows merge conflicts
