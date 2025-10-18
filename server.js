@@ -31,6 +31,7 @@ const adminRoutes = require('./routes/admin.routes');
 const userRoutes = require('./routes/user.routes');
 const certificateRoutes = require('./routes/certificate.routes');
 const twilioWebhookRoutes = require('./routes/twilio-webhook.routes');
+const classificationRoutes = require('./routes/classification.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -85,6 +86,9 @@ app.use('/api', certificateRoutes);
 
 // Add Twilio webhook routes
 app.use('/', twilioWebhookRoutes);
+
+// Add AI classification routes
+app.use('/api/admin/classify', classificationRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
