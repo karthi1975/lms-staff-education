@@ -7,6 +7,8 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth.middleware');
 const documentProcessor = require('../services/document-processor.service');
+const chromaService = require('../services/chroma.service');
+const embeddingService = require('../services/embedding.service');
 const postgresService = require('../services/database/postgres.service');
 const logger = require('../utils/logger');
 
@@ -190,7 +192,7 @@ async function processFilesInBackground(jobId, courseId, files, adminUserId) {
 
         logger.info(`🔍 Processing ${file.original_name} - Size: ${file.file_size} bytes`);
 
-        // Process file: OCR → Chunking → Embeddings → ChromaDB + Neo4j
+        // STEP 1: OCR + Chunking
         const result = await documentProcessor.processDocument(
           file.file_path,
           {
@@ -206,6 +208,50 @@ async function processFilesInBackground(jobId, courseId, files, adminUserId) {
           }
         );
 
+        const chunks = result.chunks || result || [];
+        logger.info(`📝 Extracted ${chunks.length} chunks from ${file.original_name}`);
+
+        if (chunks.length === 0) {
+          throw new Error('No chunks extracted from document');
+        }
+
+        // STEP 2: Index to ChromaDB (RAG)
+        job.currentFile.operation = `Indexing ${chunks.length} chunks to RAG (generating embeddings)...`;
+
+        // Ensure ChromaDB is initialized
+        await chromaService.initialize();
+
+        for (let chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
+          const chunk = chunks[chunkIdx];
+
+          // Update progress for chunk indexing
+          job.currentFile.operation = `Indexing chunk ${chunkIdx + 1}/${chunks.length} to RAG...`;
+
+          // Prepare metadata
+          const metadata = {
+            course_id: parseInt(courseId),
+            file_id: file.id,
+            file_name: file.original_name,
+            chunk_index: chunkIdx,
+            total_chunks: chunks.length,
+            source: file.original_name,
+            upload_date: new Date().toISOString()
+          };
+
+          // Get chunk content (handle different chunk formats)
+          const content = chunk.content || chunk.text || chunk;
+
+          if (!content || typeof content !== 'string') {
+            logger.warn(`Skipping invalid chunk ${chunkIdx} in ${file.original_name}`);
+            continue;
+          }
+
+          // Add to ChromaDB (this automatically generates embeddings)
+          await chromaService.addDocument(content, metadata);
+        }
+
+        logger.info(`✅ Indexed ${chunks.length} chunks to ChromaDB for ${file.original_name}`);
+
         // Update database record to 'completed'
         await postgresService.pool.query(`
           UPDATE course_content
@@ -214,9 +260,9 @@ async function processFilesInBackground(jobId, courseId, files, adminUserId) {
               processed_at = NOW(),
               chunk_count = $1
           WHERE id = $2
-        `, [result.chunks?.length || 0, file.id]);
+        `, [chunks.length, file.id]);
 
-        logger.info(`✅ Successfully processed ${file.original_name}: ${result.chunks?.length || 0} chunks indexed`);
+        logger.info(`✅ Successfully processed ${file.original_name}: ${chunks.length} chunks indexed to RAG`);
 
         // Update progress
         job.processedFiles++;
