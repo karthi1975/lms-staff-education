@@ -3127,14 +3127,8 @@
         }
 
         async function viewCourseModules(courseId, courseName) {
-            currentCourseId = courseId;
-            document.getElementById('viewCourseTitle').textContent = courseName;
-            document.getElementById('viewCourseSubtitle').textContent = `Manage modules for this course`;
-            document.getElementById('viewCourseId').value = courseId;
-            document.getElementById('viewCourseModal').classList.add('active');
-
-            // Load modules for this course
-            await loadCourseModules(courseId);
+            // Navigate to new Material Design 3 Course Detail page
+            window.location.href = `course-detail.html?id=${courseId}`;
         }
 
         function closeViewCourseModal() {
