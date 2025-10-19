@@ -1,12 +1,18 @@
 /**
- * Unit tests for file upload and processing endpoints
- * Tests separation of upload and processing logic
+ * Comprehensive Unit Tests for File Upload and Processing System
+ *
+ * Covers Tasks 1-4:
+ * - Task 1: Upload endpoint stores files only (status='uploaded')
+ * - Task 2: Process files endpoint with background processing
+ * - Task 3: File list API with status counts and grouping
+ * - Task 4: UI integration ready (tested via API responses)
  */
 
 const request = require('supertest');
 const express = require('express');
 const simpleUploadRoutes = require('../../routes/simple-upload.routes');
 const fileProcessingRoutes = require('../../routes/file-processing.routes');
+const fileListRoutes = require('../../routes/file-list.routes');
 const authMiddleware = require('../../middleware/auth.middleware');
 
 // Mock the database service
@@ -67,6 +73,7 @@ describe('File Upload and Processing Tests', () => {
     app.use(express.json());
     app.use('/api/admin', simpleUploadRoutes);
     app.use('/api/admin', fileProcessingRoutes);
+    app.use('/api/admin', fileListRoutes);
 
     mockPool = require('../../services/database/postgres.service').pool;
     mockDocumentProcessor = require('../../services/document-processor.service');
@@ -513,6 +520,329 @@ describe('File Upload and Processing Tests', () => {
 
       // Verify both files were attempted
       expect(mockDocumentProcessor.processDocument).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Task 3: GET /api/admin/courses/:courseId/files (File List with Status Counts)', () => {
+
+    test('should return files with status counts and grouping', async () => {
+      const courseId = 1;
+      const mockFiles = [
+        {
+          id: 1,
+          file_name: 'doc1.pdf',
+          original_name: 'Document 1.pdf',
+          file_type: 'application/pdf',
+          file_size: 1024000,
+          uploaded_at: new Date(),
+          processed: false,
+          processing_status: 'uploaded',
+          processed_at: null,
+          chunk_count: 0,
+          error_message: null
+        },
+        {
+          id: 2,
+          file_name: 'doc2.pdf',
+          original_name: 'Document 2.pdf',
+          file_type: 'application/pdf',
+          file_size: 2048000,
+          uploaded_at: new Date(),
+          processed: false,
+          processing_status: 'processing',
+          processed_at: null,
+          chunk_count: 0,
+          error_message: null
+        },
+        {
+          id: 3,
+          file_name: 'doc3.pdf',
+          original_name: 'Document 3.pdf',
+          file_type: 'application/pdf',
+          file_size: 3072000,
+          uploaded_at: new Date(),
+          processed: true,
+          processing_status: 'completed',
+          processed_at: new Date(),
+          chunk_count: 15,
+          error_message: null
+        },
+        {
+          id: 4,
+          file_name: 'doc4.pdf',
+          original_name: 'Document 4.pdf',
+          file_type: 'application/pdf',
+          file_size: 1536000,
+          uploaded_at: new Date(),
+          processed: false,
+          processing_status: 'failed',
+          processed_at: null,
+          chunk_count: 0,
+          error_message: 'OCR processing failed'
+        }
+      ];
+
+      const mockStatusCounts = [
+        { processing_status: 'uploaded', count: '1' },
+        { processing_status: 'processing', count: '1' },
+        { processing_status: 'completed', count: '1' },
+        { processing_status: 'failed', count: '1' }
+      ];
+
+      // Mock file query
+      mockPool.query.mockResolvedValueOnce({
+        rows: mockFiles
+      });
+
+      // Mock status counts query
+      mockPool.query.mockResolvedValueOnce({
+        rows: mockStatusCounts
+      });
+
+      const response = await request(app)
+        .get(`/api/admin/courses/${courseId}/files`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.files).toHaveLength(4);
+      expect(response.body.total).toBe(4);
+
+      // Verify status counts
+      expect(response.body.statusCounts).toBeDefined();
+      expect(response.body.statusCounts.uploaded).toBe(1);
+      expect(response.body.statusCounts.processing).toBe(1);
+      expect(response.body.statusCounts.completed).toBe(1);
+      expect(response.body.statusCounts.failed).toBe(1);
+
+      // Verify files by status grouping
+      expect(response.body.filesByStatus).toBeDefined();
+      expect(response.body.filesByStatus.uploaded).toHaveLength(1);
+      expect(response.body.filesByStatus.processing).toHaveLength(1);
+      expect(response.body.filesByStatus.completed).toHaveLength(1);
+      expect(response.body.filesByStatus.failed).toHaveLength(1);
+
+      // Verify uploaded file details
+      expect(response.body.files[0].fileName).toBe('Document 1.pdf');
+      expect(response.body.files[0].status).toBe('uploaded');
+    });
+
+    test('should return empty file list for course with no files', async () => {
+      const courseId = 999;
+
+      // Mock empty file query
+      mockPool.query.mockResolvedValueOnce({
+        rows: []
+      });
+
+      // Mock empty status counts
+      mockPool.query.mockResolvedValueOnce({
+        rows: []
+      });
+
+      const response = await request(app)
+        .get(`/api/admin/courses/${courseId}/files`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.files).toHaveLength(0);
+      expect(response.body.total).toBe(0);
+      expect(response.body.statusCounts.uploaded).toBe(0);
+      expect(response.body.statusCounts.processing).toBe(0);
+      expect(response.body.statusCounts.completed).toBe(0);
+      expect(response.body.statusCounts.failed).toBe(0);
+    });
+
+    test('should include chunk count for completed files', async () => {
+      const courseId = 1;
+      const mockFiles = [
+        {
+          id: 1,
+          file_name: 'doc1.pdf',
+          original_name: 'Document 1.pdf',
+          file_type: 'application/pdf',
+          file_size: 1024000,
+          uploaded_at: new Date(),
+          processed: true,
+          processing_status: 'completed',
+          processed_at: new Date(),
+          chunk_count: 25,
+          error_message: null
+        }
+      ];
+
+      mockPool.query.mockResolvedValueOnce({ rows: mockFiles });
+      mockPool.query.mockResolvedValueOnce({ rows: [{ processing_status: 'completed', count: '1' }] });
+
+      const response = await request(app)
+        .get(`/api/admin/courses/${courseId}/files`)
+        .expect(200);
+
+      expect(response.body.files[0].chunkCount).toBe(25);
+      expect(response.body.files[0].processed).toBe(true);
+    });
+
+    test('should include error message for failed files', async () => {
+      const courseId = 1;
+      const mockFiles = [
+        {
+          id: 1,
+          file_name: 'doc1.pdf',
+          original_name: 'Document 1.pdf',
+          file_type: 'application/pdf',
+          file_size: 1024000,
+          uploaded_at: new Date(),
+          processed: false,
+          processing_status: 'failed',
+          processed_at: null,
+          chunk_count: 0,
+          error_message: 'File corrupted during OCR'
+        }
+      ];
+
+      mockPool.query.mockResolvedValueOnce({ rows: mockFiles });
+      mockPool.query.mockResolvedValueOnce({ rows: [{ processing_status: 'failed', count: '1' }] });
+
+      const response = await request(app)
+        .get(`/api/admin/courses/${courseId}/files`)
+        .expect(200);
+
+      expect(response.body.files[0].error).toBe('File corrupted during OCR');
+      expect(response.body.files[0].status).toBe('failed');
+    });
+
+    test('should handle database errors gracefully', async () => {
+      const courseId = 1;
+
+      mockPool.query.mockRejectedValueOnce(new Error('Database connection failed'));
+
+      const response = await request(app)
+        .get(`/api/admin/courses/${courseId}/files`)
+        .expect(500);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Failed to fetch files');
+    });
+  });
+
+  describe('Task 4: UI Integration Tests (API Responses)', () => {
+
+    test('API should provide all data needed for Process Files button', async () => {
+      const courseId = 1;
+      const mockFiles = [
+        {
+          id: 1,
+          file_name: 'doc1.pdf',
+          original_name: 'Document 1.pdf',
+          file_type: 'application/pdf',
+          file_size: 1024000,
+          uploaded_at: new Date(),
+          processed: false,
+          processing_status: 'uploaded',
+          processed_at: null,
+          chunk_count: 0,
+          error_message: null
+        },
+        {
+          id: 2,
+          file_name: 'doc2.pdf',
+          original_name: 'Document 2.pdf',
+          file_type: 'application/pdf',
+          file_size: 2048000,
+          uploaded_at: new Date(),
+          processed: false,
+          processing_status: 'uploaded',
+          processed_at: null,
+          chunk_count: 0,
+          error_message: null
+        }
+      ];
+
+      const mockStatusCounts = [
+        { processing_status: 'uploaded', count: '2' }
+      ];
+
+      mockPool.query.mockResolvedValueOnce({ rows: mockFiles });
+      mockPool.query.mockResolvedValueOnce({ rows: mockStatusCounts });
+
+      const response = await request(app)
+        .get(`/api/admin/courses/${courseId}/files`)
+        .expect(200);
+
+      // UI can determine to show "Process 2 Uploaded Files" button
+      expect(response.body.statusCounts.uploaded).toBe(2);
+      expect(response.body.filesByStatus.uploaded).toHaveLength(2);
+
+      // UI has all data for displaying file list
+      expect(response.body.files[0]).toHaveProperty('fileName');
+      expect(response.body.files[0]).toHaveProperty('status');
+      expect(response.body.files[0]).toHaveProperty('fileSize');
+    });
+
+    test('API should provide progress data during processing', async () => {
+      const courseId = 1;
+      const uploadedFiles = [
+        {
+          id: 1,
+          course_id: courseId,
+          file_name: 'doc1.pdf',
+          original_name: 'Document 1.pdf',
+          file_path: '/uploads/doc1.pdf',
+          file_type: 'application/pdf',
+          file_size: 1024000
+        }
+      ];
+
+      mockPool.query.mockResolvedValueOnce({ rows: uploadedFiles });
+
+      const response = await request(app)
+        .post(`/api/admin/courses/${courseId}/process-files`)
+        .expect(200);
+
+      // UI can display job_id, total_files, and estimated time
+      expect(response.body.job_id).toBeDefined();
+      expect(response.body.total_files).toBe(1);
+      expect(response.body.estimated_minutes).toBe(5);
+
+      // UI can use job_id to poll for status
+      expect(response.body.job_id).toMatch(/^job-\d+-\d+$/);
+    });
+
+    test('Status endpoint provides all data for progress display', async () => {
+      const courseId = 1;
+      const uploadedFiles = [
+        {
+          id: 1,
+          course_id: courseId,
+          file_name: 'doc1.pdf',
+          original_name: 'Document 1.pdf',
+          file_path: '/uploads/doc1.pdf',
+          file_type: 'application/pdf',
+          file_size: 1024000
+        }
+      ];
+
+      mockPool.query.mockResolvedValueOnce({ rows: uploadedFiles });
+
+      const processResponse = await request(app)
+        .post(`/api/admin/courses/${courseId}/process-files`)
+        .expect(200);
+
+      const jobId = processResponse.body.job_id;
+
+      const statusResponse = await request(app)
+        .get(`/api/admin/courses/${courseId}/processing-status/${jobId}`)
+        .expect(200);
+
+      // UI can display progress bar
+      expect(statusResponse.body.progress).toBeDefined();
+      expect(statusResponse.body.total_files).toBe(1);
+      expect(statusResponse.body.processed_files).toBeDefined();
+
+      // UI can show current file name
+      expect(statusResponse.body).toHaveProperty('current_file');
+
+      // UI can display estimated remaining time
+      expect(statusResponse.body).toHaveProperty('estimated_remaining');
     });
   });
 });

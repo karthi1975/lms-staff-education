@@ -510,14 +510,15 @@
                 </div>
                 <div class="header-actions">
                     <a href="courses.html" class="btn btn-secondary">Back to Courses</a>
-                    <button class="btn btn-success" onclick="openBulkUploadModal()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-right: 10px;">
+                    <button class="btn btn-success" onclick="openFileUpload2025()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-right: 10px;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="17 8 12 3 7 8"></polyline>
                             <line x1="12" y1="3" x2="12" y2="15"></line>
                         </svg>
-                        Bulk Upload & Process
+                        Upload Files
                     </button>
+
                     <button class="btn btn-primary" onclick="openCreateModuleModal()">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -573,6 +574,62 @@
                 <h3>No modules yet</h3>
                 <p>Add your first module to organize course content</p>
                 <button class="btn btn-primary" onclick="openCreateModuleModal()">Add Module</button>
+            </div>
+        </div>
+
+        <!-- Uploaded Files Section -->
+        <div class="modules-section" style="margin-top: 30px;">
+            <div class="section-header">
+                <h2>Uploaded Files</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" id="processFilesBtn" onclick="processUploadedFiles()" style="display: none; font-size: 14px; padding: 8px 16px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                        ⚡ Process <span id="uploadedFilesCount">0</span> Uploaded Files
+                    </button>
+                    <button class="btn btn-secondary" onclick="refreshUploadedFiles()" style="font-size: 14px; padding: 8px 16px;">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Processing Progress Display -->
+            <div id="processingProgress" style="display: none; margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #EBF4FF 0%, #E0F2FE 100%); border-radius: 8px; border: 1px solid #3b82f6;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                    <div>
+                        <h3 style="color: #1e40af; margin-bottom: 4px; font-size: 16px;">🔄 Processing Files</h3>
+                        <p style="color: #3b82f6; font-size: 14px;" id="processingCurrentFile">Initializing...</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 24px; font-weight: 700; color: #1e40af;" id="processingPercentage">0%</div>
+                        <div style="font-size: 13px; color: #3b82f6;" id="processingFilesCompleted">0/0 files</div>
+                    </div>
+                </div>
+                <div style="background: #dbeafe; border-radius: 10px; height: 8px; overflow: hidden;">
+                    <div id="processingProgressBar" style="background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+                <div style="margin-top: 12px; font-size: 13px; color: #1e40af;">
+                    <span>⏱️ Estimated remaining: <span id="processingEstimated">Calculating...</span></span>
+                </div>
+            </div>
+
+            <!-- Files Loading State -->
+            <div class="loading" id="filesLoadingState" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading files...</p>
+            </div>
+
+            <!-- Files List -->
+            <div id="uploadedFilesList" style="margin-top: 20px;">
+                <!-- Will be populated by JavaScript -->
+            </div>
+
+            <!-- Files Empty State -->
+            <div id="filesEmptyState" style="display: none; text-align: center; padding: 40px; background: #f9fafb; border-radius: 8px; border: 2px dashed #d1d5db;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width: 48px; height: 48px; margin: 0 auto 16px; opacity: 0.3;">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                    <polyline points="13 2 13 9 20 9"></polyline>
+                </svg>
+                <h3 style="color: #6b7280; margin-bottom: 8px;">No files uploaded yet</h3>
+                <p style="color: #9ca3af; font-size: 14px;">Upload files to see them here</p>
             </div>
         </div>
     </div>
@@ -680,7 +737,7 @@
 
             <div id="bulkUploadStep1" style="display: block;">
                 <p style="color: #6b7280; margin-bottom: 20px;">
-                    Upload all your course files at once. AI will automatically classify and assign them to the correct modules, then process everything with OCR + RAG + Graph DB.
+                    Upload all your course files at once. AI will analyze and assign them to the correct modules. You can then choose to process files with full OCR in the background.
                 </p>
 
                 <div style="border: 3px dashed #cbd5e0; border-radius: 8px; padding: 40px; text-align: center; background: #f9fafb; margin-bottom: 20px;" id="bulkDropZone">
@@ -702,7 +759,7 @@
                     </div>
                     <div>
                         <button class="btn btn-secondary" onclick="closeBulkUploadModal()" style="margin-right: 10px;">Cancel</button>
-                        <button class="btn btn-success" id="bulkUploadButton" onclick="startBulkUpload()" disabled>Start Upload & Processing</button>
+                        <button class="btn btn-success" id="bulkUploadButton" onclick="startBulkUpload()" disabled>Start Upload & Classification</button>
                     </div>
                 </div>
             </div>
@@ -728,17 +785,36 @@
             </div>
 
             <div id="bulkUploadStep3" style="display: none;">
-                <div style="text-align: center; padding: 20px;">
+                <div style="text-align: center; padding: 40px 20px;">
                     <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" style="margin: 0 auto 20px;">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                         <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
-                    <h3 style="margin-bottom: 10px;">Processing Complete!</h3>
+                    <h3 style="margin-bottom: 10px; color: #10b981;">Files Classified & Assigned!</h3>
                     <p style="color: #6b7280; margin-bottom: 30px;" id="bulkCompleteMessage"></p>
 
-                    <div id="bulkResultsSummary" style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: left;"></div>
+                    <div id="bulkResultsSummary" style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 30px; text-align: left;"></div>
 
-                    <button class="btn btn-success" onclick="finishBulkUpload()">Done</button>
+                    <div style="background: #dbeafe; border: 1px solid #3b82f6; border-radius: 8px; padding: 15px; margin-bottom: 30px; text-align: left;">
+                        <strong style="color: #1e40af;">📌 Next Step:</strong>
+                        <p style="color: #1e3a8a; margin-top: 5px; margin-bottom: 0;">
+                            Files have been classified and assigned to modules.
+                            Click <strong>"Process Files Now"</strong> to start full OCR processing (1-2 hours).
+                        </p>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button class="btn" onclick="startFileProcessing()" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 12px 30px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="10 8 16 12 10 16"></polyline>
+                            </svg>
+                            Process Files Now
+                        </button>
+                        <button class="btn" onclick="finishBulkUploadLater()" style="background: #f3f4f6; color: #374151; padding: 12px 30px;">
+                            Process Later
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -773,13 +849,26 @@
         // Load course on page load
         document.addEventListener('DOMContentLoaded', () => {
             loadCourse();
+            loadUploadedFiles(); // Load uploaded files list
             setupDragDrop();
+
+            // Auto-refresh uploaded files every 10 seconds to show processing updates
+            setInterval(() => {
+                loadUploadedFiles();
+            }, 10000);
         });
 
         async function loadCourse() {
             try {
+                // FIXED: Get fresh token from localStorage, not the stale captured value
+                const currentToken = localStorage.getItem('adminToken');
+                if (!currentToken) {
+                    console.error('No token available for loadCourse');
+                    throw new Error('No authentication token');
+                }
+
                 const response = await fetch(`${API_BASE}/courses/${courseId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
                 });
 
                 if (!response.ok) throw new Error('Failed to load course');
@@ -838,30 +927,282 @@
                     </div>
 
                     <div class="module-actions">
-                        <button class="btn btn-success btn-sm" onclick="openUploadModal(${module.id}, '${escapeHtml(module.title)}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="17 8 12 3 7 8"></polyline>
-                                <line x1="12" y1="3" x2="12" y2="15"></line>
-                            </svg>
-                            Upload Content
-                        </button>
-                        <button class="btn btn-primary btn-sm" onclick="processModuleContent(${module.id}, '${escapeHtml(module.title)}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path d="M12 1v6m0 6v6"></path>
-                                <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"></path>
-                                <path d="M1 12h6m6 0h6"></path>
-                                <path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"></path>
-                            </svg>
-                            Process Files
-                        </button>
                         <button class="btn btn-secondary btn-sm" onclick="viewModuleContent(${module.id})">
                             View Content
                         </button>
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Load uploaded files
+        async function loadUploadedFiles() {
+            try {
+                const currentToken = localStorage.getItem('adminToken');
+                if (!currentToken) {
+                    console.error('No token available for loadUploadedFiles');
+                    return;
+                }
+
+                document.getElementById('filesLoadingState').style.display = 'block';
+                document.getElementById('uploadedFilesList').innerHTML = '';
+                document.getElementById('filesEmptyState').style.display = 'none';
+
+                const response = await fetch(`${API_BASE}/courses/${courseId}/files`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load files');
+
+                const data = await response.json();
+                renderUploadedFiles(data.files, data.total, data.processed, data.pending, data.statusCounts);
+
+                document.getElementById('filesLoadingState').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading uploaded files:', error);
+                document.getElementById('filesLoadingState').style.display = 'none';
+                document.getElementById('filesEmptyState').style.display = 'block';
+            }
+        }
+
+        function renderUploadedFiles(files, total, processed, pending, statusCounts) {
+            const filesList = document.getElementById('uploadedFilesList');
+            const filesEmptyState = document.getElementById('filesEmptyState');
+            const processFilesBtn = document.getElementById('processFilesBtn');
+            const uploadedFilesCount = document.getElementById('uploadedFilesCount');
+
+            if (!files || files.length === 0) {
+                filesList.innerHTML = '';
+                filesEmptyState.style.display = 'block';
+                processFilesBtn.style.display = 'none';
+                return;
+            }
+
+            filesEmptyState.style.display = 'none';
+
+            // Show/hide Process Files button based on uploaded count
+            const uploadedCount = statusCounts?.uploaded || 0;
+            if (uploadedCount > 0) {
+                processFilesBtn.style.display = 'block';
+                uploadedFilesCount.textContent = uploadedCount;
+            } else {
+                processFilesBtn.style.display = 'none';
+            }
+
+            // Summary stats with all statuses
+            const counts = statusCounts || {};
+            const summaryHtml = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="text-align: center; padding: 12px; background: white; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #667eea;">${total}</div>
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Total Files</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: white; border-radius: 6px; ${counts.uploaded > 0 ? 'border: 2px solid #3b82f6;' : ''}">
+                        <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">${counts.uploaded || 0}</div>
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">⬆️ Uploaded</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: white; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">${counts.processing || 0}</div>
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">🔄 Processing</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: white; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #10b981;">${counts.completed || 0}</div>
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">✅ Completed</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: white; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #ef4444;">${counts.failed || 0}</div>
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">❌ Failed</div>
+                    </div>
+                </div>
+            `;
+
+            // Files table
+            const filesHtml = files.map(file => {
+                const statusBadge = getStatusBadge(file.status, file.processed);
+                const uploadDate = new Date(file.uploadedAt).toLocaleString();
+
+                return `
+                    <div style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px;">
+                        <div style="flex: 1;">
+                            <div style="font-size: 15px; font-weight: 600; color: #1f2937; margin-bottom: 4px;">
+                                ${escapeHtml(file.fileName)}
+                            </div>
+                            <div style="display: flex; gap: 16px; font-size: 13px; color: #6b7280;">
+                                <span>${file.fileType}</span>
+                                <span>${formatFileSize(file.fileSize)}</span>
+                                <span>📅 ${uploadDate}</span>
+                            </div>
+                            ${file.error ? `<div style="color: #ef4444; font-size: 13px; margin-top: 8px;">⚠️ ${escapeHtml(file.error)}</div>` : ''}
+                        </div>
+                        <div style="margin-left: 20px;">
+                            ${statusBadge}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            filesList.innerHTML = summaryHtml + filesHtml;
+        }
+
+        function getStatusBadge(status, processed) {
+            if (processed) {
+                return '<span style="padding: 6px 12px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 13px; font-weight: 600;">✅ Completed</span>';
+            }
+
+            switch(status) {
+                case 'uploaded':
+                    return '<span style="padding: 6px 12px; background: #dbeafe; color: #1e40af; border-radius: 6px; font-size: 13px; font-weight: 600;">⬆️ Uploaded</span>';
+                case 'pending':
+                    return '<span style="padding: 6px 12px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 13px; font-weight: 600;">⏳ Pending</span>';
+                case 'processing':
+                    return '<span style="padding: 6px 12px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 13px; font-weight: 600;">🔄 Processing</span>';
+                case 'completed':
+                    return '<span style="padding: 6px 12px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 13px; font-weight: 600;">✅ Completed</span>';
+                case 'failed':
+                    return '<span style="padding: 6px 12px; background: #fee2e2; color: #991b1b; border-radius: 6px; font-size: 13px; font-weight: 600;">❌ Failed</span>';
+                default:
+                    return '<span style="padding: 6px 12px; background: #f3f4f6; color: #6b7280; border-radius: 6px; font-size: 13px; font-weight: 600;">❓ Unknown</span>';
+            }
+        }
+
+        function refreshUploadedFiles() {
+            loadUploadedFiles();
+        }
+
+        // Track current processing job
+        let currentProcessingJobId = null;
+        let processingPollInterval = null;
+
+        // Process uploaded files
+        async function processUploadedFiles() {
+            try {
+                const currentToken = localStorage.getItem('adminToken');
+                if (!currentToken) {
+                    showAlert('Authentication required', 'error');
+                    return;
+                }
+
+                // Hide process button
+                document.getElementById('processFilesBtn').style.display = 'none';
+
+                // Show processing progress
+                document.getElementById('processingProgress').style.display = 'block';
+                document.getElementById('processingCurrentFile').textContent = 'Starting processing...';
+                document.getElementById('processingPercentage').textContent = '0%';
+                document.getElementById('processingFilesCompleted').textContent = '0/0 files';
+                document.getElementById('processingProgressBar').style.width = '0%';
+
+                const response = await fetch(`${API_BASE}/courses/${courseId}/process-files`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to start processing');
+                }
+
+                const data = await response.json();
+                currentProcessingJobId = data.job_id;
+
+                showAlert(`Processing started! ${data.total_files} files in queue`, 'success');
+
+                // Start polling for status
+                pollFileProcessingStatus();
+
+            } catch (error) {
+                console.error('Error starting file processing:', error);
+                showAlert('Error starting processing: ' + error.message, 'error');
+                document.getElementById('processingProgress').style.display = 'none';
+                loadUploadedFiles(); // Reload to show Process button again if needed
+            }
+        }
+
+        // Poll for processing status
+        async function pollFileProcessingStatus() {
+            if (!currentProcessingJobId) return;
+
+            // Clear any existing interval
+            if (processingPollInterval) {
+                clearInterval(processingPollInterval);
+            }
+
+            const currentToken = localStorage.getItem('adminToken');
+            if (!currentToken) return;
+
+            // Poll every 2 seconds
+            processingPollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(
+                        `${API_BASE}/courses/${courseId}/processing-status/${currentProcessingJobId}`,
+                        {
+                            headers: { 'Authorization': `Bearer ${currentToken}` }
+                        }
+                    );
+
+                    if (!response.ok) throw new Error('Failed to get status');
+
+                    const status = await response.json();
+
+                    // Update UI
+                    document.getElementById('processingPercentage').textContent = `${status.progress || 0}%`;
+                    document.getElementById('processingFilesCompleted').textContent =
+                        `${status.processed_files || 0}/${status.total_files || 0} files`;
+                    document.getElementById('processingProgressBar').style.width = `${status.progress || 0}%`;
+                    document.getElementById('processingEstimated').textContent = status.estimated_remaining || 'Calculating...';
+
+                    if (status.current_file) {
+                        document.getElementById('processingCurrentFile').textContent =
+                            status.current_file.name || 'Processing...';
+                    }
+
+                    // Check if completed
+                    if (status.status === 'completed' || status.status === 'completed_with_errors') {
+                        clearInterval(processingPollInterval);
+                        currentProcessingJobId = null;
+
+                        // Show completion
+                        document.getElementById('processingCurrentFile').textContent =
+                            status.status === 'completed' ? '✅ All files processed successfully!' :
+                            `⚠️ Completed with ${status.errors?.length || 0} errors`;
+
+                        // Reload files after a short delay
+                        setTimeout(() => {
+                            document.getElementById('processingProgress').style.display = 'none';
+                            loadUploadedFiles();
+                        }, 3000);
+
+                        showAlert(
+                            status.status === 'completed' ?
+                                'All files processed successfully!' :
+                                `Processing completed with ${status.errors?.length || 0} errors`,
+                            status.status === 'completed' ? 'success' : 'warning'
+                        );
+                    } else if (status.status === 'failed') {
+                        clearInterval(processingPollInterval);
+                        currentProcessingJobId = null;
+
+                        document.getElementById('processingCurrentFile').textContent = '❌ Processing failed';
+                        showAlert('Processing failed. Please try again.', 'error');
+
+                        setTimeout(() => {
+                            document.getElementById('processingProgress').style.display = 'none';
+                            loadUploadedFiles();
+                        }, 3000);
+                    }
+
+                    // Also refresh the files list to show updated statuses
+                    loadUploadedFiles();
+
+                } catch (error) {
+                    console.error('Error polling status:', error);
+                    clearInterval(processingPollInterval);
+                    currentProcessingJobId = null;
+                }
+            }, 2000); // Poll every 2 seconds
         }
 
         function openCreateModuleModal() {
@@ -1430,17 +1771,13 @@
 
                 const result = await acceptResponse.json();
 
-                // Trigger background processing for all assigned files
-                updateBulkProgress('Files Assigned!', 'Background processing started (OCR + RAG + Graph DB)', 80);
-
-                await triggerBackgroundProcessing(result);
-
-                updateBulkProgress('Complete!', 'Files assigned and processing in background', 100);
+                // Files assigned - user will manually trigger processing
+                updateBulkProgress('Complete!', 'Files assigned to modules', 100);
 
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                // Show success view
-                showBulkSuccess(result, classificationData);
+                // Show success view with "Process Files" button
+                showBulkSuccess(result, classificationData, moduleDecisions);
 
             } catch (error) {
                 console.error('Bulk upload error:', error);
@@ -1468,6 +1805,7 @@
         function buildModuleDecisions(classificationData, existingModules) {
             // Group files by their classified module
             const moduleFileMap = {};
+            const newModuleMap = {}; // For creating new modules
 
             classificationData.detailed_classifications.forEach(classification => {
                 if (classification.status !== 'classified') return;
@@ -1482,6 +1820,7 @@
                 );
 
                 if (matchingModule) {
+                    // Merge with existing module
                     if (!moduleFileMap[matchingModule.id]) {
                         moduleFileMap[matchingModule.id] = {
                             action: 'merge',
@@ -1496,6 +1835,34 @@
                         file_path: classification.file_path,
                         file_type: classification.file_type || 'application/pdf',
                         file_size: classification.file_size || 0,
+                        module_id: matchingModule.id,
+                        topics: classification.topics || [],
+                        confidence: classification.confidence || 0.5,
+                        learning_level: classification.learning_level || 'intermediate',
+                        reasoning: classification.reasoning || ''
+                    });
+                } else {
+                    // Create new module for unmatched files
+                    const moduleKey = suggestedModule.toLowerCase();
+
+                    if (!newModuleMap[moduleKey]) {
+                        newModuleMap[moduleKey] = {
+                            action: 'create',
+                            title: suggestedModule,
+                            description: `Module for ${suggestedModule}`,
+                            topics: classification.topics || [],
+                            learning_level: classification.learning_level || 'intermediate',
+                            sequence_order: existingModules.length + Object.keys(newModuleMap).length + 1,
+                            estimated_duration_hours: 4,
+                            files: []
+                        };
+                    }
+
+                    newModuleMap[moduleKey].files.push({
+                        file_name: classification.file_name,
+                        file_path: classification.file_path,
+                        file_type: classification.file_type || 'application/pdf',
+                        file_size: classification.file_size || 0,
                         topics: classification.topics || [],
                         confidence: classification.confidence || 0.5,
                         learning_level: classification.learning_level || 'intermediate',
@@ -1504,7 +1871,8 @@
                 }
             });
 
-            return Object.values(moduleFileMap);
+            // Combine existing module merges and new module creations
+            return [...Object.values(moduleFileMap), ...Object.values(newModuleMap)];
         }
 
         function updateBulkProgress(title, text, percent) {
@@ -1515,14 +1883,17 @@
             document.getElementById('bulkProgressDetails').textContent = text;
         }
 
-        function showBulkSuccess(result, classificationData) {
+        function showBulkSuccess(result, classificationData, moduleDecisions) {
             document.getElementById('bulkUploadStep2').style.display = 'none';
             document.getElementById('bulkUploadStep3').style.display = 'block';
 
             const assignedFiles = result.assigned_files || classificationData.summary.successful || 0;
             const modulesUpdated = currentModules.length;
-            const message = `Successfully assigned ${assignedFiles} files to ${modulesUpdated} existing modules. Files will be processed with OCR + RAG + Graph DB shortly.`;
+            const message = `✅ Successfully assigned ${assignedFiles} files to ${modulesUpdated} modules. Files are ready but NOT processed yet.`;
             document.getElementById('bulkCompleteMessage').textContent = message;
+
+            // Store result and module decisions for processing later
+            window.bulkUploadResult = { result, classificationData, moduleDecisions };
 
             const summaryHTML = `
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
@@ -1550,9 +1921,941 @@
 
         function finishBulkUpload() {
             closeBulkUploadModal();
+
+            // Show "Process Files" button
+            const processBtn = document.getElementById('processFilesBtn');
+            if (processBtn) {
+                processBtn.style.display = 'inline-block';
+            }
+
             // Reload modules to show new content
-            loadModules(currentCourse.id);
+            loadCourse();
+
+            // Show notification
+            showNotification('Files classified and assigned! Click "Process Files" to start OCR processing.', 'success');
+        }
+
+        /**
+         * Close modal without processing - user wants to process later
+         */
+        function finishBulkUploadLater() {
+            closeBulkUploadModal();
+
+            // Reload modules to show new content
+            loadCourse();
+
+            // Show notification
+            showNotification('Files classified and assigned! You can process them later from the Bulk Upload menu.', 'success');
+        }
+
+        /**
+         * Start bulk file processing (separate from upload)
+         * Triggered by "Process Files" button on course page
+         */
+        async function startBulkFileProcessing() {
+            if (!window.bulkUploadResult) {
+                showNotification('No files to process. Please upload files first.', 'error');
+                return;
+            }
+
+            const { moduleDecisions } = window.bulkUploadResult;
+            const courseId = currentCourse.id;
+
+            // Confirm before starting
+            if (!confirm('Start processing all files with full OCR? This will take 1-2 hours and run in the background.')) {
+                return;
+            }
+
+            try {
+                // Collect all files from module decisions
+                const allFiles = [];
+                moduleDecisions.forEach(decision => {
+                    if (decision.files && decision.files.length > 0) {
+                        allFiles.push(...decision.files);
+                    }
+                });
+
+                if (allFiles.length === 0) {
+                    showNotification('No files to process', 'error');
+                    return;
+                }
+
+                // Create processing job
+                const processingJobId = `process_${Date.now()}_${courseId}`;
+
+                // Store job info
+                localStorage.setItem('currentProcessingJob', JSON.stringify({
+                    jobId: processingJobId,
+                    courseId: courseId,
+                    totalFiles: allFiles.length,
+                    startTime: new Date().toISOString(),
+                    status: 'starting'
+                }));
+
+                // Disable Process Files button
+                const processBtn = document.getElementById('processFilesBtn');
+                if (processBtn) {
+                    processBtn.disabled = true;
+                    processBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px; animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"></circle></svg>Starting...';
+                }
+
+                // Call backend to start processing
+                const token = getAuthToken();
+                const response = await fetch(`${API_BASE}/courses/${courseId}/process-files`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        job_id: processingJobId,
+                        files: allFiles
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to start processing');
+                }
+
+                const data = await response.json();
+
+                // Update storage with job details
+                localStorage.setItem('currentProcessingJob', JSON.stringify({
+                    jobId: processingJobId,
+                    courseId: courseId,
+                    totalFiles: data.total_files || allFiles.length,
+                    startTime: new Date().toISOString(),
+                    status: 'processing',
+                    estimatedMinutes: data.estimated_minutes || 60
+                }));
+
+                // Hide Process Files button
+                if (processBtn) {
+                    processBtn.style.display = 'none';
+                }
+
+                // Show "View Processing Status" button
+                showProcessingStatusButton();
+
+                // Show success notification
+                showNotification(`Processing started! ${data.total_files} files will be processed in the background.`, 'success');
+
+                // Clear upload result
+                delete window.bulkUploadResult;
+
+            } catch (error) {
+                console.error('Failed to start processing:', error);
+                showNotification('Failed to start processing: ' + error.message, 'error');
+
+                // Re-enable button
+                const processBtn = document.getElementById('processFilesBtn');
+                if (processBtn) {
+                    processBtn.disabled = false;
+                    processBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><circle cx="12" cy="12" r="10"></circle><polyline points="10 8 16 12 10 16"></polyline></svg>Process Files';
+                }
+            }
+        }
+
+        /**
+         * Start background file processing (OCR + RAG + Graph DB)
+         * This is a long-running operation that won't block the UI
+         */
+        async function startFileProcessing() {
+            if (!window.bulkUploadResult) {
+                showNotification('No files to process', 'error');
+                return;
+            }
+
+            const { result, classificationData, moduleDecisions } = window.bulkUploadResult;
+            const courseId = currentCourse.id;
+
+            try {
+                // Collect all files from module decisions (these have module_id attached)
+                const allFiles = [];
+                moduleDecisions.forEach(decision => {
+                    if (decision.files && decision.files.length > 0) {
+                        allFiles.push(...decision.files);
+                    }
+                });
+
+                if (allFiles.length === 0) {
+                    showNotification('No files to process', 'error');
+                    return;
+                }
+
+                // Create processing job
+                const processingJobId = `process_${Date.now()}_${courseId}`;
+
+                // Store job info
+                localStorage.setItem('currentProcessingJob', JSON.stringify({
+                    jobId: processingJobId,
+                    courseId: courseId,
+                    totalFiles: allFiles.length,
+                    startTime: new Date().toISOString(),
+                    status: 'starting'
+                }));
+
+                // Show processing started message
+                updateBulkProgress('Processing Started', 'Files are being processed in the background...', 100);
+
+                // Update button text
+                const btn = event.target;
+                btn.disabled = true;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px; animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Starting...';
+
+                // Call backend to start processing (non-blocking)
+                const response = await fetch(`/api/admin/courses/${courseId}/process-files`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    },
+                    body: JSON.stringify({
+                        job_id: processingJobId,
+                        files: allFiles  // Send files with module_id attached
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to start processing');
+                }
+
+                const data = await response.json();
+
+                // Update storage with job details
+                localStorage.setItem('currentProcessingJob', JSON.stringify({
+                    jobId: processingJobId,
+                    courseId: courseId,
+                    totalFiles: data.total_files || classificationData.summary.successful,
+                    startTime: new Date().toISOString(),
+                    status: 'processing',
+                    estimatedMinutes: data.estimated_minutes || 60
+                }));
+
+                // Show success message
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                document.getElementById('bulkUploadStep3').innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🚀</div>
+                        <h3 style="margin-bottom: 10px; color: #10b981;">Processing Started!</h3>
+                        <p style="color: #6b7280; margin-bottom: 20px;">
+                            Files are being processed in the background with OCR + RAG + Graph DB indexing.
+                        </p>
+                        <div style="background: #f3f4f6; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: left;">
+                            <div style="margin-bottom: 10px;">
+                                <strong>Job ID:</strong> <code style="background: white; padding: 2px 6px; border-radius: 4px; font-size: 12px;">${processingJobId}</code>
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <strong>Total Files:</strong> ${data.total_files || classificationData.summary.successful}
+                            </div>
+                            <div>
+                                <strong>Estimated Time:</strong> ${data.estimated_minutes || 60} minutes
+                            </div>
+                        </div>
+                        <p style="color: #059669; font-weight: 500; margin-bottom: 20px;">
+                            ✅ You can close this window. Use the "View Processing Status" button to check progress.
+                        </p>
+                        <button class="btn" onclick="closeBulkUploadModal(); loadModules(currentCourse.id);" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                            Close & View Course
+                        </button>
+                    </div>
+                `;
+
+                // Show "View Processing Status" button on main page
+                showProcessingStatusButton();
+
+            } catch (error) {
+                console.error('Failed to start processing:', error);
+                showNotification('Failed to start processing: ' + error.message, 'error');
+
+                // Re-enable button
+                const btn = event.target;
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Process Files Now';
+            }
+        }
+
+        /**
+         * Show/update the "View Processing Status" button on the course page
+         */
+        function showProcessingStatusButton() {
+            // Check if button already exists
+            let statusBtn = document.getElementById('viewProcessingStatusBtn');
+
+            if (!statusBtn) {
+                // Create button next to "Bulk Upload & Process" button
+                const bulkUploadBtn = document.querySelector('button[onclick="openBulkUploadModal()"]');
+
+                if (bulkUploadBtn && bulkUploadBtn.parentElement) {
+                    statusBtn = document.createElement('button');
+                    statusBtn.id = 'viewProcessingStatusBtn';
+                    statusBtn.className = 'btn';
+                    statusBtn.style.cssText = 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; margin-right: 10px;';
+                    statusBtn.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        View Processing Status
+                    `;
+                    statusBtn.onclick = openProcessingStatusModal;
+
+                    bulkUploadBtn.parentElement.insertBefore(statusBtn, bulkUploadBtn);
+                }
+            }
+        }
+
+        /**
+         * Open processing status modal
+         */
+        async function openProcessingStatusModal() {
+            const jobData = localStorage.getItem('currentProcessingJob');
+
+            if (!jobData) {
+                showNotification('No active processing job found', 'error');
+                return;
+            }
+
+            const job = JSON.parse(jobData);
+
+            // Create status modal if it doesn't exist
+            let modal = document.getElementById('processingStatusModal');
+
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'processingStatusModal';
+                modal.style.cssText = 'display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;';
+                modal.innerHTML = `
+                    <div style="background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                        <div style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+                            <h2 style="margin: 0; font-size: 24px; color: #1f2937;">Processing Status</h2>
+                        </div>
+                        <div id="processingStatusContent" style="padding: 24px;">
+                            <!-- Content will be dynamically populated -->
+                        </div>
+                        <div style="padding: 20px 24px; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button class="btn" onclick="refreshProcessingStatus()" style="background: #f3f4f6; color: #374151;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Refresh
+                            </button>
+                            <button class="btn" onclick="closeProcessingStatusModal()" style="background: #3b82f6; color: white;">Close</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            // Show modal
+            modal.style.display = 'flex';
+
+            // Load status
+            await refreshProcessingStatus();
+        }
+
+        /**
+         * Refresh processing status from backend
+         */
+        async function refreshProcessingStatus() {
+            const jobData = localStorage.getItem('currentProcessingJob');
+
+            if (!jobData) {
+                closeProcessingStatusModal();
+                return;
+            }
+
+            const job = JSON.parse(jobData);
+            const contentDiv = document.getElementById('processingStatusContent');
+
+            if (!contentDiv) return;
+
+            try {
+                // Fetch current status from backend
+                const response = await fetch(`/api/admin/courses/${job.courseId}/processing-status/${job.jobId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch status');
+                }
+
+                const status = await response.json();
+
+                // Update local storage
+                localStorage.setItem('currentProcessingJob', JSON.stringify({
+                    ...job,
+                    status: status.status,
+                    processedFiles: status.processed_files,
+                    currentFile: status.current_file,
+                    progress: status.progress
+                }));
+
+                // Calculate elapsed time
+                const startTime = new Date(job.startTime);
+                const elapsed = Math.floor((new Date() - startTime) / 1000 / 60); // minutes
+
+                // Render status
+                const progressPercent = Math.round(status.progress || 0);
+                const statusColor = status.status === 'completed' ? '#10b981' : status.status === 'failed' ? '#ef4444' : '#f59e0b';
+                const statusIcon = status.status === 'completed' ? '✅' : status.status === 'failed' ? '❌' : '⏳';
+
+                contentDiv.innerHTML = `
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <span style="font-size: 24px;">${statusIcon}</span>
+                            <div>
+                                <div style="font-weight: 600; color: ${statusColor}; text-transform: capitalize;">${status.status}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Job ID: ${job.jobId}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="font-size: 14px; color: #6b7280;">Progress</span>
+                            <span style="font-size: 14px; font-weight: 600;">${progressPercent}%</span>
+                        </div>
+                        <div style="background: #e5e7eb; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div style="background: ${statusColor}; height: 100%; width: ${progressPercent}%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
+                        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #10b981;">${status.processed_files || 0}</div>
+                            <div style="font-size: 14px; color: #6b7280;">Files Processed</div>
+                        </div>
+                        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${job.totalFiles}</div>
+                            <div style="font-size: 14px; color: #6b7280;">Total Files</div>
+                        </div>
+                        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">${elapsed} min</div>
+                            <div style="font-size: 14px; color: #6b7280;">Elapsed Time</div>
+                        </div>
+                        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 24px; font-weight: bold; color: #6366f1;">${status.estimated_remaining || 'N/A'}</div>
+                            <div style="font-size: 14px; color: #6b7280;">Est. Remaining</div>
+                        </div>
+                    </div>
+
+                    ${status.current_file ? `
+                        <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                            <div style="font-weight: 600; color: #92400e; margin-bottom: 5px;">Currently Processing:</div>
+                            <div style="color: #78350f; font-size: 14px;">${status.current_file.name || 'Unknown'}</div>
+                            ${status.current_file.operation ? `<div style="color: #78350f; font-size: 12px; margin-top: 5px;">${status.current_file.operation}</div>` : ''}
+                        </div>
+                    ` : ''}
+
+                    ${status.errors && status.errors.length > 0 ? `
+                        <div style="background: #fee2e2; border: 1px solid #ef4444; border-radius: 8px; padding: 15px;">
+                            <div style="font-weight: 600; color: #991b1b; margin-bottom: 10px;">Errors (${status.errors.length}):</div>
+                            <div style="max-height: 150px; overflow-y: auto;">
+                                ${status.errors.map(err => `
+                                    <div style="color: #7f1d1d; font-size: 12px; margin-bottom: 5px; padding: 5px; background: white; border-radius: 4px;">
+                                        <strong>${err.file}</strong>: ${err.error}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${status.status === 'completed' ? `
+                        <div style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 15px; text-align: center;">
+                            <div style="font-size: 18px; font-weight: 600; color: #065f46; margin-bottom: 5px;">✅ Processing Complete!</div>
+                            <div style="color: #047857; font-size: 14px;">All files have been processed and indexed.</div>
+                        </div>
+                    ` : ''}
+                `;
+
+                // Auto-refresh if still processing
+                if (status.status === 'processing') {
+                    setTimeout(refreshProcessingStatus, 5000); // Refresh every 5 seconds
+                } else if (status.status === 'completed') {
+                    // Remove from localStorage
+                    localStorage.removeItem('currentProcessingJob');
+                    // Hide status button
+                    const statusBtn = document.getElementById('viewProcessingStatusBtn');
+                    if (statusBtn) statusBtn.remove();
+                }
+
+            } catch (error) {
+                console.error('Failed to fetch processing status:', error);
+                contentDiv.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                        <h3 style="color: #ef4444; margin-bottom: 10px;">Failed to Load Status</h3>
+                        <p style="color: #6b7280; margin-bottom: 20px;">${error.message}</p>
+                        <button class="btn" onclick="refreshProcessingStatus()" style="background: #3b82f6; color: white;">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        function closeProcessingStatusModal() {
+            const modal = document.getElementById('processingStatusModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Check for active processing job on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const jobData = localStorage.getItem('currentProcessingJob');
+            if (jobData) {
+                const job = JSON.parse(jobData);
+                // Only show button if course ID matches
+                if (currentCourse && job.courseId === currentCourse.id) {
+                    showProcessingStatusButton();
+                }
+            }
+        });
+
+        // ==================== SIMPLE UPLOAD (Module-Independent) ====================
+
+        let simpleUploadFiles = [];
+
+        // FILE UPLOAD 2025 - Module-Independent Upload
+        let uploadFiles2025 = [];
+
+        function openFileUpload2025() {
+            console.log('📁 FILE UPLOAD 2025 - Opening modal');
+            try {
+                const modal = document.getElementById('fileUploadModal2025');
+                console.log('📁 Modal element:', modal);
+                if (modal) {
+                    modal.style.display = 'flex';
+                    uploadFiles2025 = [];
+                    updateFileList2025();
+                    console.log('✅ FILE UPLOAD modal opened');
+                } else {
+                    console.error('❌ Modal element not found');
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+            }
+        }
+
+        function closeFileUpload2025() {
+            console.log('📁 Closing file upload modal');
+            document.getElementById('fileUploadModal2025').style.display = 'none';
+            uploadFiles2025 = [];
+            updateFileList2025();
+        }
+
+        function handleFileSelect2025(event) {
+            console.log('📁 Files selected:', event.target.files.length);
+            const files = Array.from(event.target.files);
+            uploadFiles2025.push(...files);
+            updateFileList2025();
+        }
+
+        function handleFileDrop2025(event) {
+            event.preventDefault();
+            console.log('📁 Files dropped:', event.dataTransfer.files.length);
+            const files = Array.from(event.dataTransfer.files);
+            uploadFiles2025.push(...files);
+            updateFileList2025();
+        }
+
+        function removeFile2025(index) {
+            console.log('📁 Removing file at index:', index);
+            uploadFiles2025.splice(index, 1);
+            updateFileList2025();
+        }
+
+        function updateFileList2025() {
+            const fileListDiv = document.getElementById('fileList2025');
+            const fileCount = document.getElementById('fileCount2025');
+            const uploadBtn = document.getElementById('uploadBtn2025');
+
+            fileCount.textContent = uploadFiles2025.length;
+
+            if (uploadFiles2025.length === 0) {
+                fileListDiv.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No files selected</div>';
+                uploadBtn.disabled = true;
+            } else {
+                let html = '';
+                uploadFiles2025.forEach((file, index) => {
+                    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9fafb; border-radius: 6px; margin-bottom: 8px;">
+                            <div>
+                                <div style="font-weight: 500; color: #374151;">${file.name}</div>
+                                <div style="font-size: 12px; color: #6b7280;">${sizeMB} MB</div>
+                            </div>
+                            <button onclick="removeFile2025(${index})" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                Remove
+                            </button>
+                        </div>
+                    `;
+                });
+                fileListDiv.innerHTML = html;
+                uploadBtn.disabled = false;
+            }
+        }
+
+        // Check token validity without redirecting
+        function checkTokenValidity() {
+            // FIXED: Use 'adminToken' to match what login.html saves (line 255)
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                console.error('❌ No token found in localStorage');
+                console.log('Available localStorage keys:', Object.keys(localStorage));
+                return { valid: false, error: 'No authentication token. Please refresh the page and login again.' };
+            }
+
+            // Check if token is expired
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const expiry = payload.exp * 1000;
+                const now = Date.now();
+
+                if (now >= expiry) {
+                    console.error('❌ Token expired');
+                    return { valid: false, error: 'Session expired. Please refresh the page and login again.' };
+                }
+
+                console.log('✅ Token is valid');
+                return { valid: true, token: token };
+            } catch (error) {
+                console.error('❌ Error parsing token:', error);
+                return { valid: false, error: 'Invalid token. Please refresh the page and login again.' };
+            }
+        }
+
+        async function startUpload2025() {
+            console.log('📁 START UPLOAD FUNCTION CALLED');
+            console.log('📁 Files to upload:', uploadFiles2025.length);
+            console.log('📁 Current course:', currentCourse);
+            console.log('📁 API_BASE:', API_BASE);
+
+            if (uploadFiles2025.length === 0) {
+                console.error('❌ No files selected!');
+                alert('Please select files to upload');
+                return;
+            }
+
+            console.log('📁 Starting upload of', uploadFiles2025.length, 'files');
+
+            const uploadBtn = document.getElementById('uploadBtn2025');
+            const progressDiv = document.getElementById('uploadProgress2025');
+
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            progressDiv.style.display = 'block';
+            progressDiv.textContent = 'Uploading files...';
+
+            try {
+                // Check token validity
+                const tokenCheck = checkTokenValidity();
+                if (!tokenCheck.valid) {
+                    console.error('❌ Token validation failed:', tokenCheck.error);
+                    progressDiv.textContent = `❌ ${tokenCheck.error}`;
+                    progressDiv.style.color = '#ef4444';
+                    progressDiv.style.fontWeight = 'bold';
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Start Upload';
+                    return;
+                }
+
+                const token = tokenCheck.token;
+                const formData = new FormData();
+                uploadFiles2025.forEach(file => {
+                    formData.append('files', file);
+                });
+
+                const response = await fetch(`${API_BASE}/courses/${currentCourse.id}/simple-upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                // Handle 401/403 errors (invalid/expired token)
+                if (response.status === 401 || response.status === 403) {
+                    console.error('❌ Authentication failed:', response.status);
+                    progressDiv.textContent = '❌ Authentication failed. Please refresh the page and login again.';
+                    progressDiv.style.color = '#ef4444';
+                    progressDiv.style.fontWeight = 'bold';
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Start Upload';
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    console.log('✅ Upload successful:', result);
+                    progressDiv.textContent = `✅ SUCCESS! Uploaded ${result.total_files} files. Processing in background. Job ID: ${result.job_id}`;
+                    progressDiv.style.color = '#10b981';
+                    progressDiv.style.fontWeight = 'bold';
+
+                    uploadBtn.textContent = 'Upload Complete!';
+                    uploadBtn.style.background = '#10b981';
+
+                    // DO NOT AUTO-CLOSE - let user close manually to see success message
+                } else {
+                    console.error('❌ Upload failed:', result);
+                    progressDiv.textContent = '❌ Upload failed: ' + result.error;
+                    progressDiv.style.color = '#ef4444';
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Start Upload';
+                }
+            } catch (error) {
+                console.error('❌ Upload error:', error);
+                progressDiv.textContent = '❌ Error: ' + error.message;
+                progressDiv.style.color = '#ef4444';
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Start Upload';
+            }
+        }
+
+        function openSimpleUploadModal() {
+            document.getElementById('simpleUploadModal').style.display = 'flex';
+            simpleUploadFiles = [];
+            updateSimpleFileList();
+        }
+
+        function closeSimpleUploadModal() {
+            document.getElementById('simpleUploadModal').style.display = 'none';
+            simpleUploadFiles = [];
+        }
+
+        function handleSimpleDrop(e) {
+            e.preventDefault();
+            const files = Array.from(e.dataTransfer.files);
+            simpleUploadFiles.push(...files);
+            updateSimpleFileList();
+        }
+
+        function handleSimpleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            simpleUploadFiles.push(...files);
+            updateSimpleFileList();
+        }
+
+        function updateSimpleFileList() {
+            const list = document.getElementById('simpleFileList');
+            const count = document.getElementById('simpleFileCount');
+            const btn = document.getElementById('simpleUploadBtn');
+
+            count.textContent = simpleUploadFiles.length;
+            btn.disabled = simpleUploadFiles.length === 0;
+
+            if (simpleUploadFiles.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No files selected</div>';
+                return;
+            }
+
+            list.innerHTML = simpleUploadFiles.map((file, index) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9fafb; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; flex: 1;">
+                        <span style="margin-right: 10px;">${getFileIcon(file.type)}</span>
+                        <div>
+                            <div style="font-size: 14px; font-weight: 500;">${file.name}</div>
+                            <div style="font-size: 12px; color: #6b7280;">${formatFileSize(file.size)}</div>
+                        </div>
+                    </div>
+                    <button onclick="removeSimpleFile(${index})" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 5px 10px;">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function removeSimpleFile(index) {
+            simpleUploadFiles.splice(index, 1);
+            updateSimpleFileList();
+        }
+
+        async function startSimpleUpload() {
+            if (simpleUploadFiles.length === 0) return;
+
+            const btn = document.getElementById('simpleUploadBtn');
+            btn.disabled = true;
+            btn.textContent = 'Uploading...';
+
+            try {
+                const formData = new FormData();
+                simpleUploadFiles.forEach(file => {
+                    formData.append('files', file);
+                });
+
+                const response = await fetch(`${API_BASE}/courses/${currentCourse.id}/simple-upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+
+                const result = await response.json();
+
+                // Store job info
+                localStorage.setItem('currentProcessingJob', JSON.stringify({
+                    jobId: result.job_id,
+                    courseId: currentCourse.id,
+                    totalFiles: result.total_files,
+                    startTime: new Date().toISOString(),
+                    status: 'processing',
+                    estimatedMinutes: result.estimated_minutes
+                }));
+
+                closeSimpleUploadModal();
+                showProcessingStatusButton();
+
+                showNotification(`Upload started! ${result.total_files} files will be processed in the background (est. ${result.estimated_minutes} min).`, 'success');
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert(`Upload failed: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Start Upload';
+            }
         }
     </script>
+
+    <!-- FILE UPLOAD MODAL 2025 -->
+    <div id="fileUploadModal2025" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 700px; width: 90%;">
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 24px; color: #374151; margin: 0;">Upload Files</h2>
+                <button onclick="closeFileUpload2025()" style="background: none; border: none; font-size: 28px; color: #6b7280; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+
+            <!-- Description -->
+            <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">
+                Upload PDF, DOCX, or TXT files. They will be processed and indexed to the knowledge base.
+            </p>
+
+            <!-- Drop Zone -->
+            <div
+                id="dropZone2025"
+                ondrop="handleFileDrop2025(event)"
+                ondragover="event.preventDefault()"
+                onclick="document.getElementById('fileInput2025').click()"
+                style="border: 2px dashed #d1d5db; border-radius: 8px; padding: 40px; text-align: center; background: #f9fafb; cursor: pointer; margin-bottom: 20px;"
+            >
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" style="margin: 0 auto 15px;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p style="font-size: 16px; color: #374151; margin: 10px 0 5px 0; font-weight: 500;">
+                    Drag & drop files here or click to browse
+                </p>
+                <p style="font-size: 14px; color: #9ca3af; margin: 0;">
+                    Supports: PDF, DOCX, TXT (max 100MB per file)
+                </p>
+            </div>
+
+            <!-- Hidden File Input -->
+            <input
+                type="file"
+                id="fileInput2025"
+                multiple
+                accept=".pdf,.docx,.doc,.txt"
+                onchange="handleFileSelect2025(event)"
+                style="display: none;"
+            >
+
+            <!-- File List -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 10px;">
+                    Selected Files (<span id="fileCount2025">0</span>)
+                </h3>
+                <div id="fileList2025" style="max-height: 300px; overflow-y: auto;">
+                    <div style="text-align: center; color: #9ca3af; padding: 20px;">No files selected</div>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div id="uploadProgress2025" style="display: none; padding: 12px; background: #f3f4f6; border-radius: 6px; margin-bottom: 15px; font-size: 14px; color: #374151;">
+                Uploading files...
+            </div>
+
+            <!-- Footer Buttons -->
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="closeFileUpload2025()" style="background: #e5e7eb; color: #374151; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                    Cancel
+                </button>
+                <button id="uploadBtn2025" onclick="startUpload2025()" disabled style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                    Start Upload
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simple Upload Modal -->
+    <div id="simpleUploadModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Upload Files</h2>
+                <button class="close-btn" onclick="closeSimpleUploadModal()">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <p style="color: #6b7280; margin-bottom: 20px;">
+                    Upload PDF, DOCX, or TXT files. They will be processed and indexed to the knowledge base.
+                </p>
+
+                <div
+                    id="simpleDropZone"
+                    class="drop-zone"
+                    ondrop="handleSimpleDrop(event)"
+                    ondragover="event.preventDefault()"
+                    onclick="document.getElementById('simpleFileInput').click()"
+                >
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p style="font-size: 16px; color: #374151; margin: 10px 0 5px 0;">
+                        Drag & drop files here or click to browse
+                    </p>
+                    <p style="font-size: 14px; color: #9ca3af;">
+                        Supports: PDF, DOCX, TXT (max 100MB per file)
+                    </p>
+                </div>
+
+                <input
+                    type="file"
+                    id="simpleFileInput"
+                    multiple
+                    accept=".pdf,.docx,.doc,.txt"
+                    style="display: none;"
+                    onchange="handleSimpleFileSelect(event)"
+                >
+
+                <div style="margin-top: 20px;">
+                    <h3 style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 10px;">
+                        Selected Files (<span id="simpleFileCount">0</span>)
+                    </h3>
+                    <div id="simpleFileList" style="max-height: 300px; overflow-y: auto;">
+                        <div style="text-align: center; color: #9ca3af; padding: 20px;">No files selected</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeSimpleUploadModal()">Cancel</button>
+                <button id="simpleUploadBtn" class="btn btn-primary" onclick="startSimpleUpload()" disabled>
+                    Start Upload
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
