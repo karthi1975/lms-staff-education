@@ -1619,4 +1619,42 @@ router.delete('/users/:userId', authMiddleware.authenticateToken, async (req, re
   }
 });
 
+/**
+ * @route GET /api/admin/courses/:courseId/modules
+ * @desc Get modules for a course (alias for portal route for UI compatibility)
+ * @access Admin
+ */
+router.get('/courses/:courseId/modules', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    const modulesResult = await postgresService.pool.query(`
+      SELECT
+        m.id,
+        m.id as moodle_module_id,
+        m.course_id,
+        CONCAT('MOD-', m.id) as module_code,
+        m.title as module_name,
+        m.description,
+        m.sequence_order,
+        m.is_active,
+        m.created_at,
+        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count
+      FROM modules m
+      WHERE m.course_id = $1
+      ORDER BY m.sequence_order
+    `, [courseId]);
+
+    res.json({
+      success: true,
+      modules: modulesResult.rows,
+      data: modulesResult.rows
+    });
+  } catch (error) {
+    logger.error('Error fetching course modules:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
