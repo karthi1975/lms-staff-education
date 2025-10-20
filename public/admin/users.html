@@ -60,12 +60,12 @@
         }
 
         .btn-primary {
-            background: #667eea;
+            background: #00897B;
             color: white;
         }
 
         .btn-primary:hover {
-            background: #5a67d8;
+            background: #00695C;
         }
 
         .btn-secondary {
@@ -90,13 +90,13 @@
         }
 
         .breadcrumb a {
-            color: #667eea;
+            color: #00897B;
             text-decoration: none;
             transition: color 0.2s;
         }
 
         .breadcrumb a:hover {
-            color: #5a67d8;
+            color: #00695C;
             text-decoration: underline;
         }
 
@@ -448,7 +448,7 @@
                     </ol>
                 </div>
 
-                <button class="btn btn-primary" onclick="copyPinToClipboard()" style="margin-right: 10px; background: #667eea;">
+                <button class="btn btn-primary" onclick="copyPinToClipboard()" style="margin-right: 10px; background: #00897B;">
                     📋 Copy PIN
                 </button>
                 <button class="btn btn-secondary" onclick="closePinModal()">
@@ -748,7 +748,7 @@
                     btn.style.background = '#10b981';
                     setTimeout(() => {
                         btn.textContent = originalText;
-                        btn.style.background = '#667eea';
+                        btn.style.background = '#00897B';
                     }, 2000);
                 }).catch(err => {
                     console.error('Failed to copy:', err);
