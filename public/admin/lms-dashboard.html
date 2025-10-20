@@ -4,7 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teachers Training - Learning Management System</title>
+
+    <!-- Material Design 3 Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
     <style>
+        /* Material Design 3 Design Tokens - Teal Theme */
+        :root {
+            /* Primary Colors - Teal */
+            --md-sys-color-primary: #00897B;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-primary-container: #A8DAD9;
+            --md-sys-color-on-primary-container: #002020;
+            --md-sys-color-primary-dark: #00695C;
+
+            /* Surface Colors */
+            --md-sys-color-surface: #FFFBFE;
+            --md-sys-color-on-surface: #1C1B1F;
+            --md-sys-color-surface-variant: #E7E0EC;
+            --md-sys-color-on-surface-variant: #49454F;
+            --md-sys-color-background: #F5F8F9;
+
+            /* Elevation */
+            --md-sys-elevation-level1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+            --md-sys-elevation-level2: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+            --md-sys-elevation-level3: 0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,15 +40,15 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f4f6f9;
-            color: #3a3a3a;
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-surface);
         }
 
         /* Moodle-style Top Navigation */
         .top-navbar {
             background: #fff;
-            border-bottom: 3px solid #f98012;
+            border-bottom: 3px solid #00897B;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             position: sticky;
             top: 0;
@@ -50,7 +78,7 @@
         .site-title {
             font-size: 22px;
             font-weight: 600;
-            color: #0f6cbf;
+            color: #00897B;
         }
 
         .nav-tabs {
@@ -70,12 +98,12 @@
 
         .nav-tab:hover {
             background: #f4f6f9;
-            border-bottom-color: #0f6cbf;
+            border-bottom-color: #00897B;
         }
 
         .nav-tab.active {
             background: #f4f6f9;
-            border-bottom-color: #f98012;
+            border-bottom-color: #00897B;
         }
 
         .user-menu {
@@ -88,7 +116,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00897B 0%, #004D40 100%);
             color: white;
             display: flex;
             align-items: center;
@@ -98,17 +126,17 @@
         }
 
         .logout-link {
-            color: #0f6cbf;
+            color: #00897B;
             text-decoration: none;
             font-size: 14px;
             padding: 8px 16px;
-            border: 1px solid #0f6cbf;
+            border: 1px solid #00897B;
             border-radius: 4px;
             transition: all 0.3s;
         }
 
         .logout-link:hover {
-            background: #0f6cbf;
+            background: #00897B;
             color: white;
         }
 
@@ -132,14 +160,14 @@
         }
 
         .breadcrumb-trail a {
-            color: #0f6cbf;
+            color: #00897B;
             text-decoration: none;
             transition: all 0.2s;
         }
 
         .breadcrumb-trail a:hover {
             text-decoration: underline;
-            color: #0c5aa1;
+            color: #00695C;
         }
 
         .breadcrumb-separator {
@@ -207,7 +235,7 @@
         .info-box-value {
             font-size: 36px;
             font-weight: 700;
-            color: #0f6cbf;
+            color: #00897B;
             margin-bottom: 10px;
         }
 
@@ -259,20 +287,20 @@
         }
 
         .btn-moodle:hover {
-            background: #0f6cbf;
+            background: #00897B;
             color: white;
-            border-color: #0f6cbf;
+            border-color: #00897B;
         }
 
         .btn-primary-moodle {
-            background: #0f6cbf;
+            background: #00897B;
             color: white;
-            border-color: #0f6cbf;
+            border-color: #00897B;
         }
 
         .btn-primary-moodle:hover {
-            background: #0c5aa1;
-            border-color: #0c5aa1;
+            background: #00695C;
+            border-color: #00695C;
         }
 
         .btn-danger {
@@ -378,7 +406,7 @@
         }
 
         .module-card-header {
-            background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+            background: linear-gradient(135deg, #00897B 0%, #26A69A 100%);
             padding: 24px;
             color: white;
             position: relative;
@@ -446,7 +474,7 @@
         .module-stat-value {
             font-size: 24px;
             font-weight: 700;
-            color: #1a73e8;
+            color: #00897B;
         }
 
         .module-stat-label {
@@ -527,7 +555,7 @@
 
         .tab-button.active {
             background: #fff;
-            color: #0f6cbf;
+            color: #00897B;
             border-bottom: 2px solid #fff;
             margin-bottom: -2px;
         }
@@ -550,7 +578,7 @@
 
         .progress-bar {
             height: 100%;
-            background: linear-gradient(to right, #667eea, #764ba2);
+            background: linear-gradient(to right, #00897B, #004D40);
             transition: width 0.3s;
         }
 
@@ -573,7 +601,7 @@
             width: 45px;
             height: 45px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00897B 0%, #004D40 100%);
             color: white;
             display: flex;
             align-items: center;
@@ -614,7 +642,7 @@
 
         .search-bar:focus {
             outline: none;
-            border-color: #0f6cbf;
+            border-color: #00897B;
         }
 
         /* Empty State */
@@ -659,7 +687,7 @@
         }
 
         .chat-modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00897B 0%, #004D40 100%);
             color: white;
             padding: 20px;
             border-radius: 8px 8px 0 0;
@@ -719,7 +747,7 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: #0f6cbf;
+            background: #00897B;
             color: white;
             display: flex;
             align-items: center;
@@ -730,7 +758,7 @@
         }
 
         .chat-msg.user-msg .chat-msg-avatar {
-            background: #667eea;
+            background: #00897B;
         }
 
         .chat-msg-bubble {
@@ -742,7 +770,7 @@
         }
 
         .chat-msg.user-msg .chat-msg-bubble {
-            background: #667eea;
+            background: #00897B;
             color: white;
         }
 
@@ -823,7 +851,7 @@
         }
 
         .chat-msg-text blockquote {
-            border-left: 3px solid #667eea;
+            border-left: 3px solid #00897B;
             padding-left: 12px;
             margin: 8px 0;
             color: #6b7280;
@@ -831,12 +859,12 @@
         }
 
         .chat-msg-text a {
-            color: #667eea;
+            color: #00897B;
             text-decoration: underline;
         }
 
         .chat-msg-text a:hover {
-            color: #5568d3;
+            color: #00695C;
         }
 
         /* Numbered list styling */
@@ -852,7 +880,7 @@
             content: counter(item) ". ";
             counter-increment: item;
             font-weight: 600;
-            color: #667eea;
+            color: #00897B;
         }
 
         .chat-msg-time {
@@ -876,7 +904,7 @@
         .source-badge {
             display: inline-block;
             background: #e3f2fd;
-            color: #0f6cbf;
+            color: #00897B;
             padding: 2px 8px;
             border-radius: 4px;
             margin-right: 4px;
@@ -910,12 +938,12 @@
 
         .chat-textarea:focus {
             outline: none;
-            border-color: #0f6cbf;
+            border-color: #00897B;
         }
 
         .chat-send-btn {
             padding: 10px 20px;
-            background: #0f6cbf;
+            background: #00897B;
             color: white;
             border: none;
             border-radius: 6px;
@@ -926,7 +954,7 @@
         }
 
         .chat-send-btn:hover {
-            background: #0c5aa1;
+            background: #00695C;
         }
 
         .chat-send-btn:disabled {
@@ -1132,7 +1160,7 @@
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
                     <!-- Option 1: Manual Create -->
                     <div onclick="showManualCourseForm()" style="border:2px solid #e0e0e0; border-radius:12px; padding:30px; cursor:pointer; transition:all 0.3s; text-align:center;"
-                         onmouseover="this.style.borderColor='#667eea'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.2)'"
+                         onmouseover="this.style.borderColor='#00897B'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.2)'"
                          onmouseout="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         <div style="font-size:48px; margin-bottom:15px;">📝</div>
                         <h3 style="margin-bottom:10px; color:#333;">Create Manually</h3>
@@ -1147,7 +1175,7 @@
 
                     <!-- Option 2: Import from Moodle -->
                     <div onclick="showMoodleImportForm()" style="border:2px solid #e0e0e0; border-radius:12px; padding:30px; cursor:pointer; transition:all 0.3s; text-align:center;"
-                         onmouseover="this.style.borderColor='#f98012'; this.style.boxShadow='0 4px 12px rgba(249,128,18,0.2)'"
+                         onmouseover="this.style.borderColor='#00897B'; this.style.boxShadow='0 4px 12px rgba(249,128,18,0.2)'"
                          onmouseout="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'">
                         <div style="font-size:48px; margin-bottom:15px;">🔗</div>
                         <h3 style="margin-bottom:10px; color:#333;">Import from Moodle</h3>
@@ -1192,7 +1220,7 @@
                     <input type="text" id="manualCourseCategory" placeholder="e.g., Teacher Development" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
                 </div>
 
-                <div style="background:#f0f7ff; border-left:4px solid #667eea; padding:15px; margin-bottom:20px; border-radius:6px;">
+                <div style="background:#f0f7ff; border-left:4px solid #00897B; padding:15px; margin-bottom:20px; border-radius:6px;">
                     <div style="font-weight:600; margin-bottom:5px; color:#333;">📚 Next Steps</div>
                     <div style="font-size:13px; color:#666;">After creating the course, you'll be able to add modules and upload content files (PDF, DOCX, TXT).</div>
                 </div>
@@ -1233,7 +1261,7 @@
                         <label style="display:block; margin-bottom:8px; font-weight:600;">API Token *</label>
                         <input type="password" id="moodleToken" placeholder="Your Moodle web service token" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:6px; font-size:14px;">
                         <div style="font-size:12px; color:#666; margin-top:5px;">
-                            <a href="https://docs.moodle.org/en/Using_web_services" target="_blank" style="color:#667eea;">How to get your API token</a>
+                            <a href="https://docs.moodle.org/en/Using_web_services" target="_blank" style="color:#00897B;">How to get your API token</a>
                         </div>
                     </div>
 
@@ -1245,7 +1273,7 @@
                         </div>
                     </div>
 
-                    <div style="background:#fff9e6; border-left:4px solid #f98012; padding:15px; margin-bottom:20px; border-radius:6px;">
+                    <div style="background:#fff9e6; border-left:4px solid #00897B; padding:15px; margin-bottom:20px; border-radius:6px;">
                         <div style="font-weight:600; margin-bottom:5px; color:#333;">⚠️ Important</div>
                         <div style="font-size:13px; color:#666;">Make sure your Moodle web services are enabled and the token has permissions to read course data.</div>
                     </div>
@@ -1278,7 +1306,7 @@
                         <div style="font-size:12px; color:#666; margin-top:5px;">Find the course ID in your Moodle course URL: .../course/view.php?id=<strong>11</strong></div>
                     </div>
 
-                    <div id="selectedCourseInfo" style="background:#f0f7ff; border-left:4px solid #667eea; padding:15px; margin-bottom:20px; border-radius:6px; display:none;">
+                    <div id="selectedCourseInfo" style="background:#f0f7ff; border-left:4px solid #00897B; padding:15px; margin-bottom:20px; border-radius:6px; display:none;">
                         <div style="font-weight:600; margin-bottom:5px; color:#333;">Selected Course</div>
                         <div style="font-size:13px; color:#666;" id="selectedCourseDetails"></div>
                     </div>
@@ -1400,7 +1428,7 @@
             <div style="padding: 30px;">
                 <!-- Drag and Drop Zone -->
                 <div id="dropZone" style="
-                    border: 3px dashed #667eea;
+                    border: 3px dashed #00897B;
                     border-radius: 12px;
                     padding: 40px;
                     text-align: center;
@@ -1410,7 +1438,7 @@
                     margin-bottom: 20px;"
                     onclick="document.getElementById('fileInput').click()"
                     ondragover="event.preventDefault(); this.style.borderColor='#4a5fc1'; this.style.background='#e8ebff';"
-                    ondragleave="this.style.borderColor='#667eea'; this.style.background='#f8f9ff';"
+                    ondragleave="this.style.borderColor='#00897B'; this.style.background='#f8f9ff';"
                     ondrop="handleDrop(event)">
                     <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
                     <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 10px;">
@@ -1429,7 +1457,7 @@
                 <!-- Progress Bar -->
                 <div id="uploadProgress" style="display: none; margin-bottom: 20px;">
                     <div style="background: #e0e0e0; border-radius: 10px; height: 8px; overflow: hidden;">
-                        <div id="progressBar" style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        <div id="progressBar" style="background: linear-gradient(90deg, #00897B 0%, #004D40 100%); height: 100%; width: 0%; transition: width 0.3s;"></div>
                     </div>
                     <div id="progressText" style="text-align: center; margin-top: 8px; font-size: 14px; color: #666;"></div>
                 </div>
@@ -2358,7 +2386,7 @@
         function handleDrop(event) {
             event.preventDefault();
             const dropZone = document.getElementById('dropZone');
-            dropZone.style.borderColor = '#667eea';
+            dropZone.style.borderColor = '#00897B';
             dropZone.style.background = '#f8f9ff';
 
             const files = event.dataTransfer.files;
@@ -3005,7 +3033,7 @@
                                     padding: 10px 24px;
                                     border: none;
                                     background: transparent;
-                                    color: #1a73e8;
+                                    color: #00897B;
                                     font-size: 14px;
                                     font-weight: 500;
                                     border-radius: 4px;
@@ -3092,7 +3120,7 @@
          */
         function showSnackbar(message, type = 'info') {
             const snackbar = document.createElement('div');
-            const bgColor = type === 'success' ? '#1a73e8' : type === 'error' ? '#ea4335' : '#323232';
+            const bgColor = type === 'success' ? '#00897B' : type === 'error' ? '#ea4335' : '#323232';
 
             snackbar.style.cssText = `
                 position: fixed;
@@ -3159,7 +3187,7 @@
                         <div style="display:flex; flex-direction:column;">
                             <!-- Module Header -->
                             <div style="border-bottom:2px dashed #ddd; padding-bottom:15px; margin-bottom:15px;">
-                                <div style="font-size:12px; color:#0f6cbf; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Module ${module.sequence_order}</div>
+                                <div style="font-size:12px; color:#00897B; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Module ${module.sequence_order}</div>
                                 <div style="font-size:22px; font-weight:700; color:#333; margin-bottom:10px; line-height:1.3;">${module.module_name}</div>
                                 <div style="font-size:14px; color:#666; line-height:1.6;">${module.description || 'No description available'}</div>
                             </div>
@@ -3172,7 +3200,7 @@
                             </div>
 
                             <!-- What You'll Learn Section -->
-                            <div style="background:#f0f7ff; border-left:4px solid #667eea; padding:15px; border-radius:6px; margin-bottom:15px;">
+                            <div style="background:#f0f7ff; border-left:4px solid #00897B; padding:15px; border-radius:6px; margin-bottom:15px;">
                                 <div style="font-size:14px; font-weight:700; color:#333; margin-bottom:10px;">📚 What You'll Learn:</div>
                                 <div style="font-size:13px; color:#555; line-height:1.8; padding-left:20px;">
                                     Learn key concepts and practical skills<br>
@@ -3183,11 +3211,11 @@
                             <!-- Content Stats -->
                             <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:15px;">
                                 <div style="text-align:center; background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;">
-                                    <div style="font-size:20px; font-weight:700; color:#0f6cbf;" id="content_files_${module.id}">-</div>
+                                    <div style="font-size:20px; font-weight:700; color:#00897B;" id="content_files_${module.id}">-</div>
                                     <div style="font-size:10px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px;">Files</div>
                                 </div>
                                 <div style="text-align:center; background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;">
-                                    <div style="font-size:20px; font-weight:700; color:#667eea;" id="content_chunks_${module.id}">-</div>
+                                    <div style="font-size:20px; font-weight:700; color:#00897B;" id="content_chunks_${module.id}">-</div>
                                     <div style="font-size:10px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px;">Chunks</div>
                                 </div>
                                 <div style="text-align:center; background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;">
@@ -3195,13 +3223,13 @@
                                     <div style="font-size:10px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px;">Nodes</div>
                                 </div>
                                 <div style="text-align:center; background:white; padding:12px; border-radius:8px; border:1px solid #e0e0e0;">
-                                    <div style="font-size:20px; font-weight:700; color:#f98012;" id="quiz_count_${module.id}">-</div>
+                                    <div style="font-size:20px; font-weight:700; color:#00897B;" id="quiz_count_${module.id}">-</div>
                                     <div style="font-size:10px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:0.5px;">Questions</div>
                                 </div>
                             </div>
 
                             <!-- Ask Me Anything Section -->
-                            <div style="background:#fff9e6; border-left:4px solid #f98012; padding:15px; border-radius:6px; margin-bottom:15px;">
+                            <div style="background:#fff9e6; border-left:4px solid #00897B; padding:15px; border-radius:6px; margin-bottom:15px;">
                                 <div style="font-size:14px; font-weight:700; color:#333; margin-bottom:10px;">💬 Ask Me Anything!</div>
                                 <div style="font-size:13px; color:#666; line-height:1.8; padding-left:5px;">
                                     <div style="margin-bottom:5px; color:#555;">Examples:</div>
