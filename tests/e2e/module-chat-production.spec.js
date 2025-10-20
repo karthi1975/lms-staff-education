@@ -130,17 +130,23 @@ test.describe('Module Chat Assistant - Production Tests', () => {
     // Click on the first module (Production)
     const firstModule = await page.$('.module-list .module-item');
     const moduleName = await firstModule.textContent();
+    console.log('📝 Selecting module:', moduleName.trim());
     await firstModule.click();
 
     // Wait for welcome message
     await page.waitForSelector('.message .message-content', { timeout: 5000 });
+    console.log('✅ Welcome message displayed');
+    await page.waitForTimeout(2000); // Wait 2s to see welcome message
 
     // Type a question
     const testQuestion = 'What is production in small business?';
+    console.log('💬 Sending question:', testQuestion);
     await page.fill('#messageInput', testQuestion);
+    await page.waitForTimeout(1000); // Wait 1s to see typing
 
     // Click send button
     await page.click('#sendButton');
+    console.log('📤 Message sent, waiting for response...');
 
     // Wait for user message to appear
     await page.waitForSelector('.message.user', { timeout: 5000 });
@@ -148,12 +154,16 @@ test.describe('Module Chat Assistant - Production Tests', () => {
     // Verify user message is displayed
     const userMessage = await page.textContent('.message.user .message-text');
     expect(userMessage).toContain(testQuestion);
+    console.log('✅ User message displayed in chat');
 
     // Wait for typing indicator
     await page.waitForSelector('.typing-indicator.active', { timeout: 5000 });
+    console.log('⏳ AI is typing...');
+    await page.waitForTimeout(2000); // Wait 2s to see typing indicator
 
     // Wait for AI response (typing indicator disappears and new assistant message appears)
     await page.waitForSelector('.message:not(.user):nth-last-child(1)', { timeout: 30000 });
+    console.log('✅ AI response received!');
 
     // Get all assistant messages (excluding the welcome message)
     const assistantMessages = await page.$$('.message:not(.user)');
@@ -165,7 +175,10 @@ test.describe('Module Chat Assistant - Production Tests', () => {
 
     // Verify response contains content
     expect(responseText.length).toBeGreaterThan(10);
-    console.log('✅ AI response received:', responseText.substring(0, 100) + '...');
+    console.log('📄 Response preview:', responseText.substring(0, 150).replace(/\s+/g, ' ') + '...');
+
+    // Wait to see the full response
+    await page.waitForTimeout(3000);
 
     // Check if response contains sources (optional, depends on ChromaDB content)
     const hasSources = responseText.includes('Sources:') || responseText.includes('📚');
@@ -174,6 +187,9 @@ test.describe('Module Chat Assistant - Production Tests', () => {
     } else {
       console.log('⚠️ Response does not include sources (may need content in ChromaDB)');
     }
+
+    // Wait before closing to see final state
+    await page.waitForTimeout(2000);
   });
 
   test('should test RAG pipeline with Business Studies content', async ({ page }) => {
@@ -188,10 +204,12 @@ test.describe('Module Chat Assistant - Production Tests', () => {
 
     // Wait for modules to load
     await page.waitForSelector('.module-list .module-item', { timeout: 10000 });
+    console.log('📚 Testing RAG pipeline with Business Studies content...');
 
     // Look for Production or Business-related module
     const modules = await page.$$('.module-list .module-item');
     let productionModule = null;
+    let selectedModuleName = '';
 
     for (const module of modules) {
       const text = await module.textContent();
@@ -199,6 +217,7 @@ test.describe('Module Chat Assistant - Production Tests', () => {
           text.toLowerCase().includes('business') ||
           text.toLowerCase().includes('entrepreneur')) {
         productionModule = module;
+        selectedModuleName = text.trim();
         break;
       }
     }
@@ -206,10 +225,13 @@ test.describe('Module Chat Assistant - Production Tests', () => {
     if (!productionModule) {
       // Use first module as fallback
       productionModule = modules[0];
+      selectedModuleName = await productionModule.textContent();
     }
 
+    console.log('📝 Selected module:', selectedModuleName);
     await productionModule.click();
     await page.waitForSelector('.message .message-content', { timeout: 5000 });
+    await page.waitForTimeout(2000); // Wait to see welcome message
 
     // Ask a specific question about content that should be in ChromaDB
     const businessQuestions = [
@@ -220,12 +242,24 @@ test.describe('Module Chat Assistant - Production Tests', () => {
     ];
 
     const question = businessQuestions[0];
+    console.log('💬 Asking:', question);
     await page.fill('#messageInput', question);
+    await page.waitForTimeout(1000); // Wait to see typing
+
     await page.click('#sendButton');
+    console.log('📤 Message sent, waiting for RAG-enhanced response...');
 
     // Wait for response
     await page.waitForSelector('.message.user', { timeout: 5000 });
+    await page.waitForSelector('.typing-indicator.active', { timeout: 5000 });
+    console.log('⏳ AI is processing with RAG pipeline...');
+    await page.waitForTimeout(2000); // Wait to see typing indicator
+
     await page.waitForSelector('.message:not(.user):nth-last-child(1)', { timeout: 30000 });
+    console.log('✅ Response received!');
+
+    // Wait to see the response
+    await page.waitForTimeout(3000);
 
     // Get the response
     const assistantMessages = await page.$$('.message:not(.user)');
@@ -237,16 +271,25 @@ test.describe('Module Chat Assistant - Production Tests', () => {
                       responseText.includes('📚') ||
                       responseText.includes('📄');
 
-    console.log('✅ Business Studies question asked:', question);
+    console.log('📊 RAG Pipeline Test Results:');
+    console.log('   Question:', question);
     console.log('   Response length:', responseText.length, 'characters');
-    console.log('   Has sources:', hasSources);
+    console.log('   Has sources:', hasSources ? '✅ YES' : '⚠️ NO');
 
     if (hasSources) {
       console.log('✅ RAG pipeline is working - sources found in response');
+      // Extract and show sources
+      const sourcesMatch = responseText.match(/📚[^]*?$/);
+      if (sourcesMatch) {
+        console.log('   Sources:', sourcesMatch[0].substring(0, 100));
+      }
     } else {
       console.log('⚠️ No sources in response - may need to index Business Studies content');
-      console.log('   Response preview:', responseText.substring(0, 200));
+      console.log('   Response preview:', responseText.substring(0, 200).replace(/\s+/g, ' '));
     }
+
+    // Wait before closing to see final state
+    await page.waitForTimeout(3000);
 
     // Response should be substantial (more than just a fallback message)
     expect(responseText.length).toBeGreaterThan(50);
