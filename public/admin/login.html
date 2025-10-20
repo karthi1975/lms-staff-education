@@ -4,7 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - Teachers Training System</title>
+
+    <!-- Material Design 3 Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
     <style>
+        /* Material Design 3 Design Tokens */
+        :root {
+            /* Primary Colors */
+            --md-sys-color-primary: #6750A4;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-primary-container: #EADDFF;
+            --md-sys-color-on-primary-container: #21005D;
+
+            /* Surface Colors */
+            --md-sys-color-surface: #FFFBFE;
+            --md-sys-color-on-surface: #1C1B1F;
+            --md-sys-color-surface-variant: #E7E0EC;
+            --md-sys-color-on-surface-variant: #49454F;
+
+            /* Outline */
+            --md-sys-color-outline: #79747E;
+            --md-sys-color-outline-variant: #CAC4D0;
+
+            /* Error */
+            --md-sys-color-error: #B3261E;
+            --md-sys-color-on-error: #FFFFFF;
+            --md-sys-color-error-container: #F9DEDC;
+            --md-sys-color-on-error-container: #410E0B;
+
+            /* Success */
+            --md-sys-color-success: #2E7D32;
+            --md-sys-color-success-container: #C8E6C9;
+            --md-sys-color-on-success-container: #1B5E20;
+
+            /* Background */
+            --md-sys-color-background: #FFFBFE;
+            --md-sys-color-on-background: #1C1B1F;
+
+            /* Surface Containers */
+            --md-sys-color-surface-container-lowest: #FFFFFF;
+            --md-sys-color-surface-container-low: #F7F2FA;
+            --md-sys-color-surface-container: #F3EDF7;
+            --md-sys-color-surface-container-high: #ECE6F0;
+            --md-sys-color-surface-container-highest: #E6E1E5;
+
+            /* Typography */
+            --md-sys-typescale-display-large-font: 'Roboto', sans-serif;
+            --md-sys-typescale-display-large-size: 57px;
+            --md-sys-typescale-display-large-weight: 400;
+
+            --md-sys-typescale-headline-large-font: 'Roboto', sans-serif;
+            --md-sys-typescale-headline-large-size: 32px;
+            --md-sys-typescale-headline-large-weight: 400;
+
+            --md-sys-typescale-title-large-font: 'Roboto', sans-serif;
+            --md-sys-typescale-title-large-size: 22px;
+            --md-sys-typescale-title-large-weight: 400;
+
+            --md-sys-typescale-body-large-font: 'Roboto', sans-serif;
+            --md-sys-typescale-body-large-size: 16px;
+            --md-sys-typescale-body-large-weight: 400;
+
+            --md-sys-typescale-label-large-font: 'Roboto', sans-serif;
+            --md-sys-typescale-label-large-size: 14px;
+            --md-sys-typescale-label-large-weight: 500;
+
+            /* Elevation */
+            --md-sys-elevation-level0: none;
+            --md-sys-elevation-level1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+            --md-sys-elevation-level2: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+            --md-sys-elevation-level3: 0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+            --md-sys-elevation-level4: 0px 2px 3px 0px rgba(0, 0, 0, 0.3), 0px 6px 10px 4px rgba(0, 0, 0, 0.15);
+            --md-sys-elevation-level5: 0px 4px 4px 0px rgba(0, 0, 0, 0.3), 0px 8px 12px 6px rgba(0, 0, 0, 0.15);
+
+            /* Shape */
+            --md-sys-shape-corner-extra-small: 4px;
+            --md-sys-shape-corner-small: 8px;
+            --md-sys-shape-corner-medium: 12px;
+            --md-sys-shape-corner-large: 16px;
+            --md-sys-shape-corner-extra-large: 28px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,117 +95,209 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
+            font-family: var(--md-sys-typescale-body-large-font);
+            font-size: var(--md-sys-typescale-body-large-size);
+            background: linear-gradient(135deg, #6750A4 0%, #4A148C 100%);
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            color: var(--md-sys-color-on-surface);
         }
 
         .login-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-            padding: 40px;
+            background: var(--md-sys-color-surface);
+            border-radius: var(--md-sys-shape-corner-extra-large);
+            box-shadow: var(--md-sys-elevation-level3);
+            padding: 48px 40px;
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
+            transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .login-container:hover {
+            box-shadow: var(--md-sys-elevation-level4);
         }
 
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
         .login-header h1 {
-            color: #333;
-            font-size: 28px;
-            margin-bottom: 10px;
+            font-family: var(--md-sys-typescale-headline-large-font);
+            font-size: var(--md-sys-typescale-headline-large-size);
+            font-weight: var(--md-sys-typescale-headline-large-weight);
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+            letter-spacing: 0;
         }
 
         .login-header p {
-            color: #666;
-            font-size: 14px;
+            font-family: var(--md-sys-typescale-body-large-font);
+            font-size: var(--md-sys-typescale-body-large-size);
+            color: var(--md-sys-color-on-surface-variant);
+            letter-spacing: 0.5px;
         }
 
+        /* Material Design 3 Filled Text Field */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            position: relative;
         }
 
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 500;
-        }
-
-        input[type="email"],
-        input[type="password"] {
+        .text-field {
+            position: relative;
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            transition: border-color 0.3s;
         }
 
-        input[type="email"]:focus,
-        input[type="password"]:focus {
+        .text-field input {
+            width: 100%;
+            padding: 16px 16px 8px;
+            border: none;
+            border-bottom: 1px solid var(--md-sys-color-outline);
+            background: var(--md-sys-color-surface-container-highest);
+            border-radius: var(--md-sys-shape-corner-extra-small) var(--md-sys-shape-corner-extra-small) 0 0;
+            font-family: var(--md-sys-typescale-body-large-font);
+            font-size: var(--md-sys-typescale-body-large-size);
+            color: var(--md-sys-color-on-surface);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .text-field input:focus {
             outline: none;
-            border-color: #667eea;
+            border-bottom: 2px solid var(--md-sys-color-primary);
+            padding-bottom: 7px;
         }
 
+        .text-field input:focus + label,
+        .text-field input:not(:placeholder-shown) + label {
+            top: 4px;
+            font-size: 12px;
+            color: var(--md-sys-color-primary);
+        }
+
+        .text-field input:hover {
+            background: var(--md-sys-color-on-surface-variant);
+            background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+        }
+
+        .text-field label {
+            position: absolute;
+            left: 16px;
+            top: 16px;
+            font-family: var(--md-sys-typescale-body-large-font);
+            font-size: var(--md-sys-typescale-body-large-size);
+            color: var(--md-sys-color-on-surface-variant);
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Material Design 3 Filled Button */
         .btn-login {
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 16px 24px;
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
             border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: var(--md-sys-shape-corner-large);
+            font-family: var(--md-sys-typescale-label-large-font);
+            font-size: var(--md-sys-typescale-label-large-size);
+            font-weight: var(--md-sys-typescale-label-large-weight);
+            letter-spacing: 0.1px;
             cursor: pointer;
-            transition: opacity 0.3s;
+            box-shadow: var(--md-sys-elevation-level0);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
         }
 
         .btn-login:hover {
-            opacity: 0.9;
+            box-shadow: var(--md-sys-elevation-level1);
+            background: color-mix(in srgb, var(--md-sys-color-primary) 92%, white);
+        }
+
+        .btn-login:active::before {
+            width: 300px;
+            height: 300px;
         }
 
         .btn-login:disabled {
-            opacity: 0.5;
+            opacity: 0.38;
             cursor: not-allowed;
+            box-shadow: var(--md-sys-elevation-level0);
+        }
+
+        .btn-login:focus-visible {
+            outline: 2px solid var(--md-sys-color-primary);
+            outline-offset: 2px;
+        }
+
+        /* Material Design 3 Snackbar/Alert */
+        .error-message,
+        .success-message {
+            padding: 16px;
+            border-radius: var(--md-sys-shape-corner-small);
+            margin-bottom: 24px;
+            display: none;
+            font-family: var(--md-sys-typescale-body-large-font);
+            font-size: 14px;
+            letter-spacing: 0.25px;
+            box-shadow: var(--md-sys-elevation-level2);
         }
 
         .error-message {
-            background: #fee;
-            color: #c33;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-            font-size: 14px;
+            background: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
         }
 
         .success-message {
-            background: #efe;
-            color: #3c3;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-            font-size: 14px;
+            background: var(--md-sys-color-success-container);
+            color: var(--md-sys-color-on-success-container);
         }
 
+        /* Material Design 3 Card for Demo Credentials */
+        .demo-credentials {
+            margin-top: 24px;
+            padding: 16px;
+            background: var(--md-sys-color-surface-container-highest);
+            border-radius: var(--md-sys-shape-corner-medium);
+            font-size: 12px;
+            color: var(--md-sys-color-on-surface-variant);
+            border-left: 4px solid var(--md-sys-color-primary);
+        }
+
+        .demo-credentials strong {
+            color: var(--md-sys-color-on-surface);
+            font-weight: 500;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Loading Spinner */
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #fff;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--md-sys-color-on-primary);
             border-radius: 50%;
             border-top-color: transparent;
             animation: spin 1s linear infinite;
-            margin-left: 10px;
+            margin-left: 8px;
             vertical-align: middle;
         }
 
@@ -130,17 +305,15 @@
             to { transform: rotate(360deg); }
         }
 
-        .demo-credentials {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f5f5f5;
-            border-radius: 5px;
-            font-size: 12px;
-            color: #666;
-        }
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 32px 24px;
+            }
 
-        .demo-credentials strong {
-            color: #333;
+            .login-header h1 {
+                font-size: 28px;
+            }
         }
     </style>
 </head>
@@ -156,27 +329,31 @@
 
         <form id="loginForm">
             <div class="form-group">
-                <label for="email">Email Address</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    required 
-                    placeholder="admin@school.edu"
-                    autocomplete="email"
-                >
+                <div class="text-field">
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        placeholder=" "
+                        autocomplete="email"
+                    >
+                    <label for="email">Email Address</label>
+                </div>
             </div>
 
             <div class="form-group">
-                <label for="password">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    required 
-                    placeholder="Enter your password"
-                    autocomplete="current-password"
-                >
+                <div class="text-field">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        placeholder=" "
+                        autocomplete="current-password"
+                    >
+                    <label for="password">Password</label>
+                </div>
             </div>
 
             <button type="submit" class="btn-login" id="loginBtn">
@@ -185,7 +362,7 @@
         </form>
 
         <div class="demo-credentials">
-            <strong>Demo Credentials:</strong><br>
+            <strong>Demo Credentials:</strong>
             Email: admin@school.edu<br>
             Password: <em>Set in database</em><br><br>
             <strong>Other Users:</strong><br>
@@ -227,18 +404,18 @@
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             // Hide messages
             errorMessage.style.display = 'none';
             successMessage.style.display = 'none';
-            
+
             // Disable button and show loading
             loginBtn.disabled = true;
             loginBtn.innerHTML = 'Signing In... <span class="loading"></span>';
-            
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
+
             try {
                 const response = await fetch('/api/admin/login', {
                     method: 'POST',
@@ -247,15 +424,15 @@
                     },
                     body: JSON.stringify({ email, password })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // Store tokens
                     localStorage.setItem('adminToken', data.tokens.accessToken);
                     localStorage.setItem('adminRefreshToken', data.tokens.refreshToken);
                     localStorage.setItem('adminUser', JSON.stringify(data.user));
-                    
+
                     // Show success message
                     successMessage.textContent = 'Login successful! Redirecting...';
                     successMessage.style.display = 'block';
@@ -268,7 +445,7 @@
                     // Show error
                     errorMessage.textContent = data.error || 'Login failed. Please try again.';
                     errorMessage.style.display = 'block';
-                    
+
                     // Re-enable button
                     loginBtn.disabled = false;
                     loginBtn.textContent = 'Sign In';
@@ -277,7 +454,7 @@
                 console.error('Login error:', error);
                 errorMessage.textContent = 'Network error. Please try again.';
                 errorMessage.style.display = 'block';
-                
+
                 // Re-enable button
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Sign In';
