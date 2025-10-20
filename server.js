@@ -557,12 +557,21 @@ app.post('/api/chat', async (req, res) => {
 
     // If useContext is true, search for relevant documents
     if (useContext) {
-      // 1. Search for relevant content in ChromaDB (Vector/RAG)
-      const searchResults = await chromaService.searchSimilar(message, {
+      // 1. Search for relevant content in ChromaDB (Vector/RAG) - first try with module filter
+      let searchResults = await chromaService.searchSimilar(message, {
         module_id: module_id || undefined,
-        module: module || undefined,  // Fallback for backward compatibility
         nResults: 3
       });
+
+      // 1.5: If no results in current module, search across ALL content (like WhatsApp webhook)
+      let crossModuleSearch = false;
+      if ((!searchResults || searchResults.length === 0) && module_id) {
+        logger.info(`No results in module ${module_id}, searching across all content...`);
+        searchResults = await chromaService.searchSimilar(message, {
+          nResults: 3  // No module filter - search everything
+        });
+        crossModuleSearch = true;
+      }
 
       if (searchResults && searchResults.length > 0) {
         contextDocuments = searchResults.map(doc => {
@@ -678,6 +687,11 @@ app.post('/api/chat', async (req, res) => {
 
       if (uniqueSources.length > 0) {
         response += `\n\n📚 Sources:\n${uniqueSources.map(source => `📄 ${source}`).join('\n')}`;
+      }
+
+      // Add note if we used cross-module search
+      if (crossModuleSearch) {
+        response += `\n\n💡 Note: I found this information from other modules since it wasn't in the current module.`;
       }
     }
 
