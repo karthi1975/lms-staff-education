@@ -27,10 +27,10 @@ class ChatHistoryService {
 
       // Create a new session if none exists
       result = await postgresService.query(
-        `INSERT INTO chat_sessions (user_id, module_id, session_title, is_active)
-         VALUES ($1, $2, $3, TRUE)
+        `INSERT INTO chat_sessions (user_id, module_id, is_active)
+         VALUES ($1, $2, TRUE)
          RETURNING *`,
-        [userId, moduleId, moduleId ? `Module ${moduleId} Chat` : 'General Chat']
+        [userId, moduleId]
       );
 
       logger.info(`Created new chat session ${result.rows[0].id} for user ${userId}`);
