@@ -717,7 +717,7 @@
             courseId = params.get('id');
 
             if (!courseId) {
-                alert('No course ID provided');
+                console.error('No course ID provided in URL');
                 window.location.href = '/admin/lms-dashboard.html';
                 return;
             }
@@ -755,6 +755,12 @@
                     return;
                 }
 
+                if (!response.ok) {
+                    console.error('Course API returned error:', response.status);
+                    document.getElementById('course-title').textContent = 'Error Loading Course';
+                    return;
+                }
+
                 const data = await response.json();
                 courseData = data.course;
 
@@ -764,7 +770,7 @@
                 document.getElementById('course-enrollments').textContent = courseData.enrollments || 0;
             } catch (error) {
                 console.error('Error loading course:', error);
-                alert('Failed to load course details');
+                document.getElementById('course-title').textContent = 'Error Loading Course';
             }
         }
 
