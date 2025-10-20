@@ -520,28 +520,44 @@
         function getWelcomeMessage(title, description) {
             const examples = getModuleExamples(title);
 
-            return `<div style="white-space: pre-line; line-height: 1.6;">
-<strong style="font-size: 1.1em;">${title}</strong>
-━━━━━━━━━━━━━━━━━━━━
+            return `
+                <div style="line-height: 1.8;">
+                    <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">${title}</div>
+                    <div style="border-top: 2px solid #00897B; margin-bottom: 15px;"></div>
 
-✅ <strong>Great! You've started learning!</strong>
+                    <div style="margin-bottom: 15px;">
+                        ✅ <strong>Great! You've started learning!</strong>
+                    </div>
 
-📚 <strong>What You'll Learn:</strong>
-   ${description || 'Learn key concepts and practical skills in ' + title}
+                    <div style="margin-bottom: 15px;">
+                        📚 <strong>What You'll Learn:</strong><br>
+                        <span style="padding-left: 20px; display: block; margin-top: 5px;">
+                            ${description || 'Learn key concepts and practical skills in ' + title}
+                        </span>
+                    </div>
 
-━━━━━━━━━━━━━━━━━━━━
+                    <div style="border-top: 2px solid #00897B; margin-bottom: 15px;"></div>
 
-💬 <strong>Ask Me Anything!</strong>
-   <em>Examples:</em>
-   • ${examples[0]}
-   • ${examples[1]}
-   • ${examples[2]}
+                    <div style="margin-bottom: 15px;">
+                        💬 <strong>Ask Me Anything!</strong><br>
+                        <em style="padding-left: 20px; display: block; margin-top: 5px;">Examples:</em>
+                        <div style="padding-left: 20px; margin-top: 5px;">
+                            • ${examples[0]}<br>
+                            • ${examples[1]}<br>
+                            • ${examples[2]}
+                        </div>
+                    </div>
 
-━━━━━━━━━━━━━━━━━━━━
+                    <div style="border-top: 2px solid #00897B; margin-bottom: 15px;"></div>
 
-🔄 <strong>Need Help?</strong>
-   Type: "menu" to see options
-</div>`;
+                    <div>
+                        🔄 <strong>Need Help?</strong><br>
+                        <span style="padding-left: 20px; display: block; margin-top: 5px;">
+                            Type: "menu" to see options
+                        </span>
+                    </div>
+                </div>
+            `;
         }
 
         function selectModule(moduleId, title, description) {
