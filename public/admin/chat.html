@@ -474,6 +474,76 @@
             `).join('');
         }
 
+        function getModuleExamples(title) {
+            const examples = {
+                'Production': [
+                    '"What is production in small business?"',
+                    '"How do I manage quality control?"',
+                    '"Tell me about production planning"'
+                ],
+                'Financing': [
+                    '"What are sources of business finance?"',
+                    '"How to prepare a budget?"',
+                    '"Tell me about financial management"'
+                ],
+                'Management': [
+                    '"What is business management?"',
+                    '"How to manage employees effectively?"',
+                    '"Tell me about leadership skills"'
+                ],
+                'Warehousing': [
+                    '"What is warehousing and inventory?"',
+                    '"How to manage stock levels?"',
+                    '"Tell me about storage systems"'
+                ],
+                'Opportunity': [
+                    '"What is entrepreneurship?"',
+                    '"How to identify opportunities?"',
+                    '"Tell me about market research"'
+                ],
+                'default': [
+                    '"What topics are covered in this module?"',
+                    '"Give me key concepts"',
+                    '"How can I apply this knowledge?"'
+                ]
+            };
+
+            // Find matching module (case-insensitive partial match)
+            for (let key in examples) {
+                if (title.toLowerCase().includes(key.toLowerCase())) {
+                    return examples[key];
+                }
+            }
+            return examples['default'];
+        }
+
+        function getWelcomeMessage(title, description) {
+            const examples = getModuleExamples(title);
+
+            return `<div style="white-space: pre-line; line-height: 1.6;">
+<strong style="font-size: 1.1em;">${title}</strong>
+━━━━━━━━━━━━━━━━━━━━
+
+✅ <strong>Great! You've started learning!</strong>
+
+📚 <strong>What You'll Learn:</strong>
+   ${description || 'Learn key concepts and practical skills in ' + title}
+
+━━━━━━━━━━━━━━━━━━━━
+
+💬 <strong>Ask Me Anything!</strong>
+   <em>Examples:</em>
+   • ${examples[0]}
+   • ${examples[1]}
+   • ${examples[2]}
+
+━━━━━━━━━━━━━━━━━━━━
+
+🔄 <strong>Need Help?</strong>
+   Type: "menu" to see options
+</div>`;
+        }
+
         function selectModule(moduleId, title, description) {
             currentModuleId = moduleId;
 
@@ -502,8 +572,7 @@
                         <div class="message-avatar">AI</div>
                         <div class="message-content">
                             <div class="message-text">
-                                Hello! I'm your AI assistant for <strong>${title}</strong>.
-                                Ask me anything about this module's content and I'll help you learn!
+                                ${getWelcomeMessage(title, description)}
                             </div>
                             <div class="message-time">${formatTime(new Date())}</div>
                         </div>
@@ -526,13 +595,13 @@
                 // Reset UI
                 const messagesContainer = document.getElementById('messagesContainer');
                 const title = document.getElementById('chatTitle').textContent;
+                const description = document.getElementById('chatSubtitle').textContent;
                 messagesContainer.innerHTML = `
                     <div class="message">
                         <div class="message-avatar">AI</div>
                         <div class="message-content">
                             <div class="message-text">
-                                Hello! I'm your AI assistant for <strong>${title}</strong>.
-                                Ask me anything about this module's content and I'll help you learn!
+                                ${getWelcomeMessage(title, description)}
                             </div>
                             <div class="message-time">${formatTime(new Date())}</div>
                         </div>
