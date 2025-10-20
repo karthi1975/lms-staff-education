@@ -488,10 +488,8 @@ router.get('/courses/:courseId', authMiddleware.authenticateToken, async (req, r
 
     res.json({
       success: true,
-      data: {
-        course: courseResult.rows[0],
-        modules: modulesResult.rows
-      }
+      course: courseResult.rows[0],
+      modules: modulesResult.rows
     });
   } catch (error) {
     logger.error('Error fetching course:', error);
