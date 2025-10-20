@@ -831,6 +831,14 @@
                     }
                 });
 
+                // Handle non-OK responses
+                if (!response.ok) {
+                    // If error, show empty state (assume no files yet)
+                    console.warn('Files API returned error:', response.status);
+                    displayEmptyFiles();
+                    return;
+                }
+
                 const data = await response.json();
                 const files = data.files || [];
                 const statusCounts = data.statusCounts || {};
@@ -890,14 +898,27 @@
                 `;
             } catch (error) {
                 console.error('Error loading files:', error);
-                document.getElementById('filesTableContainer').innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">❌</div>
-                        <h3>Error Loading Files</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
+                // Show empty state instead of error
+                displayEmptyFiles();
             }
+        }
+
+        // Helper function to display empty files state
+        function displayEmptyFiles() {
+            document.getElementById('total-files').textContent = '0';
+            document.getElementById('count-uploaded').textContent = '0';
+            document.getElementById('count-processing').textContent = '0';
+            document.getElementById('count-completed').textContent = '0';
+            document.getElementById('count-failed').textContent = '0';
+            document.getElementById('processBtn').style.display = 'none';
+
+            document.getElementById('filesTableContainer').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📄</div>
+                    <h3>No Files Uploaded</h3>
+                    <p>Upload your first file to get started</p>
+                </div>
+            `;
         }
 
         // Status badge function (Task 5)
