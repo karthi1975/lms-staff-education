@@ -1635,12 +1635,15 @@ router.get('/courses/:courseId/modules', authMiddleware.authenticateToken, async
         m.id as moodle_module_id,
         m.course_id,
         CONCAT('MOD-', m.id) as module_code,
+        m.title,
         m.title as module_name,
         m.description,
         m.sequence_order,
+        m.sequence_order as module_number,
         m.is_active,
         m.created_at,
-        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count
+        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count,
+        NULL as duration
       FROM modules m
       WHERE m.course_id = $1
       ORDER BY m.sequence_order
