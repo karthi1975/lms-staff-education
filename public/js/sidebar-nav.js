@@ -261,7 +261,7 @@ const sidebarStyles = `
     margin-left: 0;
   }
 
-  /* Mobile Toggle Button (always visible) */
+  /* Mobile Toggle Button - only visible when sidebar is collapsed */
   .mobile-sidebar-toggle {
     position: fixed;
     left: 10px;
@@ -276,19 +276,20 @@ const sidebarStyles = `
     font-size: 20px;
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    display: flex;
+    display: none; /* Hidden by default when sidebar is open */
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
   }
 
+  /* Show button when sidebar is collapsed */
+  .mobile-sidebar-toggle.show {
+    display: flex;
+  }
+
   .mobile-sidebar-toggle:hover {
     background: #00695C;
     transform: scale(1.05);
-  }
-
-  .mobile-sidebar-toggle.sidebar-open {
-    left: 270px;
   }
 
   /* Responsive */
@@ -303,6 +304,11 @@ const sidebarStyles = `
 
     .lms-content-with-sidebar {
       margin-left: 0;
+    }
+
+    /* Always show hamburger button on mobile */
+    .mobile-sidebar-toggle {
+      display: flex !important;
     }
   }
 
@@ -403,7 +409,12 @@ const sidebarScripts = `
       }
 
       if (toggleBtn) {
-        toggleBtn.classList.toggle('sidebar-open');
+        // Show hamburger button only when sidebar is collapsed
+        if (sidebar.classList.contains('collapsed')) {
+          toggleBtn.classList.add('show');
+        } else {
+          toggleBtn.classList.remove('show');
+        }
       }
 
       // Save state
@@ -428,14 +439,14 @@ const sidebarScripts = `
   function restoreSidebarState() {
     // Restore collapsed state
     const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-    if (sidebarCollapsed) {
-      const sidebar = document.getElementById('lmsSidebar');
-      const content = document.querySelector('.lms-content-with-sidebar');
-      const toggleBtn = document.querySelector('.mobile-sidebar-toggle');
+    const sidebar = document.getElementById('lmsSidebar');
+    const content = document.querySelector('.lms-content-with-sidebar');
+    const toggleBtn = document.querySelector('.mobile-sidebar-toggle');
 
+    if (sidebarCollapsed) {
       if (sidebar) sidebar.classList.add('collapsed');
       if (content) content.classList.add('sidebar-collapsed');
-      if (toggleBtn) toggleBtn.classList.add('sidebar-open');
+      if (toggleBtn) toggleBtn.classList.add('show'); // Show hamburger when collapsed
     }
 
     // Restore expanded sections
