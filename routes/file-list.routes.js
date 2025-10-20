@@ -100,4 +100,93 @@ router.get('/courses/:courseId/files',
   }
 );
 
+/**
+ * Delete a file from course
+ * DELETE /api/admin/courses/:courseId/files/:fileId
+ */
+router.delete('/courses/:courseId/files/:fileId',
+  authMiddleware.authenticateToken,
+  authMiddleware.requireRole(['admin']),
+  async (req, res) => {
+    try {
+      const { courseId, fileId } = req.params;
+
+      // Get file info before deleting
+      const fileResult = await postgresService.pool.query(
+        'SELECT file_name, original_name, file_path FROM course_content WHERE id = $1 AND course_id = $2',
+        [fileId, courseId]
+      );
+
+      if (fileResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'File not found'
+        });
+      }
+
+      const file = fileResult.rows[0];
+      const fileName = file.original_name || file.file_name;
+
+      logger.info(`Deleting file: ${fileName} (ID: ${fileId})`);
+
+      // Delete from ChromaDB (if indexed)
+      try {
+        const chromaService = require('../services/chroma.service');
+        await chromaService.initialize();
+
+        // Query ChromaDB for chunks with this file_id
+        const collection = chromaService.collection;
+        const results = await collection.get({
+          where: { file_id: parseInt(fileId) }
+        });
+
+        if (results && results.ids && results.ids.length > 0) {
+          logger.info(`Deleting ${results.ids.length} chunks from ChromaDB for file ${fileId}`);
+          await collection.delete({
+            where: { file_id: parseInt(fileId) }
+          });
+        }
+      } catch (chromaError) {
+        logger.warn('ChromaDB deletion warning:', chromaError.message);
+        // Continue with database deletion even if ChromaDB fails
+      }
+
+      // Delete physical file (optional)
+      if (file.file_path) {
+        try {
+          const fs = require('fs').promises;
+          const path = require('path');
+          const fullPath = path.join(process.cwd(), file.file_path);
+          await fs.unlink(fullPath);
+          logger.info(`Deleted physical file: ${fullPath}`);
+        } catch (fsError) {
+          logger.warn('Physical file deletion warning:', fsError.message);
+          // Continue with database deletion
+        }
+      }
+
+      // Delete from database
+      await postgresService.pool.query(
+        'DELETE FROM course_content WHERE id = $1 AND course_id = $2',
+        [fileId, courseId]
+      );
+
+      logger.info(`File deleted successfully: ${fileName}`);
+
+      res.json({
+        success: true,
+        message: `File "${fileName}" deleted successfully`,
+        fileId: parseInt(fileId)
+      });
+
+    } catch (error) {
+      logger.error('Error deleting file:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete file'
+      });
+    }
+  }
+);
+
 module.exports = router;

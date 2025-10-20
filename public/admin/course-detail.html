@@ -887,6 +887,7 @@
                                 <th>Uploaded</th>
                                 <th>Status</th>
                                 <th>Chunks</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -897,6 +898,11 @@
                                     <td>${formatDate(file.uploadedAt)}</td>
                                     <td>${getStatusBadge(file.status, file.processed)}</td>
                                     <td>${file.chunkCount || '-'}</td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteFile(${file.id}, '${file.fileName.replace(/'/g, "\\'")}')">
+                                            🗑️ Delete
+                                        </button>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1095,6 +1101,37 @@
                 const btn = document.getElementById('processBtn');
                 btn.disabled = false;
                 btn.textContent = '⚡ Process Files';
+            }
+        }
+
+        // Delete file
+        async function deleteFile(fileId, fileName) {
+            if (!confirm(`Delete "${fileName}"?\n\nThis will also remove all indexed chunks from ChromaDB.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/courses/${courseId}/files/${fileId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to delete file');
+                }
+
+                // Reload files list
+                await loadFiles();
+
+                console.log(`File deleted: ${fileName}`);
+
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Failed to delete file: ' + error.message);
             }
         }
 
