@@ -10,6 +10,7 @@ const navigationMenu = [
     id: 'dashboard',
     icon: '🏠',
     label: 'Dashboard',
+    url: 'lms-dashboard.html', // Section link
     items: [
       { label: 'LMS Dashboard', url: 'lms-dashboard.html' },
       { label: 'Overview', url: 'dashboard.html' }
@@ -19,6 +20,7 @@ const navigationMenu = [
     id: 'courses',
     icon: '📚',
     label: 'Course Management',
+    url: 'courses.html', // Section link - goes to All Courses
     items: [
       { label: 'All Courses', url: 'courses.html' },
       { label: 'Course Details', url: 'course-detail.html' },
@@ -30,6 +32,7 @@ const navigationMenu = [
     id: 'users',
     icon: '👥',
     label: 'User Management',
+    url: 'users.html', // Section link
     items: [
       { label: 'WhatsApp Users', url: 'users.html' },
       { label: 'User Progress', url: 'user-detail.html' },
@@ -41,6 +44,7 @@ const navigationMenu = [
     id: 'content',
     icon: '📁',
     label: 'Content',
+    url: 'quiz.html', // Section link
     items: [
       { label: 'Quiz Management', url: 'quiz.html' }
     ]
@@ -49,6 +53,7 @@ const navigationMenu = [
     id: 'communication',
     icon: '💬',
     label: 'Communication',
+    url: 'chat.html', // Section link
     items: [
       { label: 'Chat Interface', url: 'chat.html' },
       { label: 'Chat v2', url: 'chat-v2.html' }
@@ -58,6 +63,7 @@ const navigationMenu = [
     id: 'settings',
     icon: '⚙️',
     label: 'Settings',
+    url: 'moodle-settings.html', // Section link
     items: [
       { label: 'Moodle Settings', url: 'moodle-settings.html' }
     ]
@@ -89,18 +95,24 @@ const sidebarStyles = `
 
   /* Sidebar Header */
   .lms-sidebar-header {
-    padding: 20px;
+    padding: 15px 20px;
     background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
     color: white;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
   }
 
   .lms-sidebar-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     margin: 0;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sidebar-toggle {
@@ -132,16 +144,10 @@ const sidebarStyles = `
   .lms-nav-section-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 15px 20px;
-    cursor: pointer;
     background: #fff;
     border: none;
     width: 100%;
-    text-align: left;
-    font-size: 15px;
-    font-weight: 500;
-    color: #3a3a3a;
+    padding: 0;
     transition: background 0.2s;
   }
 
@@ -151,6 +157,26 @@ const sidebarStyles = `
 
   .lms-nav-section-header.active {
     background: #e8f5f4;
+  }
+
+  .nav-section-main {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    padding: 15px 10px 15px 20px;
+    text-decoration: none;
+    color: #3a3a3a;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+
+  .nav-section-main:hover {
+    color: #00897B;
+  }
+
+  .lms-nav-section-header.active .nav-section-main {
     color: #00897B;
   }
 
@@ -163,12 +189,23 @@ const sidebarStyles = `
     flex: 1;
   }
 
-  .nav-section-arrow {
+  .nav-section-arrow-btn {
+    background: none;
+    border: none;
+    padding: 15px 20px 15px 10px;
+    color: #3a3a3a;
+    cursor: pointer;
     font-size: 12px;
-    transition: transform 0.3s;
+    transition: transform 0.3s, color 0.2s;
+    display: flex;
+    align-items: center;
   }
 
-  .lms-nav-section.expanded .nav-section-arrow {
+  .nav-section-arrow-btn:hover {
+    color: #00897B;
+  }
+
+  .lms-nav-section.expanded .nav-section-arrow-btn {
     transform: rotate(180deg);
   }
 
@@ -298,7 +335,7 @@ function generateSidebarHTML() {
 
     <aside class="lms-sidebar" id="lmsSidebar">
       <div class="lms-sidebar-header">
-        <h2 class="lms-sidebar-title">Navigation</h2>
+        <h2 class="lms-sidebar-title">Menu</h2>
         <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse Sidebar">
           ◀
         </button>
@@ -313,11 +350,15 @@ function generateSidebarHTML() {
     const sectionId = `nav-section-${section.id}`;
     html += `
       <li class="lms-nav-section" id="${sectionId}">
-        <button class="lms-nav-section-header" onclick="toggleSection('${sectionId}')">
-          <span class="nav-section-icon">${section.icon}</span>
-          <span class="nav-section-label">${section.label}</span>
-          <span class="nav-section-arrow">▼</span>
-        </button>
+        <div class="lms-nav-section-header">
+          <a href="${section.url}" class="nav-section-main">
+            <span class="nav-section-icon">${section.icon}</span>
+            <span class="nav-section-label">${section.label}</span>
+          </a>
+          <button class="nav-section-arrow-btn" onclick="toggleSection('${sectionId}'); event.stopPropagation();" title="Expand/Collapse">
+            ▼
+          </button>
+        </div>
         <ul class="lms-nav-submenu">
     `;
 
@@ -411,9 +452,24 @@ const sidebarScripts = `
   // Highlight current page in navigation
   function highlightCurrentPage() {
     const currentPage = window.location.pathname.split('/').pop();
-    const links = document.querySelectorAll('.lms-nav-submenu-link');
 
-    links.forEach(link => {
+    // Check section header links
+    const sectionLinks = document.querySelectorAll('.nav-section-main');
+    sectionLinks.forEach(link => {
+      const linkUrl = link.getAttribute('href');
+      if (linkUrl === currentPage) {
+        const section = link.closest('.lms-nav-section');
+        if (section) {
+          section.classList.add('expanded');
+          const header = section.querySelector('.lms-nav-section-header');
+          if (header) header.classList.add('active');
+        }
+      }
+    });
+
+    // Check submenu links
+    const subLinks = document.querySelectorAll('.lms-nav-submenu-link');
+    subLinks.forEach(link => {
       const linkUrl = link.getAttribute('href');
       if (linkUrl === currentPage) {
         link.classList.add('active');
