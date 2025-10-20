@@ -189,23 +189,30 @@ router.post('/courses/:courseId/accept',
   authMiddleware.requireRole(['admin']),
   async (req, res) => {
     try {
+      logger.info('🔍 Accept endpoint called - start of try block');
+
       const { courseId } = req.params;
+      logger.info(`📝 CourseId: ${courseId}, User: ${req.user?.id}`);
+
       const {
         classification_id,
         module_decisions,  // Array: [{title, files, action: 'create'|'merge'|'skip'}]
         auto_process = true
       } = req.body;
 
+      logger.info(`📦 Request body - classification_id: ${classification_id}, module_decisions length: ${module_decisions?.length}, auto_process: ${auto_process}`);
+
       const adminUserId = req.user.id;
 
       if (!module_decisions || module_decisions.length === 0) {
+        logger.warn('⚠️  No module decisions provided');
         return res.status(400).json({
           success: false,
           error: 'No module decisions provided'
         });
       }
 
-      logger.info(`Accepting classification ${classification_id} for course ${courseId}`);
+      logger.info(`✅ Accepting classification ${classification_id} for course ${courseId} with ${module_decisions.length} decisions`);
 
       const createdModules = [];
       const processedFiles = [];
@@ -373,10 +380,13 @@ router.post('/courses/:courseId/accept',
       });
 
     } catch (error) {
-      logger.error('Failed to accept classification:', error);
+      logger.error('❌ Failed to accept classification:', error);
+      logger.error(`Error details - Name: ${error.name}, Message: ${error.message}`);
+      logger.error(`Stack trace: ${error.stack}`);
       res.status(500).json({
         success: false,
         error: error.message,
+        error_name: error.name,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }

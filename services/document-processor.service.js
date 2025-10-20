@@ -155,14 +155,24 @@ class DocumentProcessorService {
       let fullText = '';
       for (let i = 0; i < pagesToProcess; i++) {
         const imagePath = imageFiles[i];
-        logger.info(`OCR: Processing page ${i + 1}/${pagesToProcess}`);
+        const logMsg = maxPages > 0
+          ? `OCR: Processing page ${i + 1}/${pagesToProcess} (LIMITED for classification)`
+          : `OCR: Processing page ${i + 1}/${pagesToProcess} (FULL processing)`;
+        logger.info(logMsg);
 
         const { data: { text } } = await Tesseract.recognize(imagePath, 'eng', {
           logger: () => {} // Suppress verbose Tesseract logs
         });
 
         fullText += text + '\n\n';
+
+        // Log progress every 10 pages for full OCR
+        if (maxPages === 0 && (i + 1) % 10 === 0) {
+          logger.info(`📊 OCR Progress: ${i + 1}/${pagesToProcess} pages completed`);
+        }
       }
+
+      logger.info(`✅ OCR Complete: Extracted text from ${pagesToProcess} pages`);
 
       return fullText;
 
