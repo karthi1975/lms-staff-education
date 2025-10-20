@@ -32,6 +32,9 @@ const userRoutes = require('./routes/user.routes');
 const certificateRoutes = require('./routes/certificate.routes');
 const twilioWebhookRoutes = require('./routes/twilio-webhook.routes');
 const classificationRoutes = require('./routes/classification.routes');
+const fileProcessingRoutes = require('./routes/file-processing.routes');
+const simpleUploadRoutes = require('./routes/simple-upload.routes');
+const fileListRoutes = require('./routes/file-list.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -89,6 +92,15 @@ app.use('/', twilioWebhookRoutes);
 
 // Add AI classification routes
 app.use('/api/admin/classify', classificationRoutes);
+
+// Add file processing routes (background processing with status tracking)
+app.use('/api/admin', fileProcessingRoutes);
+
+// Add simple upload routes (module-independent upload → RAG+Graph DB)
+app.use('/api/admin', simpleUploadRoutes);
+
+// Add file list routes (view uploaded files with processing status)
+app.use('/api/admin', fileListRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
@@ -748,9 +760,14 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Admin dashboard
+// Admin dashboard - redirect to login
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+  res.redirect('/admin/login.html');
+});
+
+// Handle /admin/ with trailing slash
+app.get('/admin/', (req, res) => {
+  res.redirect('/admin/login.html');
 });
 
 // Index page (new clean admin)

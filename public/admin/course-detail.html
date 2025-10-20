@@ -547,9 +547,9 @@
         <!-- Page Header -->
         <div class="page-header">
             <div class="breadcrumb">
-                <a href="/admin">Dashboard</a>
+                <a href="/admin/lms-dashboard.html">Dashboard</a>
                 <span>›</span>
-                <a href="/admin/courses.html">Courses</a>
+                <a href="/admin/lms-dashboard.html">Courses</a>
                 <span>›</span>
                 <span id="breadcrumb-course">Course Detail</span>
             </div>
@@ -574,7 +574,7 @@
                 </div>
 
                 <div class="header-actions">
-                    <button class="btn btn-secondary" onclick="window.location.href='/admin/courses.html'">
+                    <button class="btn btn-secondary" onclick="window.location.href='/admin/lms-dashboard.html'">
                         ← Back to Courses
                     </button>
                 </div>
@@ -718,7 +718,7 @@
 
             if (!courseId) {
                 alert('No course ID provided');
-                window.location.href = '/admin/courses.html';
+                window.location.href = '/admin/lms-dashboard.html';
                 return;
             }
 
