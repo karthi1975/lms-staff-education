@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Module - Teachers Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
+            min-height: 100vh;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        /* Header */
+        .page-header {
+            background: white;
+            padding: 24px 32px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+
+        .breadcrumb a {
+            color: #00897B;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb a:hover {
+            color: #00695C;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            color: #111827;
+        }
+
+        /* Form Card */
+        .form-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .form-group label .required {
+            color: #ef4444;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #00897B;
+            box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-group .help-text {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 6px;
+        }
+
+        /* Buttons */
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 137, 123, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #374151;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            border-color: #00897B;
+            color: #00897B;
+        }
+
+        /* Loading State */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .form-card {
+                padding: 24px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="page-header">
+            <div class="breadcrumb">
+                <a href="lms-dashboard.html">Dashboard</a>
+                <span>/</span>
+                <a href="courses.html">Courses</a>
+                <span>/</span>
+                <a href="#" id="courseBreadcrumb">Course</a>
+                <span>/</span>
+                <span>Create Module</span>
+            </div>
+            <h1>Create New Module</h1>
+        </div>
+
+        <!-- Form -->
+        <div class="form-card">
+            <div id="alertBox" class="alert"></div>
+
+            <form id="moduleForm">
+                <div class="form-group">
+                    <label for="title">
+                        Module Title <span class="required">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        placeholder="e.g., Introduction to Teaching Methods"
+                        required
+                    />
+                    <div class="help-text">Choose a clear, descriptive title for this module</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea
+                        id="description"
+                        name="description"
+                        placeholder="Describe what students will learn in this module..."
+                    ></textarea>
+                    <div class="help-text">Provide an overview of the module content and learning objectives</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="sequence_order">
+                        Module Order
+                    </label>
+                    <input
+                        type="number"
+                        id="sequence_order"
+                        name="sequence_order"
+                        min="1"
+                        placeholder="Auto-assigned"
+                    />
+                    <div class="help-text">Leave empty to add as last module, or specify order number</div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="cancelCreate()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        Create Module
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let courseId = null;
+        let courseName = '';
+
+        // Get courseId from URL
+        window.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            courseId = params.get('courseId');
+
+            if (!courseId) {
+                showAlert('error', 'Course ID is missing');
+                setTimeout(() => {
+                    window.location.href = 'courses.html';
+                }, 2000);
+                return;
+            }
+
+            // Fetch course details for breadcrumb
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch(`/api/admin/courses/${courseId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    courseName = data.course.title;
+                    document.getElementById('courseBreadcrumb').textContent = courseName;
+                    document.getElementById('courseBreadcrumb').href = `course-detail.html?id=${courseId}`;
+                }
+            } catch (error) {
+                console.error('Error fetching course:', error);
+            }
+        });
+
+        // Handle form submission
+        document.getElementById('moduleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const formData = new FormData(e.target);
+
+            // Prepare data
+            const moduleData = {
+                course_id: parseInt(courseId),
+                title: formData.get('title').trim(),
+                description: formData.get('description').trim(),
+                sequence_order: formData.get('sequence_order') ? parseInt(formData.get('sequence_order')) : null
+            };
+
+            // Validate
+            if (!moduleData.title) {
+                showAlert('error', 'Module title is required');
+                return;
+            }
+
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Creating...';
+
+            try {
+                const token = localStorage.getItem('adminToken');
+
+                if (!token) {
+                    showAlert('error', 'Authentication required. Please login again.');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                    return;
+                }
+
+                const response = await fetch('/api/admin/modules', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(moduleData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showAlert('success', `Module "${moduleData.title}" created successfully!`);
+
+                    // Redirect to course detail page after short delay
+                    setTimeout(() => {
+                        window.location.href = `course-detail.html?id=${courseId}`;
+                    }, 1500);
+                } else {
+                    showAlert('error', data.error || 'Failed to create module');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Create Module';
+                }
+
+            } catch (error) {
+                console.error('Error creating module:', error);
+                showAlert('error', 'Network error. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Create Module';
+            }
+        });
+
+        function cancelCreate() {
+            if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+                window.location.href = courseId ? `course-detail.html?id=${courseId}` : 'courses.html';
+            }
+        }
+
+        function showAlert(type, message) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = `alert alert-${type} show`;
+            alertBox.textContent = message;
+
+            // Auto-hide after 5 seconds for errors, 2 seconds for success
+            setTimeout(() => {
+                alertBox.classList.remove('show');
+            }, type === 'error' ? 5000 : 2000);
+        }
+    </script>
+
+    <!-- Moodle-style Sidebar Navigation -->
+    <script src="../js/sidebar-nav.js"></script>
+</body>
+</html>
