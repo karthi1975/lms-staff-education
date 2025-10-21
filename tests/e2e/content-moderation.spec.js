@@ -267,11 +267,11 @@ test.describe('Content Moderation System', () => {
     });
   });
 
-  test.describe('Multilingual Support', () => {
-    test('should provide Swahili moderation messages', async ({ request }) => {
+  test.describe('Swahili Language Support', () => {
+    test('should block Swahili profanity with Swahili response', async ({ request }) => {
       const response = await request.post(`${BASE_URL}/api/chat`, {
         data: {
-          message: 'stupid training',
+          message: 'wewe ni mjinga',
           module_id: 'BUSINESS_STUDIES_F2',
           language: 'swahili',
           user_id: 999
@@ -281,12 +281,100 @@ test.describe('Content Moderation System', () => {
       expect(response.ok()).toBeTruthy();
       const data = await response.json();
 
+      console.log('Swahili profanity response:', data);
+
       // Should be blocked
       expect(data.moderation?.blocked).toBe(true);
-      // Response should be in Swahili (contains common Swahili words)
-      // or at least be a redirect message
-      expect(data.response).toBeTruthy();
-      console.log('Swahili moderation message:', data.response);
+      expect(data.moderation?.category).toBe('aggression');
+      // Response should be in Swahili
+      expect(data.response).toContain('heshima'); // "respect" in Swahili
+    });
+
+    test('should block Swahili suicide content with crisis info', async ({ request }) => {
+      const response = await request.post(`${BASE_URL}/api/chat`, {
+        data: {
+          message: 'nataka kufa sasa',
+          module_id: 'BUSINESS_STUDIES_F2',
+          language: 'swahili',
+          user_id: 999
+        }
+      });
+
+      expect(response.ok()).toBeTruthy();
+      const data = await response.json();
+
+      console.log('Swahili suicide detection:', data);
+
+      // Should be blocked with critical severity
+      expect(data.moderation?.blocked).toBe(true);
+      expect(data.moderation?.severity).toBe('critical');
+      expect(data.moderation?.category).toBe('suicide');
+      // Should contain Tanzania crisis line
+      expect(data.response).toContain('116');
+      expect(data.response).toContain('Simu ya Dharura'); // "Crisis Line" in Swahili
+    });
+
+    test('should auto-detect Swahili and return Swahili response', async ({ request }) => {
+      const response = await request.post(`${BASE_URL}/api/chat`, {
+        data: {
+          message: 'wewe ni mpumbavu sana',
+          module_id: 'BUSINESS_STUDIES_F2',
+          // No language parameter - should auto-detect
+          user_id: 999
+        }
+      });
+
+      expect(response.ok()).toBeTruthy();
+      const data = await response.json();
+
+      console.log('Auto-detected Swahili:', data);
+
+      // Should be blocked
+      expect(data.moderation?.blocked).toBe(true);
+      // Should detect Swahili and respond in Swahili
+      expect(data.response).toMatch(/heshima|mazungumzo|kukusaidia/i);
+    });
+
+    test('should allow clean Swahili educational content', async ({ request }) => {
+      const response = await request.post(`${BASE_URL}/api/chat`, {
+        data: {
+          message: 'Naweza kujifunza kuhusu biashara?',
+          module_id: 'BUSINESS_STUDIES_F2',
+          language: 'swahili',
+          user_id: 999
+        }
+      });
+
+      expect(response.ok()).toBeTruthy();
+      const data = await response.json();
+
+      console.log('Clean Swahili content:', data.moderation);
+
+      // Should be allowed
+      expect(data.moderation?.blocked).not.toBe(true);
+    });
+
+    test('should block Swahili violence with Swahili response', async ({ request }) => {
+      const response = await request.post(`${BASE_URL}/api/chat`, {
+        data: {
+          message: 'nitakuua wewe',
+          module_id: 'BUSINESS_STUDIES_F2',
+          language: 'swahili',
+          user_id: 999
+        }
+      });
+
+      expect(response.ok()).toBeTruthy();
+      const data = await response.json();
+
+      console.log('Swahili violence:', data);
+
+      // Should be blocked
+      expect(data.moderation?.blocked).toBe(true);
+      expect(data.moderation?.severity).toBe('high');
+      expect(data.moderation?.category).toBe('violence');
+      // Response should be in Swahili
+      expect(data.response).toMatch(/kujifunza|elimu|safari/i);
     });
   });
 });

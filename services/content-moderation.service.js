@@ -65,11 +65,70 @@ class ContentModerationService {
       }
     };
 
+    // Swahili harmful content patterns (for Tanzania deployment)
+    this.swahiliPatterns = {
+      suicide: {
+        pattern: /\b(jiua|kujiua|nataka kufa|ninadhuru|kujidhuru|sina sababu ya kuishi|bora nife|mimi nina taabu)\b/i,
+        severity: 'critical',
+        messageEn: "I notice you may be going through a difficult time. Please reach out to a counselor or call a crisis hotline. For immediate help:\n\n🆘 Tanzania Crisis Line: 116\n🆘 International: +1-800-273-8255\n\nI'm here to help with your educational content. What module would you like to learn about?",
+        messageSw: "Naona unaweza kupitia wakati mgumu. Tafadhali wasiliana na mshauri au piga simu ya dharura kwa msaada wa haraka:\n\n🆘 Simu ya Dharura Tanzania: 116\n🆘 Kimataifa: +1-800-273-8255\n\nNipo hapa kukusaidia na mafunzo yako. Ungependa kujifunza somo gani?"
+      },
+
+      violence: {
+        pattern: /\b(ua|muuaji|muue|kuua|pigana|shambulia|vunja|vuruga|choma|kata)\s+(wewe|yeye|mtu|watu|ninyi)/i,
+        severity: 'high',
+        messageEn: "I'm designed to support your learning journey. Let's focus on educational topics. What can I help you learn today?",
+        messageSw: "Nimejengwa kukusaidia katika safari yako ya kujifunza. Hebu tuzungumze kuhusu mada za elimu. Naweza kukusaidia kujifunza nini leo?"
+      },
+
+      threats: {
+        pattern: /\b(nitakuua|nitakudhuru|nitakuvunja|nitakushambulia|bomu|tishio|kisasi|nitakulipiza)/i,
+        severity: 'high',
+        messageEn: "I can only assist with course-related questions. Please keep our conversation focused on your training modules.",
+        messageSw: "Naweza kusaidia tu na maswali yanayohusu masomo. Tafadhali tuendelee na mazungumzo kuhusu mafunzo yako."
+      },
+
+      profanity: {
+        pattern: /\b(malaya|kahaba|shetani|mafi ya|kuma|matako|mkundu|msenge|mbwa|punda|ng'ombe wewe)\b/i,
+        severity: 'low',
+        messageEn: "Let's keep our conversation professional. How can I help with your training?",
+        messageSw: "Hebu tushike mazungumzo yetu kuwa ya kibiashara. Naweza kukusaidia vipi na mafunzo yako?"
+      },
+
+      aggression: {
+        pattern: /\b(mjinga|mpumbavu|pumbavu|tapeli|mwongo|fala|nyamaza|kichaa|wazimu)/i,
+        severity: 'medium',
+        messageEn: "Let's keep our conversation respectful and focused on learning. How can I help with your coursework?",
+        messageSw: "Hebu tushike mazungumzo yetu kuwa ya heshima na kuzingatia kujifunza. Naweza kukusaidia vipi na masomo yako?"
+      },
+
+      harassment: {
+        pattern: /\b(onea|udhalilishaji|vitisho|matusi|unyanyasaji)\b/i,
+        severity: 'medium',
+        messageEn: "I'm here to create a safe learning environment. Let's focus on your educational goals. What topic interests you?",
+        messageSw: "Nipo hapa kuunda mazingira salama ya kujifunza. Hebu tuzungumze kuhusu malengo yako ya elimu. Ni mada gani inakuvutia?"
+      },
+
+      sexual: {
+        pattern: /\b(ngono|uchafu|uchi|matako|mapenzi ya kimwili)\b/i,
+        severity: 'high',
+        messageEn: "I provide educational assistance only. Please ask questions related to your training materials.",
+        messageSw: "Ninasaidia tu katika elimu. Tafadhali uliza maswali yanayohusu mafunzo yako."
+      }
+    };
+
     // Educational topic keywords (to reduce false positives)
     this.educationalKeywords = [
       'business', 'production', 'management', 'finance', 'entrepreneurship',
       'marketing', 'accounting', 'economics', 'teacher', 'teaching', 'classroom',
       'student', 'learning', 'education', 'training', 'course', 'module'
+    ];
+
+    // Swahili educational keywords
+    this.swahiliEducationalKeywords = [
+      'biashara', 'uzalishaji', 'usimamizi', 'fedha', 'ujasiriamali',
+      'masoko', 'uhasibu', 'uchumi', 'mwalimu', 'ufundishaji', 'darasa',
+      'mwanafunzi', 'kujifunza', 'elimu', 'mafunzo', 'kozi', 'somo', 'module'
     ];
   }
 
@@ -122,6 +181,59 @@ class ContentModerationService {
           checkResult.severity = this.harmfulPatterns.aggression.severity;
           checkResult.category = 'aggression';
           checkResult.blockedMessage = this.harmfulPatterns.aggression.message;
+        }
+      }
+
+      // 3.5. Check Swahili harmful patterns (if language is Swahili or Swahili detected)
+      if (checkResult.allowed) {
+        const language = context.language || 'english';
+        const isSwahili = language === 'swahili' || this.containsSwahili(message);
+
+        if (isSwahili) {
+          // Check Swahili profanity and aggression first (ALWAYS block)
+          if (this.swahiliPatterns.profanity && this.swahiliPatterns.profanity.pattern.test(message)) {
+            checkResult.allowed = false;
+            checkResult.reason = 'profanity_swahili';
+            checkResult.severity = this.swahiliPatterns.profanity.severity;
+            checkResult.category = 'profanity';
+            checkResult.blockedMessage = language === 'swahili' ?
+              this.swahiliPatterns.profanity.messageSw :
+              this.swahiliPatterns.profanity.messageEn;
+          }
+
+          if (checkResult.allowed && this.swahiliPatterns.aggression && this.swahiliPatterns.aggression.pattern.test(message)) {
+            checkResult.allowed = false;
+            checkResult.reason = 'aggression_swahili';
+            checkResult.severity = this.swahiliPatterns.aggression.severity;
+            checkResult.category = 'aggression';
+            checkResult.blockedMessage = language === 'swahili' ?
+              this.swahiliPatterns.aggression.messageSw :
+              this.swahiliPatterns.aggression.messageEn;
+          }
+
+          // Check other Swahili patterns (critical severity always blocks, others check educational context)
+          if (checkResult.allowed) {
+            for (const [category, config] of Object.entries(this.swahiliPatterns)) {
+              if (category === 'profanity' || category === 'aggression') continue;
+
+              if (config.pattern.test(message)) {
+                const isEducationalContext = this.swahiliEducationalKeywords.some(keyword =>
+                  lowerMessage.includes(keyword)
+                );
+
+                if (config.severity === 'critical' || !isEducationalContext) {
+                  checkResult.allowed = false;
+                  checkResult.reason = `${category}_swahili`;
+                  checkResult.severity = config.severity;
+                  checkResult.category = category;
+                  checkResult.blockedMessage = language === 'swahili' ?
+                    config.messageSw :
+                    config.messageEn;
+                  break;
+                }
+              }
+            }
+          }
         }
       }
 
@@ -194,6 +306,33 @@ class ContentModerationService {
       logger.error('Error cleaning message:', error);
       return message;
     }
+  }
+
+  /**
+   * Detect if message contains Swahili words
+   * @param {string} message - Message to check
+   * @returns {boolean} - True if Swahili detected
+   */
+  containsSwahili(message) {
+    const lowerMessage = message.toLowerCase();
+
+    // Common Swahili words and patterns
+    const swahiliIndicators = [
+      'ni', 'na', 'wa', 'ya', 'la', 'za', 'kwa', 'hii', 'hiyo',
+      'sana', 'nini', 'vipi', 'wapi', 'lini', 'nani', 'gani',
+      'tafadhali', 'asante', 'habari', 'salama', 'jambo',
+      'nina', 'una', 'ana', 'tuna', 'mna', 'wana',
+      'nataka', 'unataka', 'anataka', 'tunataka',
+      'naweza', 'unaweza', 'anaweza', 'tunaweza'
+    ];
+
+    // Check if message contains multiple Swahili indicators
+    const matchCount = swahiliIndicators.filter(word =>
+      new RegExp(`\\b${word}\\b`, 'i').test(lowerMessage)
+    ).length;
+
+    // If 2 or more Swahili words found, likely Swahili
+    return matchCount >= 2;
   }
 
   /**
