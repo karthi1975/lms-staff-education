@@ -554,6 +554,7 @@ app.post('/api/chat', async (req, res) => {
     let context = [];
     let contextDocuments = [];
     let graphContext = null;
+    let crossModuleSearch = false;  // Track if we searched across all modules
 
     // If useContext is true, search for relevant documents
     if (useContext) {
@@ -564,7 +565,6 @@ app.post('/api/chat', async (req, res) => {
       });
 
       // 1.5: If no results in current module, search across ALL content (like WhatsApp webhook)
-      let crossModuleSearch = false;
       if ((!searchResults || searchResults.length === 0) && module_id) {
         logger.info(`No results in module ${module_id}, searching across all content...`);
         searchResults = await chromaService.searchSimilar(message, {
