@@ -10,16 +10,12 @@
  * - Harassment
  */
 
-const Filter = require('bad-words');
 const leoProfanity = require('leo-profanity');
 const logger = require('../utils/logger');
 const postgresService = require('./database/postgres.service');
 
 class ContentModerationService {
   constructor() {
-    // Initialize profanity filters
-    this.badWordsFilter = new Filter();
-
     // Load multiple languages for leo-profanity
     leoProfanity.loadDictionary('en');
     leoProfanity.loadDictionary('fr');
@@ -92,19 +88,13 @@ class ContentModerationService {
     };
 
     try {
-      // 1. Check for profanity using both filters
-      if (this.badWordsFilter.isProfane(message)) {
+      // 1. Check for profanity using leo-profanity
+      if (leoProfanity.check(message)) {
         checkResult.allowed = false;
         checkResult.reason = 'profanity';
         checkResult.severity = 'low';
         checkResult.category = 'profanity';
         checkResult.blockedMessage = "Let's keep our conversation professional. How can I help with your training?";
-      } else if (leoProfanity.check(message)) {
-        checkResult.allowed = false;
-        checkResult.reason = 'profanity';
-        checkResult.severity = 'low';
-        checkResult.category = 'profanity';
-        checkResult.blockedMessage = "Please use respectful language. What educational topic can I assist with?";
       }
 
       // 2. Check harmful patterns (skip if already blocked)
@@ -165,7 +155,7 @@ class ContentModerationService {
    */
   cleanMessage(message) {
     try {
-      return this.badWordsFilter.clean(message);
+      return leoProfanity.clean(message);
     } catch (error) {
       logger.error('Error cleaning message:', error);
       return message;
