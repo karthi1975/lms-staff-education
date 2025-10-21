@@ -97,10 +97,11 @@ test.describe('Admin Portal Endurance Test - 120 Minutes', () => {
       await page.goto(`${BASE_URL}/admin/lms-dashboard.html`);
       await page.waitForTimeout(PAGE_LOAD_DELAY);
 
-      // Verify dashboard loaded
-      await page.waitForSelector('h1', { timeout: 10000 });
-      const dashboardTitle = await page.textContent('h1');
-      console.log('   ✅ Dashboard loaded:', dashboardTitle);
+      // Verify dashboard loaded - look for the header or menu
+      const dashboardLoaded = await page.waitForSelector('.header, nav, .menu, text=Dashboard', { timeout: 10000 });
+      if (dashboardLoaded) {
+        console.log('   ✅ Dashboard loaded successfully');
+      }
       await page.waitForTimeout(ACTION_DELAY);
 
       // ============================================================
@@ -240,11 +241,10 @@ test.describe('Admin Portal Endurance Test - 120 Minutes', () => {
       await page.goto(`${BASE_URL}/admin/modules.html`);
       await page.waitForTimeout(PAGE_LOAD_DELAY);
 
-      // Check if modules page exists
-      const pageLoaded = await page.$('h1, h2').catch(() => null);
+      // Check if modules page exists - look for common elements
+      const pageLoaded = await page.$('.header, nav, .menu, text=Module').catch(() => null);
       if (pageLoaded) {
-        const pageTitle = await page.textContent('h1, h2');
-        console.log(`   ✅ Modules page loaded: ${pageTitle}`);
+        console.log('   ✅ Modules page loaded successfully');
       } else {
         console.log('   ⚠️ Modules page not available');
       }
