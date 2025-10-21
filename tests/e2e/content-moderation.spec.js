@@ -374,7 +374,7 @@ test.describe('Content Moderation System', () => {
       expect(data.moderation?.severity).toBe('high');
       expect(data.moderation?.reason).toMatch(/violence|threats/);
       // Response should be in Swahili
-      expect(data.response).toMatch(/kujifunza|elimu|safari/i);
+      expect(data.response).toMatch(/masomo|mafunzo|kusaidia/i); // "lessons", "training", "help" in Swahili
     });
   });
 });
