@@ -103,9 +103,36 @@ class ContentModerationService {
         checkResult.blockedMessage = "Let's keep our conversation professional. How can I help with your training?";
       }
 
-      // 2. Check harmful patterns (skip if already blocked)
+      // 2. Check explicit profanity patterns (ALWAYS block, no educational context exception)
+      if (checkResult.allowed && this.harmfulPatterns.profanity_explicit) {
+        if (this.harmfulPatterns.profanity_explicit.pattern.test(message)) {
+          checkResult.allowed = false;
+          checkResult.reason = 'profanity_explicit';
+          checkResult.severity = this.harmfulPatterns.profanity_explicit.severity;
+          checkResult.category = 'profanity_explicit';
+          checkResult.blockedMessage = this.harmfulPatterns.profanity_explicit.message;
+        }
+      }
+
+      // 3. Check aggression patterns (ALWAYS block, no educational context exception)
+      if (checkResult.allowed && this.harmfulPatterns.aggression) {
+        if (this.harmfulPatterns.aggression.pattern.test(message)) {
+          checkResult.allowed = false;
+          checkResult.reason = 'aggression';
+          checkResult.severity = this.harmfulPatterns.aggression.severity;
+          checkResult.category = 'aggression';
+          checkResult.blockedMessage = this.harmfulPatterns.aggression.message;
+        }
+      }
+
+      // 4. Check other harmful patterns with educational context consideration (skip if already blocked)
       if (checkResult.allowed) {
         for (const [category, config] of Object.entries(this.harmfulPatterns)) {
+          // Skip profanity_explicit and aggression as they're handled above
+          if (category === 'profanity_explicit' || category === 'aggression') {
+            continue;
+          }
+
           if (config.pattern.test(message)) {
             // Check if it's in educational context to reduce false positives
             const isEducationalContext = this.educationalKeywords.some(keyword =>
@@ -113,6 +140,7 @@ class ContentModerationService {
             );
 
             // For critical issues (suicide), block regardless of context
+            // For others, only block if NOT in educational context
             if (config.severity === 'critical' || !isEducationalContext) {
               checkResult.allowed = false;
               checkResult.reason = category;
@@ -125,7 +153,7 @@ class ContentModerationService {
         }
       }
 
-      // 3. Log if content was blocked
+      // 5. Log if content was blocked
       if (!checkResult.allowed) {
         await this.logModerationEvent({
           user_id: context.user_id,
