@@ -290,6 +290,163 @@ TEST_BASE_URL=http://34.162.136.203:3000 npx playwright test tests/e2e/content-m
 docker exec teachers_training-postgres-1 psql -U teachers_user -d teachers_training -c "SELECT * FROM content_moderation_log ORDER BY created_at DESC LIMIT 5;"
 ```
 
-**GitHub Commit**: `79f6b0c`
+**GitHub Commits**:
+- `79f6b0c` - Initial English moderation
+- `42e05e2` - Swahili patterns and bilingual messages
+- `aebacc7` - Language parameter fix
+- `62846b7` - Auto-detection enhancement
+- `37401b8` - Test keyword fixes
+
 **Branch**: `feature/course-management-ui`
 **Date**: 2025-10-21
+
+---
+
+## 🌍 SWAHILI LANGUAGE SUPPORT (2025-10-21)
+
+### Implementation Complete
+
+**Status**: ✅ **FULLY DEPLOYED & TESTED**
+
+All 5 Swahili moderation tests passing in production (http://34.162.136.203:3000)
+
+### Features Implemented
+
+1. **Swahili Harmful Content Patterns**
+   - Suicide/Self-harm: jiua, kujiua, nataka kufa, etc.
+   - Violence: ua, muuaji, shambulia, pigana
+   - Threats: nitakuua, nitakudhuru, bomu
+   - Profanity: malaya, kahaba, shetani, mafi
+   - Aggression: mjinga, mpumbavu, tapeli
+   - Harassment: onea, udhalilishaji, vitisho
+   - Sexual: ngono, uchafu, uchi
+
+2. **Bilingual Response Messages**
+   - Every blocked category has both English and Swahili responses
+   - Tanzania crisis hotline included: Simu ya Dharura Tanzania: 116
+   - Culturally appropriate Swahili phrasing
+
+3. **Automatic Language Detection**
+   - Auto-detects Swahili using common word indicators
+   - Requires 2+ Swahili words to trigger detection
+   - Automatically returns Swahili responses when Swahili detected
+   - Works even without explicit `language` parameter
+
+4. **Educational Context Preservation**
+   - Swahili educational keywords: biashara, mafunzo, elimu, darasa, etc.
+   - Violence/threats checked for educational context
+   - Profanity/aggression ALWAYS blocked (no exceptions)
+   - Suicide ALWAYS blocked with crisis intervention
+
+### Test Results (Production)
+
+```bash
+TEST_BASE_URL=http://34.162.136.203:3000 npx playwright test tests/e2e/content-moderation.spec.js --grep "Swahili"
+
+✅ 5/5 tests passing (3.2s)
+
+1. ✅ Block Swahili profanity ("wewe ni mjinga")
+   → Response: "Hebu tushike mazungumzo yetu kuwa ya heshima..."
+
+2. ✅ Block suicide with crisis intervention ("nataka kufa sasa")
+   → Response: "🆘 Simu ya Dharura Tanzania: 116"
+
+3. ✅ Auto-detect Swahili ("wewe ni mpumbavu sana")
+   → Detected: aggression_swahili
+   → Response: Swahili (automatic)
+
+4. ✅ Allow clean Swahili educational content
+   → "Naweza kujifunza kuhusu biashara?" → Allowed
+
+5. ✅ Block violence/threats ("nitakuua wewe")
+   → Response: "Naweza kusaidia tu na maswali yanayohusu masomo..."
+```
+
+### Example Swahili Blocked Messages
+
+**Profanity** (Low Severity):
+```
+Input: "wewe ni mjinga"
+Response: "Hebu tushike mazungumzo yetu kuwa ya heshima na kuzingatia kujifunza.
+           Naweza kukusaidia vipi na masomo yako?"
+```
+
+**Suicide** (Critical Severity):
+```
+Input: "nataka kufa sasa"
+Response: "Naona unaweza kupitia wakati mgumu. Tafadhali wasiliana na mshauri
+           au piga simu ya dharura kwa msaada wa haraka:
+
+           🆘 Simu ya Dharura Tanzania: 116
+           🆘 Kimataifa: +1-800-273-8255
+
+           Nipo hapa kukusaidia na mafunzo yako. Ungependa kujifunza somo gani?"
+```
+
+**Violence/Threats** (High Severity):
+```
+Input: "nitakuua wewe"
+Response: "Naweza kusaidia tu na maswali yanayohusu masomo.
+           Tafadhali tuendelee na mazungumzo kuhusu mafunzo yako."
+```
+
+### Files Modified
+
+- `services/content-moderation.service.js`
+  - Added swahiliPatterns (lines 69-120)
+  - Added swahiliEducationalKeywords (lines 128-132)
+  - Added containsSwahili() method (lines 263-283)
+  - Enhanced checkMessage() for Swahili detection (lines 187-240)
+
+- `server.js`
+  - Added language parameter pass-through (line 548)
+
+- `tests/e2e/content-moderation.spec.js`
+  - Added 5 comprehensive Swahili tests (lines 270-380)
+
+### How It Works
+
+1. **Explicit Language**: User sends `{"message": "...", "language": "swahili"}`
+   - Checks Swahili patterns
+   - Returns Swahili responses
+
+2. **Auto-Detection**: User sends `{"message": "wewe ni mjinga"}` (no language param)
+   - Detects 2+ Swahili words ("wewe", "ni")
+   - Checks Swahili patterns
+   - Returns Swahili responses automatically
+
+3. **WhatsApp Integration**:
+   - Auto-detection works seamlessly
+   - Tanzanian users get Swahili responses automatically
+   - No configuration needed
+
+### Language Detection Keywords
+
+Common Swahili indicators used for auto-detection:
+```javascript
+'ni', 'na', 'wa', 'ya', 'la', 'za', 'kwa', 'hii', 'hiyo',
+'sana', 'nini', 'vipi', 'wapi', 'lini', 'nani', 'gani',
+'tafadhali', 'asante', 'habari', 'salama', 'jambo',
+'nina', 'una', 'ana', 'tuna', 'mna', 'wana',
+'nataka', 'unataka', 'anataka', 'tunataka',
+'naweza', 'unaweza', 'anaweza', 'tunaweza'
+```
+
+### Known Behavior
+
+- **Profanity/Aggression**: ALWAYS blocked, no educational context exception
+- **Suicide/Self-harm**: ALWAYS blocked with crisis intervention
+- **Violence/Threats**: Blocked unless clear educational context
+- **Clean Educational**: Always allowed
+- **Auto-detection**: Requires 2+ Swahili words
+- **Response Language**: Matches detected or specified language
+
+### Next Steps
+
+1. ✅ **Swahili patterns** - COMPLETE
+2. ✅ **Bilingual messages** - COMPLETE
+3. ✅ **Auto-detection** - COMPLETE
+4. ✅ **Production testing** - COMPLETE (5/5 passing)
+5. ⏳ **Monitor real-world usage** - Collect data from Tanzanian teachers
+6. ⏳ **Expand vocabulary** - Add more Swahili slang/regional variants if needed
+7. ⏳ **Add other languages** - French, Arabic, etc. (future)
