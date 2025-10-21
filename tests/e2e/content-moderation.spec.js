@@ -53,9 +53,9 @@ test.describe('Content Moderation System', () => {
 
       // Should be blocked
       expect(data.moderation?.blocked).toBe(true);
-      expect(data.moderation?.reason).toBe('profanity');
+      expect(data.moderation?.reason).toBe('profanity_explicit');
       expect(data.moderation?.severity).toBe('low');
-      expect(data.response).toContain('respectful');
+      expect(data.response).toContain('professional');
     });
 
     test('should allow clean educational language', async ({ request }) => {
@@ -262,7 +262,7 @@ test.describe('Content Moderation System', () => {
         console.log('UI blocked message response:', responseText);
 
         // Should contain moderation message
-        expect(responseText.toLowerCase()).toContain('respectful');
+        expect(responseText.toLowerCase()).toContain('professional');
       }
     });
   });
