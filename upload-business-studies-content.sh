@@ -14,10 +14,10 @@ echo ""
 
 # Login and get token
 echo "📝 Logging in..."
-TOKEN=$(curl -s -X POST "http://${GCP_HOST}/api/login" \
+TOKEN=$(curl -s -X POST "http://${GCP_HOST}/api/admin/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@school.edu","password":"Admin123!"}' | \
-  python3 -c "import sys, json; print(json.load(sys.stdin)['token'])" 2>/dev/null)
+  python3 -c "import sys, json; data=json.load(sys.stdin); print(data.get('tokens', {}).get('accessToken', data.get('token', '')))" 2>/dev/null)
 
 if [ -z "$TOKEN" ]; then
   echo "❌ Failed to get authentication token"
@@ -27,13 +27,9 @@ fi
 echo "✅ Login successful"
 echo ""
 
-# Get course ID for "Business Studies for Entrepreneurs"
-echo "📚 Finding course..."
-COURSE_ID=$(curl -s "http://${GCP_HOST}/api/admin/courses" \
-  -H "Authorization: Bearer $TOKEN" | \
-  python3 -c "import sys, json; courses = json.load(sys.stdin)['data']; print([c['id'] for c in courses if 'Business Studies' in c['title']][0])" 2>/dev/null)
-
-echo "✅ Course ID: $COURSE_ID"
+# Use fixed course ID (Business Studies for Entrepreneurs)
+COURSE_ID=2
+echo "📚 Using Course ID: $COURSE_ID (Business Studies)"
 echo ""
 
 # Module mappings
