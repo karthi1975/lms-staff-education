@@ -23,6 +23,7 @@ const logger = require('./utils/logger');
 // New Services - PostgreSQL and Auth (non-breaking additions)
 const postgresService = require('./services/database/postgres.service');
 const chatHistoryService = require('./services/chat-history.service');
+const contentModerationService = require('./services/content-moderation.service');
 
 // New Routes (will be added below)
 const authRoutes = require('./routes/auth.routes');
@@ -537,6 +538,25 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Message is required'
+      });
+    }
+
+    // Check message for harmful content BEFORE processing
+    const moderationCheck = await contentModerationService.checkMessage(message, {
+      user_id: user_id,
+      phone: req.body.phone // If provided from WhatsApp
+    });
+
+    if (!moderationCheck.allowed) {
+      logger.warn(`Message blocked by content moderation: ${moderationCheck.reason}`);
+      return res.status(200).json({
+        success: true,
+        response: moderationCheck.blockedMessage,
+        moderation: {
+          blocked: true,
+          reason: moderationCheck.reason,
+          severity: moderationCheck.severity
+        }
       });
     }
 

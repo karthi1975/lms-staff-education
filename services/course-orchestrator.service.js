@@ -10,6 +10,7 @@ const vertexAIService = require('./vertexai.service');
 const giftParserService = require('./gift-parser.service');
 const postgresService = require('./database/postgres.service');
 const moodleSyncService = require('./moodle-sync.service');
+const contentModerationService = require('./content-moderation.service');
 const logger = require('../utils/logger');
 const path = require('path');
 
@@ -100,6 +101,17 @@ class MoodleOrchestratorService {
       // Ensure initialized
       if (!this.initialized) {
         await this.initialize();
+      }
+
+      // Check message for harmful content BEFORE processing
+      const moderationCheck = await contentModerationService.checkMessage(message, {
+        user_id: userId,
+        phone: whatsappPhone
+      });
+
+      if (!moderationCheck.allowed) {
+        logger.warn(`WhatsApp message blocked: ${moderationCheck.reason} (severity: ${moderationCheck.severity})`);
+        return { text: moderationCheck.blockedMessage };
       }
 
       // Get conversation context

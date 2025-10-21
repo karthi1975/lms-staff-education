@@ -3,6 +3,7 @@ const { promisify } = require('util');
 const axios = require('axios');
 const logger = require('../utils/logger');
 const promptService = require('./prompt.service');
+const contentModerationService = require('./content-moderation.service');
 
 const execAsync = promisify(exec);
 
@@ -176,6 +177,37 @@ class VertexAIService {
       }
     } catch (error) {
       logger.error('Vertex AI request failed:', error.response?.data || error.message);
+
+      // Check if this is a safety/content filtering block
+      const errorData = error.response?.data;
+      const errorMessage = error.message?.toLowerCase() || '';
+      const isSafetyBlock =
+        errorData?.error?.message?.toLowerCase().includes('safety') ||
+        errorData?.error?.message?.toLowerCase().includes('blocked') ||
+        errorData?.error?.message?.toLowerCase().includes('harmful') ||
+        errorMessage.includes('safety') ||
+        errorMessage.includes('blocked');
+
+      if (isSafetyBlock) {
+        logger.warn('Content blocked by Vertex AI safety filters');
+
+        // Log the safety block (extract context if available)
+        const messageText = messages.find(m => m.role === 'user')?.content || '';
+        await contentModerationService.logVertexAISafetyBlock({
+          message: messageText,
+          user_id: options.user_id,
+          phone: options.phone,
+          category: 'vertex_ai_safety',
+          severity: 'medium'
+        });
+
+        // Return a safe, educational redirect message
+        if (options.language === 'swahili') {
+          return 'Samahani, swali lako haliruhusiwi. Tafadhali uliza swali linalohusiana na mafunzo yako. Naweza kukusaidia na masuala ya elimu.';
+        } else {
+          return 'I\'m sorry, but I can only assist with educational topics. Please ask questions related to your training materials.';
+        }
+      }
 
       // Return fallback response for development or auth errors
       return this.getFallbackResponse(messages, options.language || 'swahili');
