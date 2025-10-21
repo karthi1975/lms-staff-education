@@ -10,7 +10,6 @@ echo "⏱️  Duration: 120 minutes"
 echo "🔄 Action delay: 5 seconds"
 echo "📄 Page load delay: 5 seconds"
 echo "👀 Mode: Headed (visible browser)"
-echo "🐌 Slow motion: 500ms per action"
 echo ""
 echo "Features tested:"
 echo "  1. Dashboard"
@@ -28,7 +27,6 @@ TEST_BASE_URL=http://34.162.136.203:3000 \
 npx playwright test tests/e2e/admin-portal-endurance.spec.js \
   --project=chromium \
   --headed \
-  --slow-mo=500 \
   --workers=1 \
   --reporter=list
 
