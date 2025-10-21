@@ -157,10 +157,18 @@ class ChromaService {
       const { nResults = 5, module = null, module_id = null } = options;
       const queryEmbedding = await this.generateEmbedding(query);
 
-      // Support both 'module' (legacy string like 'module_1') and 'module_id' (integer like 1)
+      // Support both 'module' (legacy string) and 'module_id' (can be string like 'BUSINESS_STUDIES_F2' or integer)
       let filter = undefined;
-      if (module_id !== null) {
-        filter = { module_id: parseInt(module_id) };
+      if (module_id !== null && module_id !== undefined) {
+        // Check if module_id is a number or numeric string
+        const parsedId = parseInt(module_id);
+        if (!isNaN(parsedId) && String(parsedId) === String(module_id)) {
+          // It's a pure integer module ID
+          filter = { module_id: parsedId };
+        } else {
+          // It's a string identifier like 'BUSINESS_STUDIES_F2'
+          filter = { module_id: String(module_id) };
+        }
       } else if (module) {
         // Try to extract module ID from string like 'module_1' -> 1
         const match = String(module).match(/module[_-]?(\d+)/i);
