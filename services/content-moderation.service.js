@@ -40,6 +40,12 @@ class ContentModerationService {
         message: "I can only assist with course-related questions. Please keep our conversation focused on your training modules."
       },
 
+      profanity_explicit: {
+        pattern: /\b(fuck|shit|damn|bitch|bastard|asshole|hell)\b/i,
+        severity: 'low',
+        message: "Let's keep our conversation professional. How can I help with your training?"
+      },
+
       aggression: {
         pattern: /\b(fuck you|screw you|hate you|stupid|idiot|dumb|moron)\b/i,
         severity: 'medium',
