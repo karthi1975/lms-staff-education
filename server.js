@@ -544,7 +544,8 @@ app.post('/api/chat', async (req, res) => {
     // Check message for harmful content BEFORE processing
     const moderationCheck = await contentModerationService.checkMessage(message, {
       user_id: user_id,
-      phone: req.body.phone // If provided from WhatsApp
+      phone: req.body.phone, // If provided from WhatsApp
+      language: language // Pass language for Swahili/multilingual support
     });
 
     if (!moderationCheck.allowed) {
