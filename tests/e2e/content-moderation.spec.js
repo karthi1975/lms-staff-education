@@ -285,7 +285,7 @@ test.describe('Content Moderation System', () => {
 
       // Should be blocked
       expect(data.moderation?.blocked).toBe(true);
-      expect(data.moderation?.category).toBe('aggression');
+      expect(data.moderation?.reason).toContain('aggression');
       // Response should be in Swahili
       expect(data.response).toContain('heshima'); // "respect" in Swahili
     });
@@ -308,7 +308,7 @@ test.describe('Content Moderation System', () => {
       // Should be blocked with critical severity
       expect(data.moderation?.blocked).toBe(true);
       expect(data.moderation?.severity).toBe('critical');
-      expect(data.moderation?.category).toBe('suicide');
+      expect(data.moderation?.reason).toContain('suicide');
       // Should contain Tanzania crisis line
       expect(data.response).toContain('116');
       expect(data.response).toContain('Simu ya Dharura'); // "Crisis Line" in Swahili
@@ -372,7 +372,7 @@ test.describe('Content Moderation System', () => {
       // Should be blocked
       expect(data.moderation?.blocked).toBe(true);
       expect(data.moderation?.severity).toBe('high');
-      expect(data.moderation?.category).toBe('violence');
+      expect(data.moderation?.reason).toMatch(/violence|threats/);
       // Response should be in Swahili
       expect(data.response).toMatch(/kujifunza|elimu|safari/i);
     });

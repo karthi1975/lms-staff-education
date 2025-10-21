@@ -188,6 +188,8 @@ class ContentModerationService {
       if (checkResult.allowed) {
         const language = context.language || 'english';
         const isSwahili = language === 'swahili' || this.containsSwahili(message);
+        // Use Swahili responses if explicitly set OR auto-detected
+        const useSwahiliResponse = isSwahili;
 
         if (isSwahili) {
           // Check Swahili profanity and aggression first (ALWAYS block)
@@ -196,7 +198,7 @@ class ContentModerationService {
             checkResult.reason = 'profanity_swahili';
             checkResult.severity = this.swahiliPatterns.profanity.severity;
             checkResult.category = 'profanity';
-            checkResult.blockedMessage = language === 'swahili' ?
+            checkResult.blockedMessage = useSwahiliResponse ?
               this.swahiliPatterns.profanity.messageSw :
               this.swahiliPatterns.profanity.messageEn;
           }
@@ -206,7 +208,7 @@ class ContentModerationService {
             checkResult.reason = 'aggression_swahili';
             checkResult.severity = this.swahiliPatterns.aggression.severity;
             checkResult.category = 'aggression';
-            checkResult.blockedMessage = language === 'swahili' ?
+            checkResult.blockedMessage = useSwahiliResponse ?
               this.swahiliPatterns.aggression.messageSw :
               this.swahiliPatterns.aggression.messageEn;
           }
@@ -226,7 +228,7 @@ class ContentModerationService {
                   checkResult.reason = `${category}_swahili`;
                   checkResult.severity = config.severity;
                   checkResult.category = category;
-                  checkResult.blockedMessage = language === 'swahili' ?
+                  checkResult.blockedMessage = useSwahiliResponse ?
                     config.messageSw :
                     config.messageEn;
                   break;
