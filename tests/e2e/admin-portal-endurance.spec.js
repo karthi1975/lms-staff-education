@@ -9,8 +9,8 @@ const { test, expect } = require('@playwright/test');
  * - Course management
  * - User management
  * - Module chat with RAG
- * - Content upload
- * - Settings
+ * - Clean navigation (removed placeholders)
+ * - Navigation verification
  *
  * Runs continuously for 120 minutes with logging
  */
@@ -219,45 +219,48 @@ test.describe('Admin Portal Endurance Test - 120 Minutes', () => {
       // ============================================================
       // 5. TEST CONTENT SECTION
       // ============================================================
-      console.log('📁 [5/7] Testing Content Section...');
-      await page.goto(`${BASE_URL}/admin/lms-dashboard.html`);
+      console.log('📁 [5/7] Testing Clean Navigation...');
+      await page.goto(`${BASE_URL}/admin/dashboard.html`);
       await page.waitForTimeout(PAGE_LOAD_DELAY);
 
-      // Try to navigate to content if menu exists
-      const contentMenuExists = await page.$('text=Content').catch(() => null);
-      if (contentMenuExists) {
-        console.log('   ✅ Content menu found');
-        await page.waitForTimeout(ACTION_DELAY);
+      // Verify clean navigation items
+      const dashboardNav = await page.$('text=Dashboard').catch(() => null);
+      const coursesNav = await page.$('text=Courses').catch(() => null);
+      const usersNav = await page.$('text=Users').catch(() => null);
+      const aiNav = await page.$('text=AI Assistant').catch(() => null);
+
+      if (dashboardNav && coursesNav && usersNav && aiNav) {
+        console.log('   ✅ Clean navigation verified (4 items)');
       } else {
-        console.log('   ⚠️ Content menu not visible on this page');
+        console.log('   ⚠️ Navigation items missing');
       }
 
-      // ============================================================
-      // 6. TEST MODULE MANAGEMENT
-      // ============================================================
-      console.log('📋 [6/7] Testing Module Management...');
-      await page.goto(`${BASE_URL}/admin/modules.html`);
-      await page.waitForTimeout(PAGE_LOAD_DELAY);
+      // Verify removed items
+      const noContent = !(await page.$('text=Content Library').catch(() => false));
+      if (noContent) {
+        console.log('   ✅ Placeholder items removed');
+      }
 
-      // Check if modules page loaded
-      await page.waitForLoadState('networkidle');
-      console.log('   ✅ Modules page loaded successfully');
       await page.waitForTimeout(ACTION_DELAY);
 
       // ============================================================
-      // 7. TEST SETTINGS/COMMUNICATION
+      // 6. TEST COURSES PAGE
       // ============================================================
-      console.log('⚙️ [7/7] Testing Settings/Communication...');
-      await page.goto(`${BASE_URL}/admin/lms-dashboard.html`);
+      console.log('📚 [6/7] Testing Courses Page...');
+      await page.click('text=Courses');
       await page.waitForTimeout(PAGE_LOAD_DELAY);
+      await page.waitForLoadState('networkidle');
+      console.log('   ✅ Courses page loaded');
+      await page.waitForTimeout(ACTION_DELAY);
 
-      // Check sidebar for settings
-      const settingsExists = await page.$('text=Settings').catch(() => null);
-      if (settingsExists) {
-        console.log('   ✅ Settings section available');
-      } else {
-        console.log('   ⚠️ Settings section not visible');
-      }
+      // ============================================================
+      // 7. TEST USERS PAGE
+      // ============================================================
+      console.log('👥 [7/7] Testing Users Page...');
+      await page.click('text=Users');
+      await page.waitForTimeout(PAGE_LOAD_DELAY);
+      await page.waitForLoadState('networkidle');
+      console.log('   ✅ Users page loaded');
       await page.waitForTimeout(ACTION_DELAY);
 
       // ============================================================
