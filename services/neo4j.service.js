@@ -4,31 +4,102 @@ const logger = require('../utils/logger');
 class Neo4jService {
   constructor() {
     this.driver = null;
+    // CORNER CASE FIX: Track connection state
+    this.connected = false;
+    this.reconnecting = false;
   }
 
   async initialize() {
+    // CORNER CASE FIX: Retry logic with exponential backoff
+    const MAX_RETRIES = 5;
+    let retries = 0;
+
+    while (retries < MAX_RETRIES) {
+      try {
+        // Use NEO4J_URI from environment (neo4j:7687 for Docker, localhost:7687 for local)
+        const uri = process.env.NEO4J_URI || 'bolt://localhost:7687';
+        const user = process.env.NEO4J_USER || 'neo4j';
+        const password = process.env.NEO4J_PASSWORD || 'password';
+
+        logger.info(`Connecting to Neo4j at: ${uri} (attempt ${retries + 1}/${MAX_RETRIES})`);
+
+        this.driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
+
+        // Test connection
+        const session = this.driver.session();
+        await session.run('RETURN 1');
+        await session.close();
+
+        // Setup database schema
+        await this.setupDatabase();
+
+        this.connected = true;
+        logger.info('Neo4j initialized successfully');
+        return;
+      } catch (error) {
+        retries++;
+        logger.warn(`Neo4j connection attempt ${retries}/${MAX_RETRIES} failed: ${error.message}`);
+
+        if (retries < MAX_RETRIES) {
+          // CORNER CASE FIX: Exponential backoff: 2s, 4s, 8s, 16s, 32s
+          const delay = 2000 * Math.pow(2, retries - 1);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          // CORNER CASE FIX: Don't throw - run in degraded mode
+          logger.error('Neo4j unavailable after all retries - running in degraded mode (graph features disabled)');
+          this.connected = false;
+          // Don't throw - allow app to start without Neo4j
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if Neo4j is connected
+   * CORNER CASE FIX: Allow checking connection state
+   */
+  isConnected() {
+    return this.connected;
+  }
+
+  /**
+   * Attempt to reconnect to Neo4j
+   * CORNER CASE FIX: Auto-recovery from connection loss
+   */
+  async reconnect() {
+    if (this.reconnecting) {
+      logger.info('Neo4j reconnection already in progress');
+      return false;
+    }
+
+    this.reconnecting = true;
+    logger.info('Attempting to reconnect to Neo4j...');
+
     try {
-      // Use NEO4J_URI from environment (neo4j:7687 for Docker, localhost:7687 for local)
+      if (this.driver) {
+        await this.driver.close();
+      }
+
       const uri = process.env.NEO4J_URI || 'bolt://localhost:7687';
       const user = process.env.NEO4J_USER || 'neo4j';
       const password = process.env.NEO4J_PASSWORD || 'password';
 
-      logger.info(`Connecting to Neo4j at: ${uri}`);
-
       this.driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
-      
+
       // Test connection
       const session = this.driver.session();
       await session.run('RETURN 1');
       await session.close();
 
-      // Setup database schema
-      await this.setupDatabase();
-
-      logger.info('Neo4j initialized successfully');
+      this.connected = true;
+      logger.info('Neo4j reconnected successfully');
+      return true;
     } catch (error) {
-      logger.error('Neo4j initialization failed:', error);
-      throw error;
+      logger.error('Neo4j reconnection failed:', error.message);
+      this.connected = false;
+      return false;
+    } finally {
+      this.reconnecting = false;
     }
   }
 
@@ -907,9 +978,49 @@ class Neo4jService {
     }
   }
 
+  /**
+   * Safe query wrapper with graceful degradation
+   * CORNER CASE FIX: Returns default value instead of crashing when Neo4j is down
+   * @param {Function} queryFn - Function that executes a Neo4j query
+   * @param {any} defaultValue - Default value to return on error
+   * @param {string} operationName - Name of the operation for logging
+   * @returns {Promise<any>} Query result or default value
+   */
+  async safeQuery(queryFn, defaultValue, operationName = 'Neo4j query') {
+    // CORNER CASE FIX: Check if connected first
+    if (!this.isConnected()) {
+      logger.warn(`Neo4j not connected - ${operationName} returning default value`);
+
+      // CORNER CASE FIX: Try to reconnect in background
+      const reconnected = await this.reconnect();
+      if (!reconnected) {
+        logger.warn(`${operationName} failed: Neo4j unavailable`);
+        return defaultValue;
+      }
+    }
+
+    try {
+      return await queryFn();
+    } catch (error) {
+      logger.error(`${operationName} failed:`, error.message);
+
+      // CORNER CASE FIX: Check if connection lost (ServiceUnavailable error)
+      if (error.code === 'ServiceUnavailable' || error.message.includes('Connection')) {
+        logger.error('Neo4j connection lost - attempting reconnect');
+        this.connected = false;
+        await this.reconnect();
+      }
+
+      // CORNER CASE FIX: Return default value instead of throwing
+      logger.warn(`Returning default value for ${operationName}`);
+      return defaultValue;
+    }
+  }
+
   async close() {
     if (this.driver) {
       await this.driver.close();
+      this.connected = false;
       logger.info('Neo4j connection closed');
     }
   }

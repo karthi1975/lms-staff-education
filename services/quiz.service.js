@@ -157,13 +157,66 @@ class QuizService {
 
   /**
    * Grade quiz answers
+   * CORNER CASE FIX: Validate answer format to prevent crashes
    */
   async gradeQuiz(moduleId, answers, questions) {
+    // CORNER CASE FIX: Validate inputs
+    if (!Array.isArray(answers)) {
+      throw new Error('Invalid answers format: answers must be an array');
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      throw new Error('Invalid questions format: questions must be a non-empty array');
+    }
+
+    // CORNER CASE FIX: Validate answer count matches question count
+    if (answers.length !== questions.length) {
+      throw new Error(
+        `Answer count mismatch: expected ${questions.length} answers, got ${answers.length}. ` +
+        `Please answer all questions.`
+      );
+    }
+
     const results = [];
     let correctCount = 0;
+    const invalidAnswers = [];
 
     questions.forEach((question, index) => {
-      const userAnswer = answers[index];
+      const rawAnswer = answers[index];
+
+      // CORNER CASE FIX: Validate each answer is provided and valid
+      if (rawAnswer === null || rawAnswer === undefined || rawAnswer === '') {
+        invalidAnswers.push(`Question ${index + 1}: No answer provided`);
+        results.push({
+          questionId: question.id,
+          question: question.question,
+          userAnswer: 'NO ANSWER',
+          correctAnswer: question.correctAnswer,
+          isCorrect: false,
+          explanation: question.explanation || ''
+        });
+        return;
+      }
+
+      // CORNER CASE FIX: Normalize answer (trim, uppercase)
+      const userAnswer = String(rawAnswer).trim().toUpperCase();
+
+      // CORNER CASE FIX: Validate answer is A, B, C, or D
+      if (!['A', 'B', 'C', 'D'].includes(userAnswer)) {
+        invalidAnswers.push(
+          `Question ${index + 1}: Invalid answer "${rawAnswer}". Must be A, B, C, or D.`
+        );
+        results.push({
+          questionId: question.id,
+          question: question.question,
+          userAnswer: rawAnswer,
+          correctAnswer: question.correctAnswer,
+          isCorrect: false,
+          explanation: question.explanation || ''
+        });
+        return;
+      }
+
       let isCorrect = false;
 
       // Check answer based on question type
@@ -191,9 +244,14 @@ class QuizService {
       });
     });
 
+    // CORNER CASE FIX: Log validation warnings
+    if (invalidAnswers.length > 0) {
+      logger.warn(`Quiz validation warnings:\n${invalidAnswers.join('\n')}`);
+    }
+
     const score = correctCount;
     const totalQuestions = questions.length;
-    const percentage = correctCount / totalQuestions;
+    const percentage = totalQuestions > 0 ? correctCount / totalQuestions : 0;
     const passed = percentage >= this.QUIZ_PASS_THRESHOLD;
 
     return {
@@ -201,7 +259,8 @@ class QuizService {
       totalQuestions,
       percentage,
       passed,
-      results
+      results,
+      validationWarnings: invalidAnswers.length > 0 ? invalidAnswers : undefined
     };
   }
 

@@ -12,6 +12,25 @@ const UserService = require('../services/auth/user.service');
 const { authenticateToken, optionalAuth } = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
+// CORNER CASE FIX: Rate limiting for batch queries
+// Track query counts per user per time window
+const queryLimiter = new Map(); // userId -> { count, resetTime }
+const QUERY_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const MAX_QUERIES_PER_WINDOW = 50; // Max 50 total queries per 15 min
+
+// CORNER CASE FIX: Cleanup expired entries every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, data] of queryLimiter.entries()) {
+    if (now > data.resetTime) {
+      queryLimiter.delete(userId);
+    }
+  }
+  if (queryLimiter.size > 0) {
+    logger.info(`Rate limiter cleanup: ${queryLimiter.size} active limits`);
+  }
+}, 10 * 60 * 1000);
+
 /**
  * POST /api/rag/query
  * Process query with enhanced RAG (performance-optimized)
@@ -90,6 +109,7 @@ router.post('/rag/query', optionalAuth, async (req, res) => {
 /**
  * POST /api/rag/batch
  * Process multiple queries in batch (performance optimization)
+ * CORNER CASE FIX: Added rate limiting to prevent abuse
  */
 router.post('/rag/batch', authenticateToken, async (req, res) => {
   try {
@@ -110,6 +130,41 @@ router.post('/rag/batch', authenticateToken, async (req, res) => {
     }
 
     const userId = req.user.id;
+
+    // CORNER CASE FIX: Check total query count across all requests
+    const now = Date.now();
+    const userLimit = queryLimiter.get(userId);
+
+    if (!userLimit || now > userLimit.resetTime) {
+      // Reset counter
+      queryLimiter.set(userId, {
+        count: queries.length,
+        resetTime: now + QUERY_LIMIT_WINDOW
+      });
+    } else {
+      // Check if adding these queries would exceed limit
+      const newCount = userLimit.count + queries.length;
+
+      if (newCount > MAX_QUERIES_PER_WINDOW) {
+        const minutesRemaining = Math.ceil((userLimit.resetTime - now) / 60000);
+        return res.status(429).json({
+          success: false,
+          error: `Rate limit exceeded. You have made ${userLimit.count} queries. ` +
+                 `Maximum ${MAX_QUERIES_PER_WINDOW} queries per 15 minutes. ` +
+                 `Try again in ${minutesRemaining} minute(s).`,
+          retry_after_seconds: Math.ceil((userLimit.resetTime - now) / 1000),
+          current_count: userLimit.count,
+          limit: MAX_QUERIES_PER_WINDOW
+        });
+      }
+
+      // Update count
+      userLimit.count = newCount;
+      queryLimiter.set(userId, userLimit);
+    }
+
+    logger.info(`User ${userId}: ${userLimit.count || queries.length}/${MAX_QUERIES_PER_WINDOW} queries used`);
+
     const sessionId = session_id || (await SessionService.getOrCreateSession(`admin_${userId}`)).session_id;
 
     // Process queries in parallel

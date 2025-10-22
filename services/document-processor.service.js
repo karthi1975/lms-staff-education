@@ -64,24 +64,53 @@ class DocumentProcessorService {
   }
 
   /**
-   * Extract text from various file formats
+   * Extract text from various file formats with timeout protection
+   * CORNER CASE FIX: Prevents hangs on corrupted/complex files
    * @param {string} filePath - Path to file
    * @param {number} ocrPageLimit - Max pages for OCR (0=all pages, 5=fast classification, -1=skip OCR)
    */
   async extractText(filePath, ocrPageLimit = 0) {
+    // CORNER CASE FIX: Check file size first
+    const fileStats = fsSync.statSync(filePath);
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+    if (fileStats.size > MAX_FILE_SIZE) {
+      throw new Error(
+        `File too large: ${(fileStats.size / 1024 / 1024).toFixed(1)}MB. ` +
+        `Maximum allowed: ${MAX_FILE_SIZE / 1024 / 1024}MB`
+      );
+    }
+
     const fileContent = await fs.readFile(filePath);
 
     if (filePath.toLowerCase().endsWith('.pdf')) {
-      // Try standard text extraction first
-      const pdfData = await pdfParse(fileContent);
+      // CORNER CASE FIX: Try standard text extraction with timeout
+      const PDF_TIMEOUT = 30000; // 30 seconds
+      const pdfData = await this.withTimeout(
+        pdfParse(fileContent),
+        PDF_TIMEOUT,
+        'PDF parsing timeout - file may be corrupted or too complex'
+      );
       const text = pdfData.text;
 
       // Check if PDF is image-based (low text extraction)
       const fileStats = fsSync.statSync(filePath);
       const estimatedPages = Math.max(1, Math.floor(fileStats.size / (1024 * 50))); // ~50KB per page estimate
+      // CORNER CASE FIX: Validate extracted text
+      if (text.length < 100) {
+        logger.warn(`PDF extraction yielded minimal text (${text.length} chars) - may be image-based or corrupted`);
+      }
+
       const avgCharsPerPage = text.length / estimatedPages;
 
       logger.info(`PDF text extraction: ${text.length} chars, ${estimatedPages} pages (est), ${avgCharsPerPage.toFixed(0)} chars/page`);
+
+      // CORNER CASE FIX: Limit pages for OCR to prevent timeouts
+      const MAX_OCR_PAGES = 100;
+      if (estimatedPages > MAX_OCR_PAGES && ocrPageLimit === 0) {
+        logger.warn(`PDF has ${estimatedPages} pages - limiting OCR to ${MAX_OCR_PAGES} pages to prevent timeout`);
+        ocrPageLimit = MAX_OCR_PAGES;
+      }
 
       // If very low text per page, likely image-based PDF - use OCR (unless ocrPageLimit is -1)
       if (avgCharsPerPage < this.ocrThresholdCharsPerPage && ocrPageLimit !== -1) {
@@ -469,8 +498,21 @@ class DocumentProcessorService {
         concepts.push(term);
       }
     }
-    
+
     return concepts.slice(0, 10); // Limit to top 10 concepts
+  }
+
+  /**
+   * Timeout wrapper for async operations
+   * CORNER CASE FIX: Prevents indefinite hangs
+   */
+  async withTimeout(promise, timeoutMs, errorMessage) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+      )
+    ]);
   }
 
   /**

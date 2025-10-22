@@ -15,6 +15,62 @@ class WhatsAppHandlerService {
   constructor() {
     // User session state: phoneNumber -> { userId, currentModule, quizState, ... }
     this.userSessions = new Map();
+
+    // CORNER CASE FIX: Start session cleanup to prevent memory leak
+    this.startSessionCleanup();
+
+    // Message deduplication (prevent duplicate processing)
+    this.processedMessages = new Map(); // messageId -> timestamp
+  }
+
+  /**
+   * Clean up inactive sessions to prevent memory leak
+   * CORNER CASE FIX: TTL-based session cleanup
+   */
+  startSessionCleanup() {
+    const CLEANUP_INTERVAL = 60 * 60 * 1000;  // 1 hour
+    const SESSION_TTL = 24 * 60 * 60 * 1000;  // 24 hours
+    const MESSAGE_TTL = 60 * 60 * 1000;       // 1 hour for message dedup
+
+    setInterval(() => {
+      const now = Date.now();
+      let sessionsCleaned = 0;
+      let messagesCleaned = 0;
+
+      // Clean up old sessions
+      for (const [phone, session] of this.userSessions.entries()) {
+        const inactiveDuration = now - session.lastActivity.getTime();
+
+        if (inactiveDuration > SESSION_TTL) {
+          this.userSessions.delete(phone);
+          sessionsCleaned++;
+        }
+      }
+
+      // Clean up old processed messages
+      for (const [msgId, timestamp] of this.processedMessages.entries()) {
+        if (now - timestamp > MESSAGE_TTL) {
+          this.processedMessages.delete(msgId);
+          messagesCleaned++;
+        }
+      }
+
+      if (sessionsCleaned > 0 || messagesCleaned > 0) {
+        logger.info(`🧹 Cleanup: ${sessionsCleaned} sessions, ${messagesCleaned} message IDs removed`);
+        logger.info(`   Active sessions: ${this.userSessions.size}, Message cache: ${this.processedMessages.size}`);
+      }
+
+      // Alert if cache sizes are too large
+      if (this.userSessions.size > 10000) {
+        logger.warn(`⚠️  Session cache unusually large: ${this.userSessions.size} sessions`);
+      }
+      if (this.processedMessages.size > 5000) {
+        logger.warn(`⚠️  Message cache unusually large: ${this.processedMessages.size} messages`);
+      }
+
+    }, CLEANUP_INTERVAL);
+
+    logger.info('✅ Session cleanup started (24h TTL, 1h interval)');
   }
 
   /**
@@ -24,6 +80,15 @@ class WhatsAppHandlerService {
     const { from, messageBody, messageId, interactive } = messageData;
 
     try {
+      // CORNER CASE FIX: Check for duplicate messages
+      if (this.processedMessages.has(messageId)) {
+        logger.warn(`Duplicate message ignored: ${messageId} from ${from}`);
+        return; // Silently ignore duplicate
+      }
+
+      // Mark message as processed (with timestamp for TTL cleanup)
+      this.processedMessages.set(messageId, Date.now());
+
       // Mark as read
       await whatsappService.markAsRead(messageId);
 

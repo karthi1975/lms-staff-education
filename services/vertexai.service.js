@@ -18,10 +18,33 @@ class VertexAIService {
     // Use the OpenAI-compatible endpoint for Llama
     this.apiUrl = `https://${this.endpoint}/v1/projects/${this.projectId}/locations/${this.region}/endpoints/openapi/chat/completions`;
 
+    // CORNER CASE FIX: Token caching to prevent expiration
+    this.cachedToken = null;
+    this.tokenExpiry = null;
+
     logger.info(`Vertex AI Service initialized with quota project: ${this.quotaProject}`);
   }
 
-  async getAccessToken() {
+  async getAccessToken(forceRefresh = false) {
+    // CORNER CASE FIX: Check cached token first (55 min TTL, 5 min buffer)
+    if (!forceRefresh && this.cachedToken && this.tokenExpiry && this.tokenExpiry > Date.now()) {
+      logger.debug('Using cached Vertex AI token');
+      return this.cachedToken;
+    }
+
+    // Token expired or doesn't exist - fetch new one
+    logger.info('Fetching new Vertex AI access token...');
+    const token = await this.fetchAccessTokenInternal();
+
+    // Cache the token with 55-minute expiry (5 min buffer before actual 1h expiry)
+    this.cachedToken = token;
+    this.tokenExpiry = Date.now() + (55 * 60 * 1000); // 55 minutes
+    logger.info('✅ New token cached (55 min TTL)');
+
+    return token;
+  }
+
+  async fetchAccessTokenInternal() {
     try {
       const fs = require('fs');
       const os = require('os');
@@ -141,7 +164,7 @@ class VertexAIService {
     }
   }
 
-  async generateCompletion(messages, options = {}) {
+  async generateCompletion(messages, options = {}, retryOnAuth = true) {
     try {
       const accessToken = await this.getAccessToken();
 
@@ -176,6 +199,15 @@ class VertexAIService {
         throw new Error('Invalid response from Llama model');
       }
     } catch (error) {
+      // CORNER CASE FIX: Handle token expiration with automatic retry
+      if (error.response?.status === 401 && retryOnAuth) {
+        logger.warn('Token expired during request - refreshing and retrying...');
+        // Force token refresh
+        const newToken = await this.getAccessToken(true);
+        // Retry once with new token (retryOnAuth = false to prevent infinite loop)
+        return this.generateCompletion(messages, options, false);
+      }
+
       logger.error('Vertex AI request failed:', error.response?.data || error.message);
 
       // Check if this is a safety/content filtering block

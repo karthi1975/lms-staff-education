@@ -411,9 +411,59 @@ class MoodleOrchestratorService {
   async processContentQuery(userId, query, context) {
     try {
       const contextData = this.parseContextData(context);
+
+      // CRITICAL FIX: Check if user has a module assigned
+      if (!context.current_module_id) {
+        logger.warn(`User ${userId} has no module assigned (current_module_id is NULL)`);
+        return {
+          type: 'text',
+          text: '⚠️ No courses are currently available for you.\n\n' +
+                'This might mean:\n' +
+                '• Courses are still being set up\n' +
+                '• You haven\'t been assigned to a course yet\n\n' +
+                'Please contact your administrator to be assigned to a course.\n\n' +
+                'Type "help" for more information.'
+        };
+      }
+
       const moduleName = contextData.module_name || 'Entrepreneurship & Business Ideas';
       // Ensure moduleId is an integer (PostgreSQL may return numeric types)
       const moduleId = parseInt(context.current_module_id, 10);
+
+      // Additional safety check for NaN
+      if (isNaN(moduleId)) {
+        logger.error(`Invalid module ID for user ${userId}: ${context.current_module_id}`);
+        return {
+          type: 'text',
+          text: '⚠️ System error: Invalid module assignment.\n\n' +
+                'Please contact your administrator.\n\n' +
+                'Error code: INVALID_MODULE_ID'
+        };
+      }
+
+      // CRITICAL FIX: Validate module exists in database
+      const moduleExists = await this.checkModuleExists(moduleId);
+      if (!moduleExists) {
+        logger.warn(`User ${userId} assigned to deleted/non-existent module ${moduleId}`);
+
+        // Try to reset to first available module
+        const newModuleId = await this.resetUserToFirstModule(userId);
+
+        if (newModuleId) {
+          return {
+            type: 'text',
+            text: '⚠️ Your assigned module was updated.\n\n' +
+                  'Starting from the first available module...\n\n' +
+                  'Please send your question again or type "help" for available commands.'
+          };
+        } else {
+          return {
+            type: 'text',
+            text: '⚠️ No courses are currently available.\n\n' +
+                  'Please contact your administrator.'
+          };
+        }
+      }
 
       logger.info(`RAG+GraphDB query: "${query}" for module ID: ${moduleId}, name: ${moduleName}`);
 
@@ -625,6 +675,20 @@ class MoodleOrchestratorService {
         quiz_questions: selectedQuestions.map(q => q.id)
       })
     });
+
+    // ✅ Update progress when quiz starts (90% - ready for final assessment)
+    try {
+      await postgresService.query(`
+        UPDATE user_progress
+        SET progress_percentage = 90,
+            last_activity_at = NOW()
+        WHERE user_id = $1 AND module_id = $2
+      `, [userId, context.current_module_id]);
+
+      logger.info(`📝 Quiz started for user ${userId}, module ${context.current_module_id}: Progress set to 90%`);
+    } catch (progressError) {
+      logger.error(`Failed to update progress on quiz start:`, progressError);
+    }
 
     // Send first question
     const firstQ = selectedQuestions[0];
@@ -925,6 +989,23 @@ class MoodleOrchestratorService {
         logger.error('Failed to generate certificate:', certError);
         // Continue without certificate - don't fail the quiz completion
       }
+
+      // ✅ Mark module as completed when quiz is passed
+      try {
+        await postgresService.query(`
+          UPDATE user_progress
+          SET status = 'completed',
+              completed_at = NOW(),
+              progress_percentage = 100,
+              last_activity_at = NOW()
+          WHERE user_id = $1 AND module_id = $2
+        `, [userId, moduleId]);
+
+        logger.info(`✅ Module ${moduleId} marked as completed for user ${userId} (WhatsApp: ${whatsappPhone})`);
+      } catch (progressError) {
+        logger.error(`Failed to update module completion for user ${userId}, module ${moduleId}:`, progressError);
+        // Continue - don't fail quiz completion due to progress tracking error
+      }
     }
 
     // Reset conversation state
@@ -1094,6 +1175,7 @@ class MoodleOrchestratorService {
    */
   async trackLearningInteraction(userId, moduleId, question, response) {
     try {
+      // Track the interaction
       await postgresService.query(`
         INSERT INTO learning_interactions (
           user_id, moodle_module_id, interaction_type,
@@ -1101,6 +1183,26 @@ class MoodleOrchestratorService {
         )
         VALUES ($1, $2, 'question', $3, $4)
       `, [userId, moduleId, question, response]);
+
+      // ✅ Update progressive learning progress
+      // Each question increases progress by 8% (up to max 80% before quiz)
+      const progressResult = await postgresService.query(`
+        SELECT COUNT(*) as interaction_count
+        FROM learning_interactions
+        WHERE user_id = $1 AND moodle_module_id = $2
+      `, [userId, moduleId]);
+
+      const interactionCount = parseInt(progressResult.rows[0].interaction_count) || 0;
+      const progressPercentage = Math.min(interactionCount * 8, 80); // Max 80% before quiz
+
+      await postgresService.query(`
+        UPDATE user_progress
+        SET progress_percentage = $3,
+            last_activity_at = NOW()
+        WHERE user_id = $1 AND module_id = $2
+      `, [userId, moduleId, progressPercentage]);
+
+      logger.info(`📈 Progress updated for user ${userId}, module ${moduleId}: ${progressPercentage}% (${interactionCount} interactions)`);
     } catch (error) {
       logger.error('Failed to track interaction:', error);
     }
@@ -1115,6 +1217,78 @@ class MoodleOrchestratorService {
       [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+  }
+
+  /**
+   * Check if module exists and is active
+   * CORNER CASE FIX: Validate module before using
+   */
+  async checkModuleExists(moduleId) {
+    try {
+      const result = await postgresService.query(
+        'SELECT id FROM modules WHERE id = $1',
+        [moduleId]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error('Error checking module existence:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Reset user to first available module
+   * CORNER CASE FIX: Recover from deleted module assignment
+   */
+  async resetUserToFirstModule(userId) {
+    try {
+      // Get first available module
+      const moduleResult = await postgresService.query(`
+        SELECT m.id, m.title FROM modules m
+        JOIN courses c ON m.course_id = c.id
+        WHERE m.is_active = true AND c.is_active = true
+        ORDER BY c.sequence_order, m.sequence_order
+        LIMIT 1
+      `);
+
+      if (moduleResult.rows.length === 0) {
+        logger.error('No active modules available to assign');
+        return null;
+      }
+
+      const newModule = moduleResult.rows[0];
+      const newModuleId = newModule.id;
+
+      logger.info(`Resetting user ${userId} to module ${newModuleId} (${newModule.title})`);
+
+      // Update user's current module
+      await postgresService.query(
+        'UPDATE users SET current_module_id = $1, updated_at = NOW() WHERE id = $2',
+        [newModuleId, userId]
+      );
+
+      // Initialize progress for new module
+      await postgresService.query(
+        `INSERT INTO user_progress (user_id, module_id, status, progress_percentage, started_at, last_activity_at)
+         VALUES ($1, $2, 'not_started', 0, NOW(), NOW())
+         ON CONFLICT (user_id, module_id) DO UPDATE
+         SET last_activity_at = NOW()`,
+        [userId, newModuleId]
+      );
+
+      // Update conversation state
+      await this.updateConversationState(userId, {
+        current_module_id: newModuleId,
+        conversation_state: 'learning'
+      });
+
+      logger.info(`✅ Successfully reset user ${userId} to module ${newModuleId}`);
+      return newModuleId;
+
+    } catch (error) {
+      logger.error('Error resetting user module:', error);
+      return null;
+    }
   }
 }
 

@@ -7,43 +7,99 @@ class ChromaService {
   constructor() {
     this.client = null;
     this.collection = null;
+    this.connected = false;
+    this.reconnecting = false;
   }
 
   async initialize() {
-    try {
-      // Initialize ChromaDB client
-      // Use localhost for scripts running outside Docker, chromadb hostname for inside Docker
-      const chromaUrl = process.env.CHROMA_URL || 'http://localhost:8000';
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY_BASE = 2000; // 2 seconds base delay
+    let retries = 0;
 
-      logger.info(`Connecting to ChromaDB at: ${chromaUrl}`);
-
-      this.client = new ChromaClient({
-        path: chromaUrl
-      });
-
-      // Try to get existing collection first
+    while (retries < MAX_RETRIES) {
       try {
-        this.collection = await this.client.getCollection({
-          name: 'teachers_training'
-        });
-        logger.info('Using existing ChromaDB collection');
-      } catch (err) {
-        // Collection doesn't exist, create it
-        this.collection = await this.client.createCollection({
-          name: 'teachers_training',
-          metadata: {
-            description: 'Educational content for teachers training',
-            created_at: new Date().toISOString(),
-            embedding_dimension: 768
-          }
-        });
-        logger.info('Created new ChromaDB collection');
-      }
+        // Initialize ChromaDB client
+        // Use localhost for scripts running outside Docker, chromadb hostname for inside Docker
+        const chromaUrl = process.env.CHROMA_URL || 'http://localhost:8000';
 
-      logger.info('ChromaDB initialized successfully');
+        logger.info(`Connecting to ChromaDB at: ${chromaUrl} (attempt ${retries + 1}/${MAX_RETRIES})`);
+
+        this.client = new ChromaClient({
+          path: chromaUrl
+        });
+
+        // Try to get existing collection first
+        try {
+          this.collection = await this.client.getCollection({
+            name: 'teachers_training'
+          });
+          logger.info('✅ Using existing ChromaDB collection');
+        } catch (err) {
+          // Collection doesn't exist, create it
+          logger.info('Creating new ChromaDB collection...');
+          this.collection = await this.client.createCollection({
+            name: 'teachers_training',
+            metadata: {
+              description: 'Educational content for teachers training',
+              created_at: new Date().toISOString(),
+              embedding_dimension: 768
+            }
+          });
+          logger.info('✅ Created new ChromaDB collection');
+        }
+
+        this.connected = true;
+        logger.info('✅ ChromaDB initialized successfully');
+        return; // Success - exit retry loop
+
+      } catch (error) {
+        retries++;
+        logger.error(`ChromaDB connection attempt ${retries}/${MAX_RETRIES} failed:`, error.message);
+
+        if (retries < MAX_RETRIES) {
+          // Exponential backoff
+          const delay = RETRY_DELAY_BASE * Math.pow(2, retries - 1);
+          logger.info(`Retrying in ${delay / 1000} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          // Final failure - don't throw, run in degraded mode
+          logger.error('⚠️  ChromaDB unavailable after all retries - running in DEGRADED MODE');
+          logger.error('   RAG queries will fail gracefully without vector search');
+          this.connected = false;
+          // Don't throw - allow app to start
+          return;
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if ChromaDB is connected
+   */
+  isConnected() {
+    return this.connected && this.client && this.collection;
+  }
+
+  /**
+   * Attempt to reconnect to ChromaDB
+   */
+  async reconnect() {
+    if (this.reconnecting) {
+      logger.info('Reconnection already in progress...');
+      return;
+    }
+
+    this.reconnecting = true;
+    logger.info('Attempting to reconnect to ChromaDB...');
+
+    try {
+      await this.initialize();
+      this.reconnecting = false;
+      return this.connected;
     } catch (error) {
-      logger.error('ChromaDB initialization failed:', error);
-      throw error;
+      logger.error('Reconnection failed:', error.message);
+      this.reconnecting = false;
+      return false;
     }
   }
 
@@ -154,6 +210,17 @@ class ChromaService {
 
   async searchSimilar(query, options = {}) {
     try {
+      // Check if ChromaDB is connected
+      if (!this.isConnected()) {
+        logger.warn('ChromaDB not connected - attempting reconnection...');
+        const reconnected = await this.reconnect();
+
+        if (!reconnected) {
+          logger.error('ChromaDB unavailable - returning empty results');
+          return [];
+        }
+      }
+
       const { nResults = 5, module = null, module_id = null } = options;
       const queryEmbedding = await this.generateEmbedding(query);
 

@@ -109,13 +109,23 @@ class EnrollmentService {
       const firstModuleResult = await postgresService.query(
         `SELECT m.id FROM modules m
          JOIN courses c ON m.course_id = c.id
+         WHERE m.is_active = true AND c.is_active = true
          ORDER BY c.sequence_order, m.sequence_order
          LIMIT 1`
       );
 
-      const firstModuleId = firstModuleResult.rows.length > 0
-        ? firstModuleResult.rows[0].id
-        : null;
+      // CORNER CASE FIX: Prevent enrollment if no modules exist
+      if (firstModuleResult.rows.length === 0) {
+        logger.error('Enrollment attempted with no modules available');
+        return {
+          success: false,
+          message: 'Cannot enroll user: No courses or modules are currently available.\n\n' +
+                   'Please create at least one course with modules before enrolling users.',
+          errorCode: 'NO_MODULES_AVAILABLE'
+        };
+      }
+
+      const firstModuleId = firstModuleResult.rows[0].id;
 
       // Create user record
       const result = await postgresService.query(
