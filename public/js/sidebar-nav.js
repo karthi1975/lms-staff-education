@@ -234,6 +234,12 @@ const sidebarStyles = `
     margin-left: 0;
   }
 
+  /* Fix container alignment when sidebar is present */
+  .lms-content-with-sidebar .container {
+    margin-left: 0;
+    margin-right: auto;
+  }
+
   /* Mobile Toggle Button - only visible when sidebar is collapsed */
   .mobile-sidebar-toggle {
     position: fixed;
