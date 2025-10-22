@@ -103,7 +103,7 @@ class ContentModerationService {
       },
 
       harassment: {
-        pattern: /\b(onea|udhalilishaji|vitisho|matusi|unyanyasaji)\b/i,
+        pattern: /(onea|udhalilishaji|vitisho|matusi|unyanyasaji)\b/i,
         severity: 'medium',
         messageEn: "I'm here to create a safe learning environment. Let's focus on your educational goals. What topic interests you?",
         messageSw: "Nipo hapa kuunda mazingira salama ya kujifunza. Hebu tuzungumze kuhusu malengo yako ya elimu. Ni mada gani inakuvutia?"
@@ -184,6 +184,32 @@ class ContentModerationService {
         }
       }
 
+      // 3.1. Check if this is a legitimate educational QUESTION (not a statement)
+      const isQuestion = /\b(how|what|why|when|where|can|could|should|do|does|is|are|vipi|nini|lini|wapi|je)\b/i.test(message) &&
+                        message.includes('?');
+
+      // 3.2. Check harassment patterns (ALWAYS block unless it's a question ABOUT harassment)
+      if (checkResult.allowed && this.harmfulPatterns.harassment) {
+        if (this.harmfulPatterns.harassment.pattern.test(message) && !isQuestion) {
+          checkResult.allowed = false;
+          checkResult.reason = 'harassment';
+          checkResult.severity = this.harmfulPatterns.harassment.severity;
+          checkResult.category = 'harassment';
+          checkResult.blockedMessage = this.harmfulPatterns.harassment.message;
+        }
+      }
+
+      // 3.3. Check sexual content patterns (ALWAYS block unless it's a question ABOUT sexual education)
+      if (checkResult.allowed && this.harmfulPatterns.sexual) {
+        if (this.harmfulPatterns.sexual.pattern.test(message) && !isQuestion) {
+          checkResult.allowed = false;
+          checkResult.reason = 'sexual';
+          checkResult.severity = this.harmfulPatterns.sexual.severity;
+          checkResult.category = 'sexual';
+          checkResult.blockedMessage = this.harmfulPatterns.sexual.message;
+        }
+      }
+
       // 3.5. Check Swahili harmful patterns (if language is Swahili or Swahili detected)
       if (checkResult.allowed) {
         const language = context.language || 'english';
@@ -213,10 +239,36 @@ class ContentModerationService {
               this.swahiliPatterns.aggression.messageEn;
           }
 
-          // Check other Swahili patterns (critical severity always blocks, others check educational context)
+          // Check Swahili harassment (ALWAYS block unless it's a question)
+          if (checkResult.allowed && this.swahiliPatterns.harassment && this.swahiliPatterns.harassment.pattern.test(message)) {
+            if (!isQuestion) {
+              checkResult.allowed = false;
+              checkResult.reason = 'harassment_swahili';
+              checkResult.severity = this.swahiliPatterns.harassment.severity;
+              checkResult.category = 'harassment';
+              checkResult.blockedMessage = useSwahiliResponse ?
+                this.swahiliPatterns.harassment.messageSw :
+                this.swahiliPatterns.harassment.messageEn;
+            }
+          }
+
+          // Check Swahili sexual content (ALWAYS block unless it's a question)
+          if (checkResult.allowed && this.swahiliPatterns.sexual && this.swahiliPatterns.sexual.pattern.test(message)) {
+            if (!isQuestion) {
+              checkResult.allowed = false;
+              checkResult.reason = 'sexual_swahili';
+              checkResult.severity = this.swahiliPatterns.sexual.severity;
+              checkResult.category = 'sexual';
+              checkResult.blockedMessage = useSwahiliResponse ?
+                this.swahiliPatterns.sexual.messageSw :
+                this.swahiliPatterns.sexual.messageEn;
+            }
+          }
+
+          // Check other Swahili patterns (violence, threats, suicide - critical severity always blocks, others check educational context)
           if (checkResult.allowed) {
             for (const [category, config] of Object.entries(this.swahiliPatterns)) {
-              if (category === 'profanity' || category === 'aggression') continue;
+              if (category === 'profanity' || category === 'aggression' || category === 'harassment' || category === 'sexual') continue;
 
               if (config.pattern.test(message)) {
                 const isEducationalContext = this.swahiliEducationalKeywords.some(keyword =>
@@ -242,8 +294,8 @@ class ContentModerationService {
       // 4. Check other harmful patterns with educational context consideration (skip if already blocked)
       if (checkResult.allowed) {
         for (const [category, config] of Object.entries(this.harmfulPatterns)) {
-          // Skip profanity_explicit and aggression as they're handled above
-          if (category === 'profanity_explicit' || category === 'aggression') {
+          // Skip profanity_explicit, aggression, harassment, and sexual as they're handled above
+          if (category === 'profanity_explicit' || category === 'aggression' || category === 'harassment' || category === 'sexual') {
             continue;
           }
 
