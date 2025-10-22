@@ -46,7 +46,7 @@ const sidebarStyles = `
     top: 0;
     width: 260px;
     height: 100vh;
-    background: #2c3e50;
+    background: #004D40;
     color: white;
     overflow-y: auto;
     overflow-x: hidden;
@@ -61,7 +61,7 @@ const sidebarStyles = `
   /* Sidebar Header */
   .lms-sidebar-header {
     padding: 25px 20px;
-    background: #1a252f;
+    background: #00352A;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     color: white;
     display: flex;
@@ -122,8 +122,8 @@ const sidebarStyles = `
   }
 
   .lms-nav-section-header.active {
-    background: rgba(52, 152, 219, 0.2);
-    border-left: 3px solid #3498db;
+    background: rgba(38, 166, 154, 0.2);
+    border-left: 3px solid #26A69A;
   }
 
   .nav-section-main {
@@ -246,7 +246,7 @@ const sidebarStyles = `
     left: 10px;
     top: 10px;
     z-index: 1001;
-    background: #2c3e50;
+    background: #004D40;
     color: white;
     border: none;
     width: 40px;
@@ -267,7 +267,7 @@ const sidebarStyles = `
   }
 
   .mobile-sidebar-toggle:hover {
-    background: #1a252f;
+    background: #00352A;
     transform: scale(1.05);
   }
 
@@ -297,16 +297,16 @@ const sidebarStyles = `
   }
 
   .lms-sidebar::-webkit-scrollbar-track {
-    background: #1a252f;
+    background: #00352A;
   }
 
   .lms-sidebar::-webkit-scrollbar-thumb {
-    background: #3498db;
+    background: #26A69A;
     border-radius: 3px;
   }
 
   .lms-sidebar::-webkit-scrollbar-thumb:hover {
-    background: #2980b9;
+    background: #4DB6AC;
   }
 </style>
 `;
