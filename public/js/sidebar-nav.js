@@ -509,8 +509,8 @@ function initializeSidebar() {
   }
 }
 
-// Auto-initialize if not login page
-if (!window.location.pathname.includes('login.html')) {
+// Auto-initialize if not login page or dashboard page (dashboard has its own sidebar)
+if (!window.location.pathname.includes('login.html') && !window.location.pathname.includes('dashboard.html')) {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeSidebar);
   } else {
