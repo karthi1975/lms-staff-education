@@ -1212,6 +1212,288 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
 });
 
 /**
+ * @route POST /api/admin/courses/:courseId/modules/:moduleId/quiz
+ * @desc Upload quiz questions for a module
+ * @access Admin
+ */
+router.post('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const { questions } = req.body;
+
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Questions array is required and must not be empty'
+      });
+    }
+
+    // Validate each question (expecting {question, options: {A, B, C, D}, correct_answer: 'A'/'B'/'C'/'D'})
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.question || !q.options || !q.correct_answer) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: Missing required fields (question, options, correct_answer)`
+        });
+      }
+      if (!q.options.A || !q.options.B || !q.options.C || !q.options.D) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: Must have options A, B, C, and D`
+        });
+      }
+      if (!['A', 'B', 'C', 'D'].includes(q.correct_answer)) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: correct_answer must be A, B, C, or D`
+        });
+      }
+    }
+
+    const postgresService = require('../services/database/postgres.service');
+
+    // Verify module exists
+    const moduleResult = await postgresService.pool.query(
+      'SELECT id FROM modules WHERE id = $1',
+      [moduleId]
+    );
+
+    if (moduleResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Module not found'
+      });
+    }
+
+    // Check if quiz already exists for this module
+    let quizResult = await postgresService.pool.query(
+      'SELECT id FROM quizzes WHERE module_id = $1',
+      [moduleId]
+    );
+
+    let quizId;
+
+    if (quizResult.rows.length > 0) {
+      // Update existing quiz
+      quizId = quizResult.rows[0].id;
+
+      // Delete existing questions
+      await postgresService.pool.query(
+        'DELETE FROM quiz_questions WHERE quiz_id = $1',
+        [quizId]
+      );
+
+      logger.info(`Updated quiz ${quizId} for module ${moduleId}`);
+    } else {
+      // Create new quiz
+      quizResult = await postgresService.pool.query(`
+        INSERT INTO quizzes (
+          module_id,
+          title,
+          description,
+          pass_threshold,
+          max_attempts,
+          time_limit_minutes,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        RETURNING id
+      `, [
+        moduleId,
+        'Module Quiz',
+        'Quiz for this module',
+        70, // 70% pass threshold
+        2,  // max 2 attempts
+        30  // 30 minutes time limit
+      ]);
+
+      quizId = quizResult.rows[0].id;
+      logger.info(`Created new quiz ${quizId} for module ${moduleId}`);
+    }
+
+    // Insert questions
+    const insertedQuestions = [];
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+
+      // Convert {A, B, C, D} format to array [A, B, C, D] for database
+      const optionsArray = [q.options.A, q.options.B, q.options.C, q.options.D];
+      const correctIndex = ['A', 'B', 'C', 'D'].indexOf(q.correct_answer);
+
+      const questionResult = await postgresService.pool.query(`
+        INSERT INTO quiz_questions (
+          quiz_id,
+          question_number,
+          question_text,
+          question_type,
+          options,
+          correct_answer,
+          points,
+          explanation,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        RETURNING *
+      `, [
+        quizId,
+        i + 1,
+        q.question,
+        'multiple_choice',
+        JSON.stringify(optionsArray),
+        correctIndex,
+        1, // 1 point per question
+        q.explanation || null
+      ]);
+
+      insertedQuestions.push(questionResult.rows[0]);
+    }
+
+    logger.info(`Inserted ${insertedQuestions.length} questions for quiz ${quizId}`);
+
+    res.json({
+      success: true,
+      message: 'Quiz uploaded successfully',
+      quiz: {
+        id: quizId,
+        module_id: moduleId,
+        questionCount: insertedQuestions.length
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error uploading quiz:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/courses/:courseId/modules/:moduleId/quiz
+ * @desc Get quiz questions for a module
+ * @access Admin
+ */
+router.get('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    // Get quiz for this module
+    const quizResult = await postgresService.pool.query(
+      'SELECT * FROM quizzes WHERE module_id = $1',
+      [moduleId]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        quiz: null,
+        message: 'No quiz found for this module'
+      });
+    }
+
+    const quiz = quizResult.rows[0];
+
+    // Get quiz questions
+    const questionsResult = await postgresService.pool.query(
+      'SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY question_number',
+      [quiz.id]
+    );
+
+    // Convert questions to frontend format {question, options: {A, B, C, D}, correct_answer: 'A'}
+    const formattedQuestions = questionsResult.rows.map(q => {
+      const optionsArray = JSON.parse(q.options);
+      const correctAnswer = ['A', 'B', 'C', 'D'][q.correct_answer];
+
+      return {
+        id: q.id,
+        question: q.question_text,
+        options: {
+          A: optionsArray[0],
+          B: optionsArray[1],
+          C: optionsArray[2],
+          D: optionsArray[3]
+        },
+        correct_answer: correctAnswer,
+        explanation: q.explanation
+      };
+    });
+
+    res.json({
+      success: true,
+      quiz: formattedQuestions,
+      quizInfo: {
+        id: quiz.id,
+        title: quiz.title,
+        pass_threshold: quiz.pass_threshold,
+        max_attempts: quiz.max_attempts,
+        time_limit_minutes: quiz.time_limit_minutes
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error getting quiz:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route DELETE /api/admin/courses/:courseId/modules/:moduleId/quiz
+ * @desc Delete quiz for a module
+ * @access Admin
+ */
+router.delete('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    // Get quiz for this module
+    const quizResult = await postgresService.pool.query(
+      'SELECT id FROM quizzes WHERE module_id = $1',
+      [moduleId]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No quiz found for this module'
+      });
+    }
+
+    const quizId = quizResult.rows[0].id;
+
+    // Delete quiz questions (will cascade due to foreign key)
+    await postgresService.pool.query(
+      'DELETE FROM quiz_questions WHERE quiz_id = $1',
+      [quizId]
+    );
+
+    // Delete quiz
+    await postgresService.pool.query(
+      'DELETE FROM quizzes WHERE id = $1',
+      [quizId]
+    );
+
+    logger.info(`Deleted quiz ${quizId} for module ${moduleId}`);
+
+    res.json({
+      success: true,
+      message: 'Quiz deleted successfully'
+    });
+
+  } catch (error) {
+    logger.error('Error deleting quiz:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route DELETE /api/admin/courses/:courseId
  * @desc Delete a course and all its related data
  * @access Admin
@@ -1641,6 +1923,9 @@ router.get('/courses/:courseId/modules', authMiddleware.authenticateToken, async
         m.is_active,
         m.created_at,
         (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count,
+        (SELECT COUNT(*) FROM quiz_questions qq
+         INNER JOIN quizzes q ON qq.quiz_id = q.id
+         WHERE q.module_id = m.id) as quiz_questions,
         NULL as duration
       FROM modules m
       WHERE m.course_id = $1

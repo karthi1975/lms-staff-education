@@ -443,6 +443,65 @@
             gap: 12px;
             font-size: 13px;
             color: #6b7280;
+            flex-wrap: wrap;
+        }
+
+        .quiz-status {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .quiz-status.has-quiz {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .quiz-status.no-quiz {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .module-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .btn-link {
+            background: none;
+            border: none;
+            color: #00897B;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px 0;
+            transition: color 0.2s;
+        }
+
+        .btn-link:hover {
+            color: #00695C;
+            text-decoration: underline;
+        }
+
+        .btn-link.btn-danger {
+            color: #dc2626;
+        }
+
+        .btn-link.btn-danger:hover {
+            color: #991b1b;
+        }
+
+        .btn-quiz {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .btn-quiz:hover {
+            background: #7c3aed;
+            transform: translateY(-1px);
         }
 
         /* Empty State */
@@ -539,6 +598,94 @@
             background: #d1d5db;
             cursor: not-allowed;
             transform: none;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: #111827;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input[type="file"] {
+            width: 100%;
         }
     </style>
 </head>
@@ -695,6 +842,56 @@
         </div>
     </div>
 
+    <!-- Quiz Upload Modal -->
+    <div id="quizModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>📝 Upload Quiz</h2>
+                <button class="modal-close" onclick="closeQuizModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Module: <span id="quizModuleName" style="font-weight: 600; color: #00897B;"></span></label>
+                </div>
+
+                <div class="form-group">
+                    <label for="quizFileInput">Upload Quiz JSON File</label>
+                    <input type="file" id="quizFileInput" accept=".json" style="display: block; width: 100%; padding: 10px; border: 2px dashed #00897B; border-radius: 8px; cursor: pointer;">
+                    <small style="color: #6b7280; display: block; margin-top: 8px;">
+                        Upload a JSON file containing quiz questions. Format: array of objects with question, options (A-D), and correct_answer.
+                    </small>
+                </div>
+
+                <div id="quizPreview" style="display: none; margin-top: 16px;">
+                    <h4 style="margin-bottom: 12px; color: #111827;">Quiz Preview</h4>
+                    <div id="quizPreviewContent" style="background: #f9fafb; padding: 16px; border-radius: 8px; max-height: 300px; overflow-y: auto;"></div>
+                </div>
+
+                <div id="quizError" style="display: none; margin-top: 16px; padding: 12px; background: #fee2e2; border-left: 4px solid #dc2626; border-radius: 8px; color: #991b1b;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeQuizModal()">Cancel</button>
+                <button id="uploadQuizBtn" class="btn btn-primary" onclick="submitQuiz()" disabled>Upload Quiz</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz View Modal -->
+    <div id="viewQuizModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>📝 Quiz Questions</h2>
+                <button class="modal-close" onclick="closeViewQuizModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="viewQuizContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeViewQuizModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = window.location.hostname === 'localhost'
             ? 'http://localhost:3000/api/admin'
@@ -804,14 +1001,26 @@
                 container.innerHTML = `
                     <div class="module-list">
                         ${modules.map(module => `
-                            <div class="module-card" onclick="viewModule(${module.id})">
+                            <div class="module-card">
                                 <div class="module-header">
                                     <div class="module-title">${module.module_number}. ${module.title}</div>
+                                    <button class="btn btn-quiz btn-sm" onclick="uploadQuiz(${module.id}, '${module.title}', event)">
+                                        📝 ${module.quiz_questions > 0 ? 'Update Quiz' : 'Upload Quiz'}
+                                    </button>
                                 </div>
                                 <div class="module-meta">
                                     <span>📝 ${module.content_count || 0} files</span>
                                     <span>⏱️ ${module.duration || 'N/A'}</span>
+                                    <span class="quiz-status ${module.quiz_questions > 0 ? 'has-quiz' : 'no-quiz'}">
+                                        ${module.quiz_questions > 0 ? `✅ ${module.quiz_questions} quiz questions` : '❌ No quiz'}
+                                    </span>
                                 </div>
+                                ${module.quiz_questions > 0 ? `
+                                <div class="module-actions">
+                                    <button class="btn-link" onclick="viewQuiz(${module.id}, event)">View Quiz</button>
+                                    <button class="btn-link btn-danger" onclick="deleteQuiz(${module.id}, event)">Delete Quiz</button>
+                                </div>
+                                ` : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -1225,6 +1434,215 @@
 
         function viewModule(moduleId) {
             window.location.href = `/admin/module-detail.html?id=${moduleId}`;
+        }
+
+        // Quiz Upload Functions
+        let currentModuleId = null;
+        let quizData = null;
+
+        function uploadQuiz(moduleId, moduleTitle, event) {
+            event.stopPropagation();
+            currentModuleId = moduleId;
+            document.getElementById('quizModuleName').textContent = moduleTitle;
+            document.getElementById('quizModal').style.display = 'flex';
+            document.getElementById('quizFileInput').value = '';
+            document.getElementById('quizPreview').style.display = 'none';
+            document.getElementById('quizError').style.display = 'none';
+            document.getElementById('uploadQuizBtn').disabled = true;
+            quizData = null;
+        }
+
+        function closeQuizModal() {
+            document.getElementById('quizModal').style.display = 'none';
+            currentModuleId = null;
+            quizData = null;
+        }
+
+        // Handle quiz file selection
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('quizFileInput');
+            if (fileInput) {
+                fileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const errorDiv = document.getElementById('quizError');
+                    const previewDiv = document.getElementById('quizPreview');
+                    const previewContent = document.getElementById('quizPreviewContent');
+                    const uploadBtn = document.getElementById('uploadQuizBtn');
+
+                    try {
+                        const text = await file.text();
+                        const data = JSON.parse(text);
+
+                        // Validate quiz structure
+                        if (!Array.isArray(data)) {
+                            throw new Error('Quiz must be an array of questions');
+                        }
+
+                        if (data.length === 0) {
+                            throw new Error('Quiz must contain at least one question');
+                        }
+
+                        // Validate each question
+                        data.forEach((q, index) => {
+                            if (!q.question || !q.options || !q.correct_answer) {
+                                throw new Error(`Question ${index + 1} is missing required fields (question, options, correct_answer)`);
+                            }
+                            if (!q.options.A || !q.options.B || !q.options.C || !q.options.D) {
+                                throw new Error(`Question ${index + 1} must have options A, B, C, and D`);
+                            }
+                            if (!['A', 'B', 'C', 'D'].includes(q.correct_answer)) {
+                                throw new Error(`Question ${index + 1} has invalid correct_answer (must be A, B, C, or D)`);
+                            }
+                        });
+
+                        // Show preview
+                        quizData = data;
+                        previewContent.innerHTML = `
+                            <div style="color: #065f46; margin-bottom: 12px;">
+                                ✅ Valid quiz file with ${data.length} questions
+                            </div>
+                            ${data.slice(0, 3).map((q, i) => `
+                                <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb;">
+                                    <div style="font-weight: 600; margin-bottom: 8px;">${i + 1}. ${q.question}</div>
+                                    <div style="font-size: 13px; color: #6b7280;">
+                                        A) ${q.options.A}<br>
+                                        B) ${q.options.B}<br>
+                                        C) ${q.options.C}<br>
+                                        D) ${q.options.D}<br>
+                                        <span style="color: #065f46; font-weight: 500;">Correct: ${q.correct_answer}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            ${data.length > 3 ? `<div style="color: #6b7280; font-size: 13px;">... and ${data.length - 3} more questions</div>` : ''}
+                        `;
+                        previewDiv.style.display = 'block';
+                        errorDiv.style.display = 'none';
+                        uploadBtn.disabled = false;
+                    } catch (error) {
+                        errorDiv.textContent = `Error: ${error.message}`;
+                        errorDiv.style.display = 'block';
+                        previewDiv.style.display = 'none';
+                        uploadBtn.disabled = true;
+                        quizData = null;
+                    }
+                });
+            }
+        });
+
+        async function submitQuiz() {
+            if (!quizData || !currentModuleId) return;
+
+            const uploadBtn = document.getElementById('uploadQuizBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+
+            try {
+                const response = await fetch(`${API_BASE}/courses/${courseId}/modules/${currentModuleId}/quiz`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ questions: quizData })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ Quiz uploaded successfully! ${quizData.length} questions added.`);
+                    closeQuizModal();
+                    await loadModules(); // Reload to show updated quiz status
+                } else {
+                    throw new Error(result.error || 'Failed to upload quiz');
+                }
+            } catch (error) {
+                alert(`❌ Error uploading quiz: ${error.message}`);
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Quiz';
+            }
+        }
+
+        async function viewQuiz(moduleId, event) {
+            event.stopPropagation();
+
+            try {
+                const response = await fetch(`${API_BASE}/courses/${courseId}/modules/${moduleId}/quiz`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.quiz) {
+                    const content = document.getElementById('viewQuizContent');
+                    content.innerHTML = `
+                        <div style="margin-bottom: 16px; padding: 12px; background: #d1fae5; border-radius: 8px; color: #065f46;">
+                            📝 Total Questions: ${result.quiz.length}
+                        </div>
+                        ${result.quiz.map((q, i) => `
+                            <div style="margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 8px;">
+                                <div style="font-weight: 600; font-size: 16px; margin-bottom: 12px; color: #111827;">
+                                    ${i + 1}. ${q.question}
+                                </div>
+                                <div style="font-size: 14px; color: #4b5563; line-height: 1.8;">
+                                    <div style="padding: 8px; ${q.correct_answer === 'A' ? 'background: #d1fae5; border-radius: 6px; font-weight: 500;' : ''}">
+                                        A) ${q.options.A} ${q.correct_answer === 'A' ? '✅' : ''}
+                                    </div>
+                                    <div style="padding: 8px; ${q.correct_answer === 'B' ? 'background: #d1fae5; border-radius: 6px; font-weight: 500;' : ''}">
+                                        B) ${q.options.B} ${q.correct_answer === 'B' ? '✅' : ''}
+                                    </div>
+                                    <div style="padding: 8px; ${q.correct_answer === 'C' ? 'background: #d1fae5; border-radius: 6px; font-weight: 500;' : ''}">
+                                        C) ${q.options.C} ${q.correct_answer === 'C' ? '✅' : ''}
+                                    </div>
+                                    <div style="padding: 8px; ${q.correct_answer === 'D' ? 'background: #d1fae5; border-radius: 6px; font-weight: 500;' : ''}">
+                                        D) ${q.options.D} ${q.correct_answer === 'D' ? '✅' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    `;
+                    document.getElementById('viewQuizModal').style.display = 'flex';
+                } else {
+                    alert('❌ No quiz found for this module');
+                }
+            } catch (error) {
+                alert(`❌ Error loading quiz: ${error.message}`);
+            }
+        }
+
+        function closeViewQuizModal() {
+            document.getElementById('viewQuizModal').style.display = 'none';
+        }
+
+        async function deleteQuiz(moduleId, event) {
+            event.stopPropagation();
+
+            if (!confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/courses/${courseId}/modules/${moduleId}/quiz`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Quiz deleted successfully');
+                    await loadModules(); // Reload to show updated status
+                } else {
+                    throw new Error(result.error || 'Failed to delete quiz');
+                }
+            } catch (error) {
+                alert(`❌ Error deleting quiz: ${error.message}`);
+            }
         }
     </script>
 
