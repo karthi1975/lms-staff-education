@@ -25,6 +25,10 @@ const postgresService = require('./services/database/postgres.service');
 const chatHistoryService = require('./services/chat-history.service');
 const contentModerationService = require('./services/content-moderation.service');
 
+// Security Services - Prompt Injection Prevention
+const promptInjectionGuard = require('./services/prompt-injection-guard.service');
+const responseValidator = require('./services/response-validator.service');
+
 // New Routes (will be added below)
 const authRoutes = require('./routes/auth.routes');
 const enhancedRAGRoutes = require('./routes/enhanced-rag.routes');
@@ -561,6 +565,35 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
+    // LAYER 2: Prompt Injection Detection (Security Enhancement)
+    const injectionCheck = promptInjectionGuard.detectInjection(message);
+
+    if (injectionCheck.detected) {
+      logger.warn(`🚨 Prompt injection attempt detected from user ${user_id}: ${injectionCheck.pattern}`);
+
+      // Log to database
+      await promptInjectionGuard.logInjectionAttempt(
+        user_id,
+        req.body.phone,
+        message,
+        injectionCheck
+      );
+
+      return res.status(200).json({
+        success: true,
+        response: injectionCheck.message,
+        moderation: {
+          blocked: true,
+          reason: 'prompt_injection',
+          severity: injectionCheck.severity,
+          pattern: injectionCheck.pattern
+        }
+      });
+    }
+
+    // LAYER 3: Sanitize input (defense in depth)
+    const sanitizedMessage = promptInjectionGuard.sanitizeInput(message);
+
     // Get or create chat session for context memory
     let session = null;
     let conversationHistory = '';
@@ -580,7 +613,8 @@ app.post('/api/chat', async (req, res) => {
     // If useContext is true, search for relevant documents
     if (useContext) {
       // 1. Search for relevant content in ChromaDB (Vector/RAG) - first try with module filter
-      let searchResults = await chromaService.searchSimilar(message, {
+      // Use sanitizedMessage to prevent injection in vector search
+      let searchResults = await chromaService.searchSimilar(sanitizedMessage, {
         module_id: module_id || undefined,
         nResults: 3
       });
@@ -588,7 +622,7 @@ app.post('/api/chat', async (req, res) => {
       // 1.5: If no results in current module, search across ALL content (like WhatsApp webhook)
       if ((!searchResults || searchResults.length === 0) && module_id) {
         logger.info(`No results in module ${module_id}, searching across all content...`);
-        searchResults = await chromaService.searchSimilar(message, {
+        searchResults = await chromaService.searchSimilar(sanitizedMessage, {
           nResults: 3  // No module filter - search everything
         });
         crossModuleSearch = true;
@@ -677,10 +711,10 @@ app.post('/api/chat', async (req, res) => {
       : context || 'No specific context available.';
 
     // Generate response using Vertex AI with language support
-    let response;
+    let aiResponseRaw;
     try {
-      response = await vertexAIService.generateEducationalResponse(
-        message,
+      aiResponseRaw = await vertexAIService.generateEducationalResponse(
+        sanitizedMessage,  // Use sanitized message
         fullContext,
         language
       );
@@ -689,11 +723,28 @@ app.post('/api/chat', async (req, res) => {
 
       // Fallback response when Vertex AI is not available
       if (contextDocuments.length > 0) {
-        response = `Based on the uploaded content, here's what I found:\n\n${context.substring(0, 500)}...\n\n(Note: Full AI responses require Google Cloud setup. Please upload content first or configure Vertex AI credentials.)`;
+        aiResponseRaw = `Based on the uploaded content, here's what I found:\n\n${context.substring(0, 500)}...\n\n(Note: Full AI responses require Google Cloud setup. Please upload content first or configure Vertex AI credentials.)`;
       } else {
-        response = `Hello! I can help answer questions about "${module || 'your course'}" once you upload some content files (PDF, DOCX, or TXT).\n\nTo get started:\n1. Click "Upload Content" button\n2. Select a file about your course topic\n3. After upload, ask me questions!\n\n(Note: Full AI chat requires content to be uploaded first and Google Cloud Vertex AI credentials to be configured.)`;
+        aiResponseRaw = `Hello! I can help answer questions about "${module || 'your course'}" once you upload some content files (PDF, DOCX, or TXT).\n\nTo get started:\n1. Click "Upload Content" button\n2. Select a file about your course topic\n3. After upload, ask me questions!\n\n(Note: Full AI chat requires content to be uploaded first and Google Cloud Vertex AI credentials to be configured.)`;
       }
     }
+
+    // LAYER 4: Validate AI response before sending to user (Security Enhancement)
+    const validationResult = responseValidator.validateResponse(aiResponseRaw, {
+      module_id,
+      user_id
+    });
+
+    if (validationResult.blocked) {
+      logger.error(`🚫 AI response blocked by validator: ${validationResult.reason}`);
+      // Use safe fallback response instead
+      aiResponseRaw = validationResult.safeResponse;
+    } else if (validationResult.warnings && validationResult.warnings.length > 0) {
+      logger.warn('AI response has warnings:', validationResult.warnings);
+    }
+
+    // Use validated response
+    let response = aiResponseRaw;
 
     // Add source citations to response if we have sources
     if (contextDocuments.length > 0) {
@@ -719,12 +770,12 @@ app.post('/api/chat', async (req, res) => {
     // Save messages to chat history
     if (session) {
       try {
-        // Save user message
+        // Save user message (use sanitized version for safety)
         await chatHistoryService.saveMessage(
           session.id,
           user_id,
           'user',
-          message,
+          sanitizedMessage,
           module_id,
           [],
           { language }

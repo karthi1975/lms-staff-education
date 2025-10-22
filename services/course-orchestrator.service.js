@@ -11,6 +11,8 @@ const giftParserService = require('./gift-parser.service');
 const postgresService = require('./database/postgres.service');
 const moodleSyncService = require('./moodle-sync.service');
 const contentModerationService = require('./content-moderation.service');
+const promptInjectionGuard = require('./prompt-injection-guard.service');
+const responseValidator = require('./response-validator.service');
 const logger = require('../utils/logger');
 const path = require('path');
 
@@ -103,7 +105,7 @@ class MoodleOrchestratorService {
         await this.initialize();
       }
 
-      // Check message for harmful content BEFORE processing
+      // LAYER 1: Check message for harmful content BEFORE processing
       const moderationCheck = await contentModerationService.checkMessage(message, {
         user_id: userId,
         phone: whatsappPhone
@@ -114,10 +116,30 @@ class MoodleOrchestratorService {
         return { text: moderationCheck.blockedMessage };
       }
 
+      // LAYER 2: Prompt Injection Detection (Security Enhancement)
+      const injectionCheck = promptInjectionGuard.detectInjection(message);
+
+      if (injectionCheck.detected) {
+        logger.warn(`🚨 WhatsApp injection attempt from user ${userId}: ${injectionCheck.pattern}`);
+
+        // Log to database
+        await promptInjectionGuard.logInjectionAttempt(
+          userId,
+          whatsappPhone,
+          message,
+          injectionCheck
+        );
+
+        return { text: injectionCheck.message };
+      }
+
+      // LAYER 3: Sanitize input (defense in depth)
+      const sanitizedMessage = promptInjectionGuard.sanitizeInput(message);
+
       // Get conversation context
       const context = await this.getConversationContext(userId, whatsappPhone);
 
-      const lowerMsg = message.toLowerCase().trim();
+      const lowerMsg = sanitizedMessage.toLowerCase().trim();
 
       // **STRICT FLOW ENFORCEMENT**: Check for fresh start/greeting in ANY state
       // This allows users to restart flow from anywhere
@@ -137,22 +159,22 @@ class MoodleOrchestratorService {
         return this.showCourseSelection();
       }
 
-      // Route based on conversation state
+      // Route based on conversation state (use sanitized message)
       switch (context.conversation_state) {
         case 'idle':
-          return await this.handleIdleState(userId, message, context);
+          return await this.handleIdleState(userId, sanitizedMessage, context);
 
         case 'course_selection':
-          return await this.handleCourseSelection(userId, message, context);
+          return await this.handleCourseSelection(userId, sanitizedMessage, context);
 
         case 'module_selection':
-          return await this.handleModuleSelection(userId, message, context);
+          return await this.handleModuleSelection(userId, sanitizedMessage, context);
 
         case 'learning':
-          return await this.handleLearningState(userId, message, context);
+          return await this.handleLearningState(userId, sanitizedMessage, context);
 
         case 'quiz_active':
-          return await this.handleQuizState(userId, message, context);
+          return await this.handleQuizState(userId, sanitizedMessage, context);
 
         default:
           return { text: "Something went wrong. Type 'start' to begin again." };
