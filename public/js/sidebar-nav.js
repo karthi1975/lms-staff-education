@@ -4,69 +4,35 @@
  * Reusable across all admin pages
  */
 
-// Navigation structure
+// Navigation structure - CLEAN 4-ITEM NAVIGATION
 const navigationMenu = [
   {
     id: 'dashboard',
-    icon: '🏠',
+    icon: '📊',
     label: 'Dashboard',
-    url: 'lms-dashboard.html', // Section link
-    items: [
-      { label: 'LMS Dashboard', url: 'lms-dashboard.html' },
-      { label: 'Overview', url: 'dashboard.html' }
-    ]
+    url: 'dashboard.html',
+    items: []
   },
   {
     id: 'courses',
     icon: '📚',
-    label: 'Course Management',
-    url: 'courses.html', // Section link - goes to All Courses
-    items: [
-      { label: 'All Courses', url: 'courses.html' },
-      { label: 'Course Details', url: 'course-detail.html' },
-      { label: 'Modules', url: 'modules.html' },
-      { label: 'Module Details', url: 'module-detail.html' }
-    ]
+    label: 'Courses',
+    url: 'courses.html',
+    items: []
   },
   {
     id: 'users',
     icon: '👥',
-    label: 'User Management',
-    url: 'users.html', // Section link
-    items: [
-      { label: 'WhatsApp Users', url: 'users.html' },
-      { label: 'User Progress', url: 'user-detail.html' },
-      { label: 'User Management', url: 'user-management.html' },
-      { label: 'Admin Users', url: 'admin-users.html' }
-    ]
+    label: 'Users',
+    url: 'users.html',
+    items: []
   },
   {
-    id: 'content',
-    icon: '📁',
-    label: 'Content',
-    url: 'quiz.html', // Section link
-    items: [
-      { label: 'Quiz Management', url: 'quiz.html' }
-    ]
-  },
-  {
-    id: 'communication',
+    id: 'ai-assistant',
     icon: '💬',
-    label: 'Communication',
-    url: 'chat.html', // Section link
-    items: [
-      { label: 'Chat Interface', url: 'chat.html' },
-      { label: 'Chat v2', url: 'chat-v2.html' }
-    ]
-  },
-  {
-    id: 'settings',
-    icon: '⚙️',
-    label: 'Settings',
-    url: 'moodle-settings.html', // Section link
-    items: [
-      { label: 'Moodle Settings', url: 'moodle-settings.html' }
-    ]
+    label: 'AI Assistant',
+    url: 'chat.html',
+    items: []
   }
 ];
 
@@ -341,7 +307,10 @@ function generateSidebarHTML() {
 
     <aside class="lms-sidebar" id="lmsSidebar">
       <div class="lms-sidebar-header">
-        <h2 class="lms-sidebar-title">Menu</h2>
+        <div style="flex: 1;">
+          <h2 class="lms-sidebar-title">📚 Teachers Training</h2>
+          <p style="font-size: 11px; margin: 2px 0 0 0; opacity: 0.9;">Learning Management System</p>
+        </div>
         <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse Sidebar">
           ◀
         </button>
@@ -351,33 +320,17 @@ function generateSidebarHTML() {
         <ul class="lms-nav-menu">
   `;
 
-  // Generate navigation sections
+  // Generate navigation sections - SIMPLIFIED FOR CLEAN NAV
   navigationMenu.forEach(section => {
     const sectionId = `nav-section-${section.id}`;
     html += `
       <li class="lms-nav-section" id="${sectionId}">
         <div class="lms-nav-section-header">
-          <a href="${section.url}" class="nav-section-main">
+          <a href="${section.url}" class="nav-section-main" style="flex: 1; padding-right: 20px;">
             <span class="nav-section-icon">${section.icon}</span>
             <span class="nav-section-label">${section.label}</span>
           </a>
-          <button class="nav-section-arrow-btn" onclick="toggleSection('${sectionId}'); event.stopPropagation();" title="Expand/Collapse">
-            ▼
-          </button>
         </div>
-        <ul class="lms-nav-submenu">
-    `;
-
-    section.items.forEach(item => {
-      html += `
-          <li class="lms-nav-submenu-item">
-            <a href="${item.url}" class="lms-nav-submenu-link">${item.label}</a>
-          </li>
-      `;
-    });
-
-    html += `
-        </ul>
       </li>
     `;
   });
