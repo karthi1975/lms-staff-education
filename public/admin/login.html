@@ -391,7 +391,7 @@
             .then(data => {
                 if (data.success) {
                     // Token is valid, redirect to LMS dashboard
-                    window.location.href = '/admin/lms-dashboard.html';
+                    window.location.href = '/admin/dashboard.html';
                 } else {
                     // Token invalid, remove it
                     localStorage.removeItem('adminToken');
@@ -439,7 +439,7 @@
 
                     // Redirect to LMS dashboard
                     setTimeout(() => {
-                        window.location.href = '/admin/lms-dashboard.html';
+                        window.location.href = '/admin/dashboard.html';
                     }, 1000);
                 } else {
                     // Show error
