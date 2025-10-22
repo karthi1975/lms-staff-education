@@ -43,16 +43,15 @@ const sidebarStyles = `
   .lms-sidebar {
     position: fixed;
     left: 0;
-    top: 70px; /* Below top navbar */
+    top: 0;
     width: 260px;
-    height: calc(100vh - 70px);
-    background: #fff;
-    border-right: 1px solid #e0e0e0;
-    box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+    height: 100vh;
+    background: #2c3e50;
+    color: white;
     overflow-y: auto;
     overflow-x: hidden;
-    z-index: 999;
-    transition: transform 0.3s ease;
+    z-index: 1000;
+    transition: all 0.3s ease;
   }
 
   .lms-sidebar.collapsed {
@@ -61,8 +60,9 @@ const sidebarStyles = `
 
   /* Sidebar Header */
   .lms-sidebar-header {
-    padding: 15px 20px;
-    background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
+    padding: 25px 20px;
+    background: #1a252f;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
     color: white;
     display: flex;
     align-items: center;
@@ -71,9 +71,9 @@ const sidebarStyles = `
   }
 
   .lms-sidebar-title {
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 600;
-    margin: 0;
+    margin: 0 0 5px 0;
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -99,55 +99,62 @@ const sidebarStyles = `
   /* Navigation Menu */
   .lms-nav-menu {
     list-style: none;
-    padding: 0;
+    padding: 20px 0;
     margin: 0;
   }
 
   .lms-nav-section {
-    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 0;
   }
 
   .lms-nav-section-header {
     display: flex;
     align-items: center;
-    background: #fff;
+    background: transparent;
     border: none;
     width: 100%;
     padding: 0;
-    transition: background 0.2s;
+    transition: all 0.3s ease;
   }
 
   .lms-nav-section-header:hover {
-    background: #f8f9fa;
+    background: rgba(255,255,255,0.1);
   }
 
   .lms-nav-section-header.active {
-    background: #e8f5f4;
+    background: rgba(52, 152, 219, 0.2);
+    border-left: 3px solid #3498db;
   }
 
   .nav-section-main {
     display: flex;
     align-items: center;
     flex: 1;
-    padding: 15px 10px 15px 20px;
+    padding: 12px 20px;
     text-decoration: none;
-    color: #3a3a3a;
-    font-size: 15px;
-    font-weight: 500;
+    color: #ecf0f1;
+    font-size: 14px;
+    font-weight: 400;
     cursor: pointer;
-    transition: color 0.2s;
+    transition: all 0.3s ease;
   }
 
   .nav-section-main:hover {
-    color: #00897B;
+    color: #ecf0f1;
   }
 
   .lms-nav-section-header.active .nav-section-main {
-    color: #00897B;
+    color: #ecf0f1;
+    padding-left: 17px;
+  }
+
+  .lms-nav-section-header:hover .nav-section-main {
+    padding-left: 17px;
   }
 
   .nav-section-icon {
-    font-size: 20px;
+    width: 20px;
+    font-size: 18px;
     margin-right: 12px;
   }
 
@@ -231,9 +238,9 @@ const sidebarStyles = `
   .mobile-sidebar-toggle {
     position: fixed;
     left: 10px;
-    top: 80px;
-    z-index: 1000;
-    background: #00897B;
+    top: 10px;
+    z-index: 1001;
+    background: #2c3e50;
     color: white;
     border: none;
     width: 40px;
@@ -241,11 +248,11 @@ const sidebarStyles = `
     border-radius: 50%;
     font-size: 20px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     display: none; /* Hidden by default when sidebar is open */
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
   }
 
   /* Show button when sidebar is collapsed */
@@ -254,7 +261,7 @@ const sidebarStyles = `
   }
 
   .mobile-sidebar-toggle:hover {
-    background: #00695C;
+    background: #1a252f;
     transform: scale(1.05);
   }
 
@@ -284,16 +291,16 @@ const sidebarStyles = `
   }
 
   .lms-sidebar::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: #1a252f;
   }
 
   .lms-sidebar::-webkit-scrollbar-thumb {
-    background: #00897B;
+    background: #3498db;
     border-radius: 3px;
   }
 
   .lms-sidebar::-webkit-scrollbar-thumb:hover {
-    background: #00695C;
+    background: #2980b9;
   }
 </style>
 `;
@@ -309,7 +316,7 @@ function generateSidebarHTML() {
       <div class="lms-sidebar-header">
         <div style="flex: 1;">
           <h2 class="lms-sidebar-title">📚 Teachers Training</h2>
-          <p style="font-size: 11px; margin: 2px 0 0 0; opacity: 0.9;">Learning Management System</p>
+          <p style="font-size: 12px; margin: 5px 0 0 0; color: #95a5a6;">Learning Management System</p>
         </div>
         <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse Sidebar">
           ◀
