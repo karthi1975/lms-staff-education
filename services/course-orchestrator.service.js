@@ -796,7 +796,7 @@ class MoodleOrchestratorService {
 
     // Get all questions from database
     const questionsResult = await postgresService.query(`
-      SELECT id, question_text, question_type, options, correct_answer, moodle_question_id
+      SELECT id, question_text, question_type, options, correct_answer, explanation
       FROM quiz_questions
       WHERE id = ANY($1::int[])
       ORDER BY ARRAY_POSITION($1::int[], id)
@@ -808,7 +808,7 @@ class MoodleOrchestratorService {
       questionType: q.question_type,
       options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
       correctAnswer: q.correct_answer,
-      moodleQuestionId: q.moodle_question_id
+      explanation: q.explanation
     }));
 
     const currentQuestion = quizQuestions[currentIndex];
