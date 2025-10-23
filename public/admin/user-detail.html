@@ -227,9 +227,21 @@
     }
 
     .quiz-score {
-      font-size: 24px;
-      font-weight: bold;
-      color: #00897B;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 12px;
+      display: inline-block;
+    }
+
+    .quiz-score.passed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .quiz-score.failed {
+      background: #fee2e2;
+      color: #991b1b;
     }
 
     .loading {
@@ -382,8 +394,8 @@
         // Display user info
         displayUserInfo(user);
 
-        // Fetch user progress
-        const progressResponse = await fetch(`/api/admin/users/${userId}/progress`, {
+        // Fetch detailed user progress with quiz data
+        const progressResponse = await fetch(`/api/admin/users/${userId}/progress-detailed`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -391,7 +403,7 @@
 
         if (progressResponse.ok) {
           const progressData = await progressResponse.json();
-          displayModuleProgress(progressData.data || []);
+          displayModuleProgress(progressData.modules || [], progressData.stats);
         } else {
           document.getElementById('modulesList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No progress data available</p></div>';
         }
@@ -453,12 +465,12 @@
       `;
     }
 
-    function displayModuleProgress(modules) {
+    function displayModuleProgress(modules, stats) {
       if (modules.length === 0) {
         document.getElementById('modulesList').innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">📭</div>
-            <p>No modules started yet</p>
+            <p>No modules available</p>
           </div>
         `;
         document.getElementById('quizList').innerHTML = `
@@ -476,11 +488,12 @@
       modules.forEach(module => {
         const statusClass = module.status.replace('_', '-');
         const progressPercent = module.progress_percentage || 0;
+        const hasQuiz = module.quiz_questions_available > 0;
 
         modulesHTML += `
           <div class="module-card ${statusClass}">
             <div class="module-header">
-              <div class="module-title">${module.module_title}</div>
+              <div class="module-title">${module.module_number}. ${module.module_title}</div>
               <span class="status-badge ${statusClass}">${module.status.replace('_', ' ')}</span>
             </div>
 
@@ -495,38 +508,78 @@
               ${module.completed_at ? `<span>✅ Completed: ${new Date(module.completed_at).toLocaleDateString()}</span>` : ''}
             </div>
 
-            ${module.quizzes_passed > 0 ? `
+            ${hasQuiz ? `
               <div class="quiz-result">
-                <strong>Quiz Status:</strong>
-                <span class="quiz-score">✅ ${module.quizzes_passed} Passed</span>
+                <strong>Quiz:</strong>
+                ${module.quiz_taken ? `
+                  <span class="quiz-score ${module.quiz_passed ? 'passed' : 'failed'}">
+                    ${module.quiz_passed ? '✅ Passed' : '❌ Failed'}
+                    (${module.quiz_score}/${module.quiz_questions_available} - ${module.final_quiz_percentage ? module.final_quiz_percentage.toFixed(0) : 0}%)
+                  </span>
+                  <span style="font-size: 12px; color: #666;">Attempts: ${module.quiz_attempts_count}</span>
+                ` : `
+                  <span style="color: #999;">📝 ${module.quiz_questions_available} questions available</span>
+                `}
+              </div>
+            ` : ''}
+
+            ${module.status === 'completed' && module.completion_method ? `
+              <div style="font-size: 12px; color: #00897B; margin-top: 8px;">
+                ✓ Completed via ${module.completion_method.replace('_', ' ')}
               </div>
             ` : ''}
           </div>
         `;
+
+        // Build quiz performance list
+        if (module.quiz_taken) {
+          quizzesHTML += `
+            <div class="module-card ${module.quiz_passed ? 'completed' : 'in-progress'}">
+              <div class="module-header">
+                <div class="module-title">${module.module_number}. ${module.module_title}</div>
+                <span class="status-badge ${module.quiz_passed ? 'completed' : 'in-progress'}">
+                  ${module.quiz_passed ? 'Passed' : 'Failed'}
+                </span>
+              </div>
+              <div class="module-meta">
+                <span>📊 Score: ${module.quiz_score}/${module.quiz_questions_available}</span>
+                <span>📈 ${module.final_quiz_percentage ? module.final_quiz_percentage.toFixed(1) : 0}%</span>
+                <span>🔄 Attempts: ${module.quiz_attempts_count}</span>
+                ${module.time_to_complete_minutes ? `<span>⏱️ Time: ${Math.round(module.time_to_complete_minutes)} min</span>` : ''}
+              </div>
+            </div>
+          `;
+        }
       });
 
       document.getElementById('modulesList').innerHTML = modulesHTML;
 
-      // Show quiz summary
-      const totalQuizzes = modules.reduce((sum, m) => sum + (m.quizzes_passed || 0), 0);
-      if (totalQuizzes > 0) {
-        quizzesHTML = `
-          <div class="module-card completed">
-            <div class="module-header">
-              <div class="module-title">Overall Quiz Performance</div>
-              <span class="status-badge completed">${totalQuizzes} Passed</span>
+      // Show quiz performance or empty state
+      if (quizzesHTML) {
+        // Add overall stats if available
+        if (stats && stats.quizzes_taken > 0) {
+          const overallHTML = `
+            <div class="module-card completed" style="border: 2px solid #00897B; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+              <div class="module-header">
+                <div class="module-title">📊 Overall Quiz Performance</div>
+                <span class="status-badge completed">${stats.quizzes_passed}/${stats.quizzes_taken} Passed</span>
+              </div>
+              <div class="module-meta">
+                <span>✅ Pass Rate: ${stats.quizzes_taken > 0 ? ((stats.quizzes_passed / stats.quizzes_taken) * 100).toFixed(0) : 0}%</span>
+                <span>📊 Avg Score: ${stats.average_quiz_score ? stats.average_quiz_score.toFixed(1) : 'N/A'}</span>
+                <span>🎯 Quizzes Taken: ${stats.quizzes_taken}</span>
+              </div>
             </div>
-            <div class="module-meta">
-              <span>🎯 Total Quizzes Passed: ${totalQuizzes}</span>
-            </div>
-          </div>
-        `;
-        document.getElementById('quizList').innerHTML = quizzesHTML;
+          `;
+          document.getElementById('quizList').innerHTML = overallHTML + quizzesHTML;
+        } else {
+          document.getElementById('quizList').innerHTML = quizzesHTML;
+        }
       } else {
         document.getElementById('quizList').innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">🎯</div>
-            <p>No quizzes completed yet</p>
+            <p>No quizzes taken yet</p>
           </div>
         `;
       }

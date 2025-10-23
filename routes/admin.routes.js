@@ -1944,4 +1944,223 @@ router.get('/courses/:courseId/modules', authMiddleware.authenticateToken, async
   }
 });
 
+// ==================== USER PROGRESS & QUIZ COMPLETION TRACKING ====================
+
+/**
+ * @route GET /api/admin/users/:userId/progress-detailed
+ * @desc Get detailed user progress including quiz completion data
+ * @access Admin
+ */
+router.get('/users/:userId/progress-detailed', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Get user info
+    const userResult = await postgresService.pool.query(
+      'SELECT id, full_name, phone_number, created_at FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Get detailed progress using the view we created
+    const progressResult = await postgresService.pool.query(`
+      SELECT
+        module_id,
+        module_title,
+        module_number,
+        course_id,
+        course_title,
+        status,
+        progress_percentage,
+        started_at,
+        completed_at,
+        time_spent_minutes,
+        last_activity_at,
+        quiz_taken,
+        quiz_passed,
+        quiz_score,
+        quiz_attempts_count,
+        completion_method,
+        quiz_percentage as final_quiz_percentage,
+        time_to_complete_minutes,
+        quiz_questions_available
+      FROM user_module_progress_summary
+      WHERE user_id = $1
+      ORDER BY module_number
+    `, [userId]);
+
+    // Get overall stats
+    const statsResult = await postgresService.pool.query(
+      'SELECT * FROM get_user_completion_stats($1)',
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.full_name,
+        phone: user.phone_number,
+        enrolled_at: user.created_at
+      },
+      stats: statsResult.rows[0],
+      modules: progressResult.rows
+    });
+
+  } catch (error) {
+    logger.error('Error fetching detailed user progress:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/users/:userId/quiz-attempts/:moduleId
+ * @desc Get all quiz attempts for a user on a specific module
+ * @access Admin
+ */
+router.get('/users/:userId/quiz-attempts/:moduleId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId, moduleId } = req.params;
+
+    const attemptsResult = await postgresService.pool.query(`
+      SELECT
+        qa.id,
+        qa.attempt_number,
+        qa.score,
+        qa.total_questions,
+        qa.percentage,
+        qa.passed,
+        qa.time_taken_seconds,
+        qa.answers,
+        qa.attempted_at,
+        q.title as quiz_title,
+        q.pass_threshold
+      FROM quiz_attempts qa
+      LEFT JOIN quizzes q ON qa.quiz_id = q.id
+      WHERE qa.user_id = $1 AND qa.module_id = $2
+      ORDER BY qa.attempt_number DESC
+    `, [userId, moduleId]);
+
+    res.json({
+      success: true,
+      attempts: attemptsResult.rows
+    });
+
+  } catch (error) {
+    logger.error('Error fetching quiz attempts:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/completion-summary
+ * @desc Get completion summary for all users
+ * @access Admin
+ */
+router.get('/completion-summary', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    // Get summary for all users
+    const summaryResult = await postgresService.pool.query(`
+      SELECT
+        u.id as user_id,
+        u.full_name,
+        u.phone_number,
+        u.created_at as enrolled_at,
+        COUNT(DISTINCT m.id) as total_modules,
+        COUNT(DISTINCT CASE WHEN up.status = 'completed' THEN m.id END) as completed_modules,
+        COUNT(DISTINCT CASE WHEN up.status = 'in_progress' THEN m.id END) as in_progress_modules,
+        COUNT(DISTINCT CASE WHEN up.quiz_taken = TRUE THEN m.id END) as quizzes_taken,
+        COUNT(DISTINCT CASE WHEN up.quiz_passed = TRUE THEN m.id END) as quizzes_passed,
+        ROUND(AVG(CASE WHEN up.quiz_passed = TRUE THEN up.quiz_score END), 1) as avg_quiz_score,
+        ROUND(
+          (COUNT(DISTINCT CASE WHEN up.status = 'completed' THEN m.id END)::DECIMAL /
+           NULLIF(COUNT(DISTINCT m.id), 0) * 100), 1
+        ) as completion_percentage
+      FROM users u
+      CROSS JOIN modules m
+      LEFT JOIN user_progress up ON u.id = up.user_id AND m.id = up.module_id
+      WHERE u.role = 'user'
+      GROUP BY u.id, u.full_name, u.phone_number, u.created_at
+      ORDER BY completion_percentage DESC NULLS LAST, u.created_at DESC
+    `);
+
+    res.json({
+      success: true,
+      users: summaryResult.rows
+    });
+
+  } catch (error) {
+    logger.error('Error fetching completion summary:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/module/:moduleId/completions
+ * @desc Get all users who completed a specific module
+ * @access Admin
+ */
+router.get('/module/:moduleId/completions', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+
+    const completionsResult = await postgresService.pool.query(`
+      SELECT
+        mc.id,
+        u.id as user_id,
+        u.full_name,
+        u.phone_number,
+        mc.completed_at,
+        mc.completion_method,
+        mc.quiz_score,
+        mc.quiz_percentage,
+        mc.quiz_attempt_number,
+        mc.quiz_passed,
+        mc.time_to_complete_minutes,
+        mc.total_attempts
+      FROM module_completions mc
+      JOIN users u ON mc.user_id = u.id
+      WHERE mc.module_id = $1
+      ORDER BY mc.completed_at DESC
+    `, [moduleId]);
+
+    // Get module info
+    const moduleResult = await postgresService.pool.query(
+      'SELECT id, title, sequence_order FROM modules WHERE id = $1',
+      [moduleId]
+    );
+
+    res.json({
+      success: true,
+      module: moduleResult.rows[0],
+      completions: completionsResult.rows,
+      total_completions: completionsResult.rows.length
+    });
+
+  } catch (error) {
+    logger.error('Error fetching module completions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
