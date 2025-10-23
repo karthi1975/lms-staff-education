@@ -800,7 +800,7 @@
                 const activeCount = users.filter(u => u.last_active_at).length;
                 document.getElementById('activeUsers').textContent = activeCount;
 
-                const totalCompleted = users.reduce((sum, u) => sum + (u.modules_completed || 0), 0);
+                const totalCompleted = users.reduce((sum, u) => sum + (parseInt(u.modules_completed) || 0), 0);
                 document.getElementById('completedModules').textContent = totalCompleted;
 
             } catch (error) {
@@ -829,8 +829,8 @@
                     const lastActive = user.last_active_at
                         ? new Date(user.last_active_at).toLocaleDateString()
                         : 'Never';
-                    const completedModules = user.modules_completed || 0;
-                    const inProgress = user.modules_in_progress || 0;
+                    const completedModules = parseInt(user.modules_completed) || 0;
+                    const inProgress = parseInt(user.modules_in_progress) || 0;
                     const status = completedModules > 0 ? 'Active' : 'Enrolled';
 
                     return `

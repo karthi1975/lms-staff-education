@@ -531,13 +531,13 @@
                     </td>
                     <td class="whatsapp">${user.whatsapp_id || 'N/A'}</td>
                     <td>
-                        <span class="badge badge-success">${user.modules_completed || 0}</span>
+                        <span class="badge badge-success">${parseInt(user.modules_completed) || 0}</span>
                     </td>
                     <td>
-                        <span class="badge badge-warning">${user.modules_in_progress || 0}</span>
+                        <span class="badge badge-warning">${parseInt(user.modules_in_progress) || 0}</span>
                     </td>
                     <td>
-                        <span class="badge badge-info">${user.quizzes_passed || 0}</span>
+                        <span class="badge badge-info">${parseInt(user.quizzes_passed) || 0}</span>
                     </td>
                     <td>${formatTime(user.total_time_spent_minutes || 0)}</td>
                     <td>${formatDate(user.last_active_at)}</td>
