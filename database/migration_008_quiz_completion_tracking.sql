@@ -154,8 +154,8 @@ CREATE TRIGGER trigger_mark_module_complete
 CREATE OR REPLACE VIEW user_module_progress_summary AS
 SELECT
   u.id as user_id,
-  u.phone_number,
-  u.full_name,
+  u.whatsapp_id,
+  u.name as full_name,
   m.id as module_id,
   m.title as module_title,
   m.sequence_order as module_number,

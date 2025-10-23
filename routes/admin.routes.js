@@ -1957,7 +1957,7 @@ router.get('/users/:userId/progress-detailed', authMiddleware.authenticateToken,
 
     // Get user info
     const userResult = await postgresService.pool.query(
-      'SELECT id, full_name, phone_number, created_at FROM users WHERE id = $1',
+      'SELECT id, name, whatsapp_id, created_at FROM users WHERE id = $1',
       [userId]
     );
 
@@ -2007,8 +2007,8 @@ router.get('/users/:userId/progress-detailed', authMiddleware.authenticateToken,
       success: true,
       user: {
         id: user.id,
-        name: user.full_name,
-        phone: user.phone_number,
+        name: user.name,
+        phone: user.whatsapp_id,
         enrolled_at: user.created_at
       },
       stats: statsResult.rows[0],
@@ -2077,8 +2077,8 @@ router.get('/completion-summary', authMiddleware.authenticateToken, async (req, 
     const summaryResult = await postgresService.pool.query(`
       SELECT
         u.id as user_id,
-        u.full_name,
-        u.phone_number,
+        u.name as full_name,
+        u.whatsapp_id as phone_number,
         u.created_at as enrolled_at,
         COUNT(DISTINCT m.id) as total_modules,
         COUNT(DISTINCT CASE WHEN up.status = 'completed' THEN m.id END) as completed_modules,
@@ -2093,8 +2093,8 @@ router.get('/completion-summary', authMiddleware.authenticateToken, async (req, 
       FROM users u
       CROSS JOIN modules m
       LEFT JOIN user_progress up ON u.id = up.user_id AND m.id = up.module_id
-      WHERE u.role = 'user'
-      GROUP BY u.id, u.full_name, u.phone_number, u.created_at
+      WHERE u.is_active = TRUE
+      GROUP BY u.id, u.name, u.whatsapp_id, u.created_at
       ORDER BY completion_percentage DESC NULLS LAST, u.created_at DESC
     `);
 
@@ -2125,8 +2125,8 @@ router.get('/module/:moduleId/completions', authMiddleware.authenticateToken, as
       SELECT
         mc.id,
         u.id as user_id,
-        u.full_name,
-        u.phone_number,
+        u.name as full_name,
+        u.whatsapp_id as phone_number,
         mc.completed_at,
         mc.completion_method,
         mc.quiz_score,

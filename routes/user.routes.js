@@ -76,9 +76,9 @@ router.get('/user/quiz/:moduleId', async (req, res) => {
       });
     }
 
-    // Get user by phone
+    // Get user by phone (whatsapp_id)
     const userResult = await postgresService.pool.query(
-      'SELECT id, full_name FROM users WHERE phone_number = $1',
+      'SELECT id, name FROM users WHERE whatsapp_id = $1',
       [phone]
     );
 
@@ -182,7 +182,7 @@ router.post('/user/quiz/:moduleId/submit', async (req, res) => {
 
     // Get user
     const userResult = await postgresService.pool.query(
-      'SELECT id, full_name, phone_number FROM users WHERE phone_number = $1',
+      'SELECT id, name, whatsapp_id FROM users WHERE whatsapp_id = $1',
       [phone]
     );
 
@@ -316,7 +316,7 @@ router.post('/user/quiz/:moduleId/submit', async (req, res) => {
         WHERE user_id = $3 AND module_id = $4
       `, [correctCount, newAttemptNumber, user.id, moduleId]);
 
-      logger.info(`User ${user.phone_number} completed module ${moduleId} with quiz score ${correctCount}/${totalQuestions}`);
+      logger.info(`User ${user.whatsapp_id} completed module ${moduleId} with quiz score ${correctCount}/${totalQuestions}`);
     }
 
     res.json({
@@ -362,7 +362,7 @@ router.get('/user/quiz/:moduleId/attempts', async (req, res) => {
 
     // Get user
     const userResult = await postgresService.pool.query(
-      'SELECT id FROM users WHERE phone_number = $1',
+      'SELECT id FROM users WHERE whatsapp_id = $1',
       [phone]
     );
 
