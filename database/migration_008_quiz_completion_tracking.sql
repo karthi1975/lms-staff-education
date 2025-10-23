@@ -191,7 +191,7 @@ CROSS JOIN modules m
 LEFT JOIN courses c ON m.course_id = c.id
 LEFT JOIN user_progress up ON u.id = up.user_id AND m.id = up.module_id
 LEFT JOIN module_completions mc ON u.id = mc.user_id AND m.id = mc.module_id
-WHERE u.role = 'user' -- Only WhatsApp users, not admins
+WHERE u.is_active = TRUE
 ORDER BY u.id, m.sequence_order;
 
 -- ============================================================
