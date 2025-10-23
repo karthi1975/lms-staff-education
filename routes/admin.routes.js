@@ -1402,7 +1402,8 @@ router.get('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authentic
 
     // Convert questions to frontend format {question, options: {A, B, C, D}, correct_answer: 'A'}
     const formattedQuestions = questionsResult.rows.map(q => {
-      const optionsArray = JSON.parse(q.options);
+      // Handle options - might be JSONB (object) or string
+      const optionsArray = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
       const correctAnswer = ['A', 'B', 'C', 'D'][q.correct_answer];
 
       return {
