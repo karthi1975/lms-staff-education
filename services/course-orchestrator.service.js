@@ -1,5 +1,5 @@
 /**
- * Moodle Orchestrator Service - Simplified
+ * Course Orchestrator Service
  * Handles: Course selection → Module selection → Chat → Quiz
  */
 
@@ -9,14 +9,13 @@ const chromaService = require('./chroma.service');
 const vertexAIService = require('./vertexai.service');
 const giftParserService = require('./gift-parser.service');
 const postgresService = require('./database/postgres.service');
-const moodleSyncService = require('./moodle-sync.service');
 const contentModerationService = require('./content-moderation.service');
 const promptInjectionGuard = require('./prompt-injection-guard.service');
 const responseValidator = require('./response-validator.service');
 const logger = require('../utils/logger');
 const path = require('path');
 
-class MoodleOrchestratorService {
+class CourseOrchestratorService {
   constructor() {
     // Courses and modules will be loaded from database
     this.courses = [];
@@ -918,58 +917,10 @@ class MoodleOrchestratorService {
 
     const attemptId = attemptResult.rows[0].id;
 
-    // Sync to Moodle (always, regardless of pass/fail)
-    let moodleResult = null;
-    if (false) { // Moodle sync disabled for now
-      try {
-        logger.info(`Syncing quiz attempt to Moodle (quiz_id: ${moodleQuizId})...`);
-
-        // Prepare answers array with just the letters
-        const answerLetters = answers.map(a => a.userAnswer);
-
-        // Prepare questions with answer text for Moodle matching
-        const questionsWithText = answers.map(a => ({
-          questionText: a.questionText,
-          options: a.options
-        }));
-
-        moodleResult = await moodleSyncService.syncQuizResultToMoodle(
-          userId,
-          moduleId,
-          answerLetters,
-          questionsWithText,
-          score,
-          total,
-          moodleQuizId  // Pass the actual Moodle quiz ID
-        );
-
-        if (moodleResult.success) {
-          // Update local attempt with Moodle grade
-          await postgresService.query(`
-            UPDATE quiz_attempts
-            SET moodle_attempt_id = $1,
-                metadata = jsonb_set(
-                  COALESCE(metadata, '{}'::jsonb),
-                  '{moodle_grade}',
-                  $2::text::jsonb
-                )
-            WHERE id = $3
-          `, [moodleResult.moodleAttemptId, moodleResult.moodleGrade || 'null', attemptId]);
-
-          logger.info(`✅ Moodle sync successful: Attempt ${moodleResult.moodleAttemptId}, Grade: ${moodleResult.moodleGrade}`);
-        }
-      } catch (error) {
-        logger.error('Failed to sync to Moodle:', error);
-      }
-    }
-
     // Generate certificate for passed quizzes
     let certificateUrl = null;
-    const actualPassed = (moodleResult && moodleResult.success && moodleResult.moodleGrade !== null)
-      ? (parseFloat(moodleResult.moodleGrade) >= 7.0)
-      : passed;
 
-    if (actualPassed) {
+    if (passed) {
       try {
         const certificateService = require('./certificate.service');
         const certResult = await certificateService.generateQuizCertificate(
@@ -1017,51 +968,21 @@ class MoodleOrchestratorService {
 
     // Build response message
     let message = `🎯 *Quiz Complete!*\n\n`;
+    message += `Score: *${score}/${total}* (${percentage.toFixed(0)}%)\n`;
+    message += `Status: ${passed ? '✅ *PASSED*' : '❌ *FAILED*'}\n\n`;
 
-    if (moodleResult && moodleResult.success && moodleResult.moodleGrade !== null) {
-      // Use Moodle's grade as the source of truth
-      const moodleScore = parseFloat(moodleResult.moodleGrade) || 0;
-      const moodlePassed = moodleScore >= 7.0; // Assuming 7/10 is passing (70%)
+    if (passed) {
+      message += `🎉 *Congratulations!* You've passed the quiz!\n\n`;
 
-      message += `📊 *Moodle Grade*: ${moodleScore.toFixed(1)}/10\n`;
-      message += `Status: ${moodlePassed ? '✅ *PASSED*' : '❌ *FAILED*'}\n\n`;
-
-      if (moodlePassed) {
-        message += `🎉 *Congratulations!* You've passed the quiz!\n\n`;
-        message += `✅ Results recorded in Moodle (Attempt ID: ${moodleResult.moodleAttemptId})\n\n`;
-
-        // Add certificate download link if generated
-        if (certificateUrl) {
-          message += `📜 *Download your certificate:*\n${certificateUrl}\n\n`;
-        }
-
-        message += `Continue learning or type 'menu' to select another module.`;
-      } else {
-        message += `📚 You need 70% to pass. Review the material and try again!\n\n`;
-        message += `Type *'quiz please'* to retake, or ask more questions to learn.`;
+      // Add certificate download link if generated
+      if (certificateUrl) {
+        message += `📜 *Download your certificate:*\n${certificateUrl}\n\n`;
       }
+
+      message += `Continue learning or type 'menu' to select another module.`;
     } else {
-      // Fallback to local scoring
-      message += `Score: *${score}/${total}* (${percentage.toFixed(0)}%)\n`;
-      message += `Status: ${passed ? '✅ *PASSED*' : '❌ *FAILED*'}\n\n`;
-
-      if (passed) {
-        message += `🎉 *Congratulations!* You've passed the quiz!\n\n`;
-
-        // Add certificate download link if generated
-        if (certificateUrl) {
-          message += `📜 *Download your certificate:*\n${certificateUrl}\n\n`;
-        }
-
-        message += `Continue learning or type 'menu' to select another module.`;
-      } else {
-        message += `📚 You need 70% to pass. Review the material and try again!\n\n`;
-        message += `Type *'quiz please'* to retake, or ask more questions to learn.`;
-      }
-
-      if (!moodleResult || !moodleResult.success) {
-        message += `\n\n_Note: Could not sync to Moodle. Contact admin if needed._`;
-      }
+      message += `📚 You need 70% to pass. Review the material and try again!\n\n`;
+      message += `Type *'quiz please'* to retake, or ask more questions to learn.`;
     }
 
     return { text: message };
@@ -1291,4 +1212,4 @@ class MoodleOrchestratorService {
   }
 }
 
-module.exports = new MoodleOrchestratorService();
+module.exports = new CourseOrchestratorService();
