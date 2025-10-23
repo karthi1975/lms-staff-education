@@ -81,28 +81,17 @@ class QuizService {
    */
   async startQuiz(userId, moduleId) {
     try {
-      // Get existing attempts
-      const attempts = await this.getQuizAttempts(userId, moduleId);
-
-      if (attempts.length >= this.MAX_ATTEMPTS) {
-        return {
-          success: false,
-          message: `You have already used all ${this.MAX_ATTEMPTS} attempts for this quiz.`,
-          attemptsRemaining: 0
-        };
-      }
-
-      // Fetch quiz questions from PostgreSQL
-      const questionsResult = await postgresService.query(`
-        SELECT id, question_text, question_type, options, correct_answer, explanation
-        FROM quiz_questions
-        WHERE module_id = $1
-        ORDER BY sequence_order
+      // Get quiz for this module
+      const quizResult = await postgresService.pool.query(`
+        SELECT id, title, pass_threshold, max_attempts
+        FROM quizzes
+        WHERE module_id = $1 AND is_active = true
       `, [moduleId]);
 
-      if (questionsResult.rows.length === 0) {
-        // Fallback to hardcoded Module 2 questions
+      if (quizResult.rows.length === 0) {
+        // Fallback to hardcoded Module 2 questions for backward compatibility
         if (moduleId === 2) {
+          const attempts = await this.getQuizAttempts(userId, moduleId);
           return {
             success: true,
             questions: this.module2Questions.map(q => ({
@@ -119,14 +108,60 @@ class QuizService {
 
         return {
           success: false,
-          message: 'Quiz not available for this module yet.'
+          message: '📝 No quiz available for this module yet. Please check back later or contact your instructor.'
+        };
+      }
+
+      const quiz = quizResult.rows[0];
+
+      // Get existing attempts
+      const attempts = await this.getQuizAttempts(userId, moduleId);
+
+      if (attempts.length >= quiz.max_attempts) {
+        return {
+          success: false,
+          message: `⚠️ You have already used all ${quiz.max_attempts} attempts for this quiz. Please contact your instructor.`,
+          attemptsRemaining: 0
+        };
+      }
+
+      // Fetch quiz questions using quiz_id
+      const questionsResult = await postgresService.pool.query(`
+        SELECT
+          qq.id,
+          qq.question_number,
+          qq.question_text,
+          qq.question_type,
+          qq.options,
+          qq.correct_answer,
+          qq.explanation
+        FROM quiz_questions qq
+        WHERE qq.quiz_id = $1
+        ORDER BY qq.question_number
+      `, [quiz.id]);
+
+      if (questionsResult.rows.length === 0) {
+        return {
+          success: false,
+          message: '❌ This quiz has no questions yet. Please contact your instructor.'
         };
       }
 
       // Format questions from database
       const questions = questionsResult.rows.map(q => {
-        // PostgreSQL returns JSON columns as objects/arrays, not strings
-        const optionsArray = Array.isArray(q.options) ? q.options : [];
+        // Handle JSONB options (might be object or string)
+        let optionsArray;
+        if (typeof q.options === 'string') {
+          optionsArray = JSON.parse(q.options);
+        } else {
+          optionsArray = q.options;
+        }
+
+        // Ensure we have an array
+        if (!Array.isArray(optionsArray) || optionsArray.length < 4) {
+          logger.warn(`Question ${q.id} has invalid options format`);
+          optionsArray = ['Option A', 'Option B', 'Option C', 'Option D'];
+        }
 
         // Format options with A, B, C, D letters
         const options = optionsArray.map((opt, idx) => `${String.fromCharCode(65 + idx)}) ${opt}`);
@@ -136,18 +171,19 @@ class QuizService {
           question: q.question_text,
           options: options,
           questionType: q.question_type,
-          correctAnswer: q.correct_answer,
+          correctAnswer: q.correct_answer, // This is an index (0, 1, 2, 3)
           explanation: q.explanation
         };
       });
 
       return {
         success: true,
+        quizId: quiz.id,
         questions: questions,
         totalQuestions: questions.length,
-        passThreshold: this.QUIZ_PASS_THRESHOLD,
+        passThreshold: quiz.pass_threshold / 100, // Convert from percentage to decimal
         attemptsUsed: attempts.length,
-        attemptsRemaining: this.MAX_ATTEMPTS - attempts.length
+        attemptsRemaining: quiz.max_attempts - attempts.length
       };
     } catch (error) {
       logger.error('Error starting quiz:', error);
@@ -266,6 +302,7 @@ class QuizService {
 
   /**
    * Submit quiz and save results
+   * UPDATED: Uses new schema with quiz_id and percentage fields
    */
   async submitQuiz(userId, moduleId, answers, questions) {
     try {
@@ -276,42 +313,76 @@ class QuizService {
         throw new Error('Unable to grade quiz for this module');
       }
 
+      // Get quiz_id for this module
+      const quizResult = await postgresService.pool.query(`
+        SELECT id, max_attempts FROM quizzes
+        WHERE module_id = $1 AND is_active = true
+      `, [moduleId]);
+
+      if (quizResult.rows.length === 0) {
+        throw new Error('No active quiz found for this module');
+      }
+
+      const quiz = quizResult.rows[0];
+      const quizId = quiz.id;
+
       // Get attempt number
       const attempts = await this.getQuizAttempts(userId, moduleId);
       const attemptNumber = attempts.length + 1;
 
-      // Save to database
-      await postgresService.query(`
+      // Calculate percentage
+      const percentage = gradeResult.percentage * 100; // Convert to percentage
+
+      // Save to database with new schema
+      await postgresService.pool.query(`
         INSERT INTO quiz_attempts (
-          user_id, module_id, attempt_number, score, total_questions, passed, answers, attempted_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+          user_id,
+          module_id,
+          quiz_id,
+          attempt_number,
+          score,
+          total_questions,
+          percentage,
+          passed,
+          answers,
+          attempted_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
       `, [
         userId,
         moduleId,
+        quizId,
         attemptNumber,
         gradeResult.score,
         gradeResult.totalQuestions,
+        percentage,
         gradeResult.passed,
         JSON.stringify({ answers, results: gradeResult.results })
       ]);
 
-      // If passed, update user progress to completed
+      // The database trigger will automatically mark module as completed if passed
+      // But we also update here for immediate feedback
       if (gradeResult.passed) {
-        await postgresService.query(`
+        await postgresService.pool.query(`
           UPDATE user_progress
           SET
             status = 'completed',
             progress_percentage = 100,
             completed_at = NOW(),
+            quiz_taken = TRUE,
+            quiz_passed = TRUE,
+            quiz_score = $1,
+            quiz_attempts_count = $2,
             last_activity_at = NOW()
-          WHERE user_id = $1 AND module_id = $2
-        `, [userId, moduleId]);
+          WHERE user_id = $3 AND module_id = $4
+        `, [gradeResult.score, attemptNumber, userId, moduleId]);
+
+        logger.info(`User ${userId} completed module ${moduleId} with quiz score ${gradeResult.score}/${gradeResult.totalQuestions}`);
       }
 
       return {
         ...gradeResult,
         attemptNumber,
-        attemptsRemaining: this.MAX_ATTEMPTS - attemptNumber
+        attemptsRemaining: quiz.max_attempts - attemptNumber
       };
     } catch (error) {
       logger.error('Error submitting quiz:', error);

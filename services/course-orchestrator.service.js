@@ -53,13 +53,13 @@ class MoodleOrchestratorService {
           return { rows: [] };
         });
 
-        // Load quizzes for each module (check moodle_quizzes for compatibility)
+        // Load quizzes for each module
         const modules = [];
         for (const module of modulesResult.rows) {
           const quizResult = await postgresService.query(`
-            SELECT id, moodle_quiz_id, quiz_name
-            FROM moodle_quizzes
-            WHERE moodle_module_id = $1
+            SELECT id, title as quiz_name
+            FROM quizzes
+            WHERE module_id = $1 AND is_active = true
             LIMIT 1
           `, [module.id]).catch(err => {
             logger.warn(`Quizzes table not ready for module ${module.id}`);
@@ -620,9 +620,9 @@ class MoodleOrchestratorService {
 
     // Get quiz from database
     const quizResult = await postgresService.query(`
-      SELECT mq.id as quiz_id, mq.moodle_quiz_id, mq.quiz_name
-      FROM moodle_quizzes mq
-      WHERE mq.moodle_module_id = $1
+      SELECT id as quiz_id, title as quiz_name
+      FROM quizzes
+      WHERE module_id = $1 AND is_active = true
       LIMIT 1
     `, [moduleId]);
 
@@ -636,10 +636,10 @@ class MoodleOrchestratorService {
 
     // Get quiz questions from database
     const questionsResult = await postgresService.query(`
-      SELECT id, question_text, question_type, options, moodle_question_id, sequence_order
+      SELECT id, question_text, question_type, options, question_number
       FROM quiz_questions
-      WHERE moodle_quiz_id = $1
-      ORDER BY sequence_order
+      WHERE quiz_id = $1
+      ORDER BY question_number
     `, [quiz.quiz_id]);
 
     let questions = questionsResult.rows.map(q => ({
@@ -647,8 +647,7 @@ class MoodleOrchestratorService {
       questionText: q.question_text,
       questionType: q.question_type,
       options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
-      moodleQuestionId: q.moodle_question_id,
-      sequenceOrder: q.sequence_order
+      questionNumber: q.question_number
     }));
 
     if (questions.length === 0) {
@@ -671,7 +670,6 @@ class MoodleOrchestratorService {
       context_data: JSON.stringify({
         ...contextData,
         quiz_id: quiz.quiz_id,
-        moodle_quiz_id: quiz.moodle_quiz_id,
         quiz_questions: selectedQuestions.map(q => q.id)
       })
     });
@@ -902,12 +900,12 @@ class MoodleOrchestratorService {
     // Get quiz and module info
     const contextData = this.parseContextData(context);
     const moduleId = context.current_module_id;
-    const moodleQuizId = contextData.moodle_quiz_id;
+    const quizId = contextData.quiz_id;
 
     // Save to local database first (before Moodle sync)
     const attemptResult = await postgresService.query(`
       INSERT INTO quiz_attempts (
-        user_id, module_id, moodle_quiz_id, attempt_number,
+        user_id, module_id, quiz_id, attempt_number,
         score, total_questions, passed, answers
       )
       VALUES ($1, $2, $3,
@@ -915,13 +913,13 @@ class MoodleOrchestratorService {
         $4, $5, $6, $7
       )
       RETURNING id
-    `, [userId, moduleId, contextData.quiz_id || null, score, total, passed, JSON.stringify(answers)]);
+    `, [userId, moduleId, quizId || null, score, total, passed, JSON.stringify(answers)]);
 
     const attemptId = attemptResult.rows[0].id;
 
     // Sync to Moodle (always, regardless of pass/fail)
     let moodleResult = null;
-    if (moodleQuizId) {
+    if (false) { // Moodle sync disabled for now
       try {
         logger.info(`Syncing quiz attempt to Moodle (quiz_id: ${moodleQuizId})...`);
 
