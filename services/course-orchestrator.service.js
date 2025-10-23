@@ -818,10 +818,11 @@ class MoodleOrchestratorService {
     let isCorrect = null; // Default: unknown
 
     // Check if user's answer is correct
-    if (currentQuestion.correctAnswer && currentQuestion.options && currentQuestion.options[answerIndex]) {
-      const userAnswerText = currentQuestion.options[answerIndex];
-      // Compare the option text with correct answer text
-      isCorrect = userAnswerText.trim() === currentQuestion.correctAnswer.trim();
+    // correct_answer is stored as index (0, 1, 2, 3) in database
+    if (currentQuestion.correctAnswer !== null && currentQuestion.correctAnswer !== undefined) {
+      const correctIndex = parseInt(currentQuestion.correctAnswer);
+      isCorrect = answerIndex === correctIndex;
+      logger.info(`Answer validation: User answered ${answer} (index ${answerIndex}), correct is index ${correctIndex}, result: ${isCorrect}`);
     }
 
     // Record answer
