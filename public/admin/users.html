@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Progress Tracking - Teachers Training</title>
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
     <style>
         * {
             margin: 0;
@@ -26,12 +27,13 @@
         header {
             background: white;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 12px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         h1 {
@@ -50,22 +52,48 @@
         .btn {
             padding: 10px 20px;
             border: none;
-            border-radius: 6px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
             text-decoration: none;
             display: inline-block;
+            box-shadow: var(--md-sys-elevation-1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .btn-primary {
-            background: #00897B;
-            color: white;
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
         }
 
         .btn-primary:hover {
             background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .btn-secondary {
@@ -75,6 +103,7 @@
 
         .btn-secondary:hover {
             background: #d1d5db;
+            box-shadow: var(--md-sys-elevation-1);
         }
 
         .breadcrumb {
@@ -112,24 +141,48 @@
         .search-box {
             background: white;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 12px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.1s;
+            animation-fill-mode: both;
         }
 
         .search-box input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border: 2px solid var(--md-sys-color-outline);
+            border-radius: 28px;
             font-size: 14px;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 4px rgba(0, 137, 123, 0.1);
+            transform: scale(1.01);
+        }
+
+        /* Enhanced search pulse animation */
+        @keyframes search-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 137, 123, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(0, 137, 123, 0); }
+        }
+
+        .search-box input:focus {
+            animation: search-pulse 2s ease-in-out infinite;
         }
 
         .users-table {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
             overflow: hidden;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.2s;
+            animation-fill-mode: both;
         }
 
         table {
@@ -155,11 +208,31 @@
 
         tbody tr {
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
         }
+
+        tbody tr:nth-child(1) { animation-delay: 0.3s; }
+        tbody tr:nth-child(2) { animation-delay: 0.35s; }
+        tbody tr:nth-child(3) { animation-delay: 0.4s; }
+        tbody tr:nth-child(4) { animation-delay: 0.45s; }
+        tbody tr:nth-child(5) { animation-delay: 0.5s; }
+        tbody tr:nth-child(6) { animation-delay: 0.55s; }
+        tbody tr:nth-child(7) { animation-delay: 0.6s; }
+        tbody tr:nth-child(8) { animation-delay: 0.65s; }
+        tbody tr:nth-child(9) { animation-delay: 0.7s; }
+        tbody tr:nth-child(10) { animation-delay: 0.75s; }
 
         tbody tr:hover {
             background: #f9fafb;
+            transform: translateX(6px) scale(1.005);
+            box-shadow: var(--md-sys-elevation-1);
+            cursor: pointer;
+        }
+
+        tbody tr:active {
+            transform: translateX(2px) scale(0.998);
         }
 
         .user-name {
@@ -173,10 +246,17 @@
         }
 
         .badge {
-            padding: 4px 10px;
-            border-radius: 12px;
+            padding: 4px 12px;
+            border-radius: 16px;
             font-size: 12px;
             font-weight: 600;
+            display: inline-block;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            transition: transform var(--md-sys-motion-duration-short2);
+        }
+
+        .badge:hover {
+            transform: scale(1.05);
         }
 
         .badge-success {
@@ -226,6 +306,7 @@
             z-index: 1000;
             align-items: center;
             justify-content: center;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
         }
 
         .modal.active {
@@ -234,11 +315,13 @@
 
         .modal-content {
             background: white;
-            border-radius: 8px;
+            border-radius: 28px;
             max-width: 800px;
             width: 90%;
             max-height: 90vh;
             overflow-y: auto;
+            box-shadow: var(--md-sys-elevation-5);
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .modal-header {
@@ -269,8 +352,22 @@
         .module-card {
             background: #f9fafb;
             padding: 15px;
-            border-radius: 6px;
+            border-radius: 12px;
             margin-bottom: 15px;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
+        }
+
+        .module-card:nth-child(1) { animation-delay: 0.1s; }
+        .module-card:nth-child(2) { animation-delay: 0.15s; }
+        .module-card:nth-child(3) { animation-delay: 0.2s; }
+        .module-card:nth-child(4) { animation-delay: 0.25s; }
+        .module-card:nth-child(5) { animation-delay: 0.3s; }
+
+        .module-card:hover {
+            transform: translateX(4px);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .module-card h3 {
@@ -290,8 +387,18 @@
 
         .progress-fill {
             height: 100%;
-            background: #10b981;
-            transition: width 0.3s;
+            background: linear-gradient(90deg,
+                var(--md-sys-color-primary) 0%,
+                var(--md-sys-color-secondary) 50%,
+                var(--md-sys-color-primary) 100%);
+            background-size: 200% 100%;
+            transition: width var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized);
+            animation: progress-shimmer 2s linear infinite;
+        }
+
+        @keyframes progress-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         .module-stats {
