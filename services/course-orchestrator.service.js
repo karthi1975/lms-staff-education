@@ -12,6 +12,7 @@ const postgresService = require('./database/postgres.service');
 const contentModerationService = require('./content-moderation.service');
 const promptInjectionGuard = require('./prompt-injection-guard.service');
 const responseValidator = require('./response-validator.service');
+const m3Formatter = require('./whatsapp-m3-formatter.service');
 const logger = require('../utils/logger');
 const path = require('path');
 
@@ -209,24 +210,12 @@ class CourseOrchestratorService {
    * Show course selection with WhatsApp list
    */
   showCourseSelection() {
-    // Format for numbered text list (Twilio-friendly)
-    let message = `📚 *Welcome to Teachers Training!*\n\n`;
-    message += `🎓 *Select a Course*\n`;
-    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `*Available Courses:*\n\n`;
-
-    this.courses.forEach((course, idx) => {
-      message += `${idx + 1}. 📖 *${course.name}*\n`;
-      message += `   Learn ${course.name}\n\n`;
-    });
-
-    message += `━━━━━━━━━━━━━━━━━━━━\n`;
-    message += `💬 Reply with the number to select\n`;
-    message += `Example: Type *1* for ${this.courses[0]?.name || 'first course'}`;
+    // Use M3 formatter for beautiful course selection
+    const formattedMessage = m3Formatter.formatCourseSelection(this.courses);
 
     return {
       type: 'text',
-      text: message
+      text: formattedMessage
     };
   }
 
@@ -264,27 +253,12 @@ class CourseOrchestratorService {
    * Show module selection
    */
   showModuleSelection(course) {
-    let message = `📘 *${course.name}*\n\n`;
-    message += `📚 *Select a Module*\n`;
-    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `*${course.name} Modules:*\n\n`;
-
-    course.modules.forEach((module, idx) => {
-      message += `${idx + 1}. 📑 *${module.name}*\n`;
-      // Truncate long names for readability
-      const shortName = module.name.length > 50
-        ? module.name.substring(0, 47) + '...'
-        : module.name;
-      message += `   ${shortName}\n\n`;
-    });
-
-    message += `━━━━━━━━━━━━━━━━━━━━\n`;
-    message += `💬 Reply with the number to select\n`;
-    message += `Example: Type *1* for ${course.modules[0]?.name || 'first module'}`;
+    // Use M3 formatter for beautiful module selection
+    const formattedMessage = m3Formatter.formatModuleSelection(course);
 
     return {
       type: 'text',
-      text: message
+      text: formattedMessage
     };
   }
 
@@ -577,22 +551,24 @@ class CourseOrchestratorService {
         }
       }
 
-      // Step 7: Format response with sources and graph-based suggestions
-      let responseText = response;
+      // Step 7: Format response with M3 styling and sources
+      const formattedResponse = m3Formatter.formatChatResponse({
+        content: response,
+        sources: sources.map(s => s.replace('📄 ', '')), // Remove emoji prefix for formatter
+        moduleName: moduleName
+      });
 
       // Add note if content came from other modules
+      let finalResponse = formattedResponse;
       if (crossModuleSearch) {
-        responseText = `📚 _(Content from all available courses)_\n\n${responseText}`;
+        finalResponse = `📚 _(Content from all available courses)_\n\n${finalResponse}`;
       }
 
-      if (sources.length > 0) {
-        responseText += `\n\n📚 *Sources:*\n${sources.join('\n')}`;
-      }
-
-      responseText += `\n\n💡 _Ask another question or type *"quiz please"* to take the quiz!_`;
+      // Add quiz prompt
+      finalResponse += `\n\n💡 _Ask another question or type *"quiz"* to take the quiz!_`;
 
       return {
-        text: responseText
+        text: finalResponse
       };
     } catch (error) {
       logger.error('Error processing content query:', error);
@@ -700,55 +676,33 @@ class CourseOrchestratorService {
   }
 
   /**
-   * Format question for WhatsApp (returns button config)
+   * Format question for WhatsApp (returns button config with M3 styling)
    */
   formatQuestionForWhatsApp(question, currentNum, total) {
-    const bodyText = `*Question ${currentNum}/${total}*\n\n${question.questionText}`;
+    // Prepare question data for M3 formatter
+    const questionData = {
+      question_text: question.questionText,
+      option_a: question.options && question.options[0] ? question.options[0] : null,
+      option_b: question.options && question.options[1] ? question.options[1] : null,
+      option_c: question.options && question.options[2] ? question.options[2] : null,
+      option_d: question.options && question.options[3] ? question.options[3] : null
+    };
 
-    if (question.options && Array.isArray(question.options)) {
-      // WhatsApp buttons max is 3, so we'll use A/B/C for first 3 options
-      // If 4 options, we'll split into two messages or use list instead
-      const buttons = question.options.slice(0, 3).map((option, idx) => {
-        const letter = String.fromCharCode(65 + idx); // A, B, C
-        return {
-          id: `answer_${letter}`,
-          title: `${letter}) ${option.substring(0, 20)}` // Max 20 chars for button title
-        };
-      });
-
-      // If there's a 4th option, we'll handle it differently
-      if (question.options.length > 3) {
-        // For 4 options, use text-based with reply
-        let optionsText = '\n';
-        question.options.forEach((option, idx) => {
-          const letter = String.fromCharCode(65 + idx);
-          optionsText += `${letter}) ${option}\n`;
-        });
-        return {
-          type: 'text',
-          text: bodyText + optionsText + '\n_Reply with A, B, C, or D_'
-        };
-      }
-
-      return {
-        type: 'buttons',
-        bodyText,
-        buttons
-      };
-    } else if (question.questionType === 'truefalse') {
-      return {
-        type: 'buttons',
-        bodyText,
-        buttons: [
-          { id: 'answer_A', title: 'A) True' },
-          { id: 'answer_B', title: 'B) False' }
-        ]
-      };
+    // True/false questions
+    if (question.questionType === 'truefalse') {
+      questionData.option_a = 'True';
+      questionData.option_b = 'False';
+      questionData.option_c = null;
+      questionData.option_d = null;
     }
 
+    // Use M3 formatter for beautiful quiz presentation
+    const formattedText = m3Formatter.formatQuizQuestion(questionData, currentNum, total);
+
+    // Return as text (WhatsApp will display it beautifully)
     return {
       type: 'text',
-      text: bodyText
+      text: formattedText
     };
   }
 
@@ -966,26 +920,26 @@ class CourseOrchestratorService {
       quiz_answers: JSON.stringify([])
     });
 
-    // Build response message
-    let message = `🎯 *Quiz Complete!*\n\n`;
-    message += `Score: *${score}/${total}* (${percentage.toFixed(0)}%)\n`;
-    message += `Status: ${passed ? '✅ *PASSED*' : '❌ *FAILED*'}\n\n`;
-
+    // Build response message with M3 formatting
+    let feedback = '';
     if (passed) {
-      message += `🎉 *Congratulations!* You've passed the quiz!\n\n`;
-
-      // Add certificate download link if generated
+      feedback = 'Congratulations! You\'ve mastered this module!';
       if (certificateUrl) {
-        message += `📜 *Download your certificate:*\n${certificateUrl}\n\n`;
+        feedback += `\n\n📜 Download your certificate:\n${certificateUrl}`;
       }
-
-      message += `Continue learning or type 'menu' to select another module.`;
     } else {
-      message += `📚 You need 70% to pass. Review the material and try again!\n\n`;
-      message += `Type *'quiz please'* to retake, or ask more questions to learn.`;
+      feedback = 'You need 70% to pass. Review the material and try again! Type *"quiz"* to retake.';
     }
 
-    return { text: message };
+    const formattedMessage = m3Formatter.formatQuizResults({
+      score: percentage,
+      totalQuestions: total,
+      correctAnswers: score,
+      passed,
+      feedback
+    });
+
+    return { text: formattedMessage };
   }
 
   /**
