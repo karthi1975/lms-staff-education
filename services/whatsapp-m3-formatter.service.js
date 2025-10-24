@@ -412,21 +412,33 @@ class WhatsAppM3FormatterService {
   }
 
   /**
-   * Helper: Convert markdown to WhatsApp native formatting
+   * Helper: Convert markdown to WhatsApp-friendly formatting
    */
   convertMarkdownToWhatsApp(text) {
     if (!text) return text;
 
-    // Convert markdown headings (## Heading) to WhatsApp bold (*Heading*)
-    text = text.replace(/^#{1,3}\s+(.+)$/gm, '*$1*');
+    // Convert markdown headings (## Heading) to UPPERCASE with emoji
+    text = text.replace(/^#{1,3}\s+(.+)$/gm, (match, heading) => {
+      return `▪️ ${heading.toUpperCase()}`;
+    });
 
-    // Convert markdown bold (**text**) to WhatsApp bold (*text*)
-    text = text.replace(/\*\*([^*]+?)\*\*/g, '*$1*');
+    // Convert markdown bold (**text**) to UPPERCASE or remove asterisks
+    // Since WhatsApp via Twilio doesn't reliably render *bold*, we'll use visual emphasis
+    text = text.replace(/\*\*([^*]+?)\*\*/g, (match, boldText) => {
+      // For short text (< 30 chars), use uppercase
+      if (boldText.length < 30) {
+        return boldText.toUpperCase();
+      }
+      // For longer text, just remove asterisks
+      return boldText;
+    });
 
-    // Convert markdown italic (__text__) to WhatsApp italic (_text_)
-    text = text.replace(/__([^_]+?)__/g, '_$1_');
+    // Remove any remaining single asterisks used for emphasis
+    // But keep proper WhatsApp markdown if it's surrounded by spaces
+    text = text.replace(/\*([^*]+?)\*/g, '$1');
 
-    // Keep existing WhatsApp formatting as is (*bold*, _italic_, ~strike~, `code`)
+    // Convert markdown italic (__text__) - just remove underscores
+    text = text.replace(/__([^_]+?)__/g, '$1');
 
     return text;
   }
