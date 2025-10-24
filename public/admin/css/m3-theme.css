@@ -1,0 +1,626 @@
+/**
+ * Material Design 3 (M3) Theme - Teachers Training System
+ * Teal/Cyan Color Palette with Smooth Animations
+ *
+ * Usage: Include this CSS file in all admin pages
+ * <link rel="stylesheet" href="/admin/css/m3-theme.css">
+ */
+
+/* ============================================================================
+   CSS CUSTOM PROPERTIES (Design Tokens)
+   ============================================================================ */
+
+:root {
+  /* ===== Primary Color (Teal) ===== */
+  --md-sys-color-primary: #00897B;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #B2DFDB;
+  --md-sys-color-on-primary-container: #004D40;
+
+  /* ===== Secondary Color (Cyan) ===== */
+  --md-sys-color-secondary: #0097A7;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #B2EBF2;
+  --md-sys-color-on-secondary-container: #006064;
+
+  /* ===== Tertiary Color (Light Blue) ===== */
+  --md-sys-color-tertiary: #0288D1;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #B3E5FC;
+  --md-sys-color-on-tertiary-container: #01579B;
+
+  /* ===== Error Color ===== */
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FFDAD6;
+  --md-sys-color-on-error-container: #410002;
+
+  /* ===== Success Color ===== */
+  --md-sys-color-success: #2E7D32;
+  --md-sys-color-on-success: #FFFFFF;
+  --md-sys-color-success-container: #C8E6C9;
+  --md-sys-color-on-success-container: #1B5E20;
+
+  /* ===== Warning Color ===== */
+  --md-sys-color-warning: #F57C00;
+  --md-sys-color-on-warning: #FFFFFF;
+  --md-sys-color-warning-container: #FFE0B2;
+  --md-sys-color-on-warning-container: #E65100;
+
+  /* ===== Surface Colors ===== */
+  --md-sys-color-surface: #FFFFFF;
+  --md-sys-color-on-surface: #1C1B1F;
+  --md-sys-color-surface-variant: #F5F5F5;
+  --md-sys-color-on-surface-variant: #49454F;
+  --md-sys-color-surface-container: #FAFAFA;
+  --md-sys-color-surface-container-high: #EEEEEE;
+  --md-sys-color-surface-container-highest: #E0E0E0;
+
+  /* ===== Background Colors ===== */
+  --md-sys-color-background: #FAFAFA;
+  --md-sys-color-on-background: #1C1B1F;
+
+  /* ===== Outline Colors ===== */
+  --md-sys-color-outline: #79747E;
+  --md-sys-color-outline-variant: #CAC4D0;
+
+  /* ===== Elevation Shadows ===== */
+  --md-sys-elevation-0: none;
+  --md-sys-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3),
+                        0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3),
+                        0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15),
+                        0 1px 3px rgba(0, 0, 0, 0.3);
+  --md-sys-elevation-4: 0 6px 10px 4px rgba(0, 0, 0, 0.15),
+                        0 2px 3px rgba(0, 0, 0, 0.3);
+  --md-sys-elevation-5: 0 8px 12px 6px rgba(0, 0, 0, 0.15),
+                        0 4px 4px rgba(0, 0, 0, 0.3);
+
+  /* ===== Typography Scale ===== */
+  --md-sys-typescale-display-large-font: 'Roboto', -apple-system, sans-serif;
+  --md-sys-typescale-display-large-size: 57px;
+  --md-sys-typescale-display-large-line-height: 64px;
+  --md-sys-typescale-display-large-weight: 400;
+
+  --md-sys-typescale-headline-large-font: 'Roboto', -apple-system, sans-serif;
+  --md-sys-typescale-headline-large-size: 32px;
+  --md-sys-typescale-headline-large-line-height: 40px;
+  --md-sys-typescale-headline-large-weight: 500;
+
+  --md-sys-typescale-headline-medium-font: 'Roboto', -apple-system, sans-serif;
+  --md-sys-typescale-headline-medium-size: 28px;
+  --md-sys-typescale-headline-medium-line-height: 36px;
+  --md-sys-typescale-headline-medium-weight: 500;
+
+  --md-sys-typescale-title-large-font: 'Roboto', -apple-system, sans-serif;
+  --md-sys-typescale-title-large-size: 22px;
+  --md-sys-typescale-title-large-line-height: 28px;
+  --md-sys-typescale-title-large-weight: 500;
+
+  --md-sys-typescale-title-medium-font: 'Roboto', -apple-system, sans-serif;
+  --md-sys-typescale-title-medium-size: 16px;
+  --md-sys-typescale-title-medium-line-height: 24px;
+  --md-sys-typescale-title-medium-weight: 500;
+
+  --md-sys-typescale-body-large-font: 'Roboto', -apple-system, sans-serif;
+  --md-sys-typescale-body-large-size: 16px;
+  --md-sys-typescale-body-large-line-height: 24px;
+  --md-sys-typescale-body-large-weight: 400;
+
+  --md-sys-typescale-body-medium-font: 'Roboto', -apple-system, sans-serif;
+  --md-sys-typescale-body-medium-size: 14px;
+  --md-sys-typescale-body-medium-line-height: 20px;
+  --md-sys-typescale-body-medium-weight: 400;
+
+  --md-sys-typescale-label-large-font: 'Roboto', -apple-system, sans-serif;
+  --md-sys-typescale-label-large-size: 14px;
+  --md-sys-typescale-label-large-line-height: 20px;
+  --md-sys-typescale-label-large-weight: 500;
+
+  /* ===== Animation Durations ===== */
+  --md-sys-motion-duration-short1: 50ms;
+  --md-sys-motion-duration-short2: 100ms;
+  --md-sys-motion-duration-short3: 150ms;
+  --md-sys-motion-duration-short4: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-medium3: 350ms;
+  --md-sys-motion-duration-medium4: 400ms;
+  --md-sys-motion-duration-long1: 450ms;
+  --md-sys-motion-duration-long2: 500ms;
+  --md-sys-motion-duration-long3: 550ms;
+  --md-sys-motion-duration-long4: 600ms;
+
+  /* ===== Animation Easings ===== */
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-legacy: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== State Layer Opacities ===== */
+  --md-sys-state-hover-opacity: 0.08;
+  --md-sys-state-focus-opacity: 0.12;
+  --md-sys-state-pressed-opacity: 0.12;
+  --md-sys-state-dragged-opacity: 0.16;
+}
+
+/* ============================================================================
+   MATERIAL DESIGN 3 COMPONENTS
+   ============================================================================ */
+
+/* ===== Elevated Button ===== */
+.md3-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 24px;
+  min-height: 40px;
+  border: none;
+  border-radius: 20px;
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: var(--md-sys-elevation-1);
+  transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+  user-select: none;
+}
+
+.md3-button:hover {
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-1px);
+}
+
+.md3-button:active {
+  box-shadow: var(--md-sys-elevation-1);
+  transform: translateY(0);
+}
+
+.md3-button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.md3-button:disabled {
+  background-color: rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.38);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Button Variants */
+.md3-button-secondary {
+  background-color: var(--md-sys-color-secondary);
+  color: var(--md-sys-color-on-secondary);
+}
+
+.md3-button-outlined {
+  background-color: transparent;
+  color: var(--md-sys-color-primary);
+  border: 1px solid var(--md-sys-color-outline);
+  box-shadow: none;
+}
+
+.md3-button-text {
+  background-color: transparent;
+  color: var(--md-sys-color-primary);
+  box-shadow: none;
+  padding: 10px 12px;
+}
+
+/* ===== Ripple Effect ===== */
+.md3-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.md3-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: width var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard),
+              height var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard),
+              opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.md3-ripple:active::before {
+  width: 200%;
+  height: 200%;
+  opacity: var(--md-sys-state-pressed-opacity);
+}
+
+/* ===== Card Component ===== */
+.md3-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--md-sys-color-surface);
+  border-radius: 12px;
+  box-shadow: var(--md-sys-elevation-1);
+  overflow: hidden;
+  transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.md3-card:hover {
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-2px);
+}
+
+.md3-card-elevated {
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.md3-card-filled {
+  background-color: var(--md-sys-color-surface-container);
+  box-shadow: none;
+}
+
+.md3-card-outlined {
+  background-color: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: none;
+}
+
+/* ===== Input Fields (Filled) ===== */
+.md3-text-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.md3-text-field-input {
+  padding: 24px 16px 8px;
+  border: none;
+  border-bottom: 1px solid var(--md-sys-color-outline);
+  border-radius: 4px 4px 0 0;
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  outline: none;
+  transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.md3-text-field-input:focus {
+  border-bottom-color: var(--md-sys-color-primary);
+  border-bottom-width: 2px;
+}
+
+.md3-text-field-label {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-large-size);
+  pointer-events: none;
+  transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+  transform-origin: left top;
+}
+
+.md3-text-field-input:focus + .md3-text-field-label,
+.md3-text-field-input:not(:placeholder-shown) + .md3-text-field-label {
+  top: 8px;
+  font-size: 12px;
+  color: var(--md-sys-color-primary);
+}
+
+/* ===== Progress Indicators ===== */
+@keyframes md3-circular-progress {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.md3-progress-circular {
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--md-sys-color-surface-container-high);
+  border-top-color: var(--md-sys-color-primary);
+  border-radius: 50%;
+  animation: md3-circular-progress 1s linear infinite;
+}
+
+.md3-progress-linear {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background-color: var(--md-sys-color-surface-container-high);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+@keyframes md3-linear-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.md3-progress-linear-bar {
+  position: absolute;
+  height: 100%;
+  width: 50%;
+  background-color: var(--md-sys-color-primary);
+  animation: md3-linear-progress 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* ===== Badge Component ===== */
+.md3-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background-color: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.md3-badge-success {
+  background-color: var(--md-sys-color-success);
+  color: var(--md-sys-color-on-success);
+}
+
+.md3-badge-warning {
+  background-color: var(--md-sys-color-warning);
+  color: var(--md-sys-color-on-warning);
+}
+
+.md3-badge-primary {
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+/* ===== Animations ===== */
+@keyframes md3-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes md3-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes md3-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes md3-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes md3-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes md3-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Animation Utility Classes */
+.md3-fade-in {
+  animation: md3-fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+}
+
+.md3-slide-up {
+  animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+}
+
+.md3-slide-down {
+  animation: md3-slide-down var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+}
+
+.md3-scale-in {
+  animation: md3-scale-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+}
+
+.md3-pulse {
+  animation: md3-pulse var(--md-sys-motion-duration-long2) var(--md-sys-motion-easing-standard) infinite;
+}
+
+.md3-shake {
+  animation: md3-shake var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard);
+}
+
+/* ===== State Layers ===== */
+.md3-state-layer {
+  position: relative;
+}
+
+.md3-state-layer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+.md3-state-layer:hover::after {
+  opacity: var(--md-sys-state-hover-opacity);
+}
+
+.md3-state-layer:focus::after {
+  opacity: var(--md-sys-state-focus-opacity);
+}
+
+.md3-state-layer:active::after {
+  opacity: var(--md-sys-state-pressed-opacity);
+}
+
+/* ===== Elevation Utility Classes ===== */
+.md3-elevation-0 { box-shadow: var(--md-sys-elevation-0); }
+.md3-elevation-1 { box-shadow: var(--md-sys-elevation-1); }
+.md3-elevation-2 { box-shadow: var(--md-sys-elevation-2); }
+.md3-elevation-3 { box-shadow: var(--md-sys-elevation-3); }
+.md3-elevation-4 { box-shadow: var(--md-sys-elevation-4); }
+.md3-elevation-5 { box-shadow: var(--md-sys-elevation-5); }
+
+/* ===== Typography Utility Classes ===== */
+.md3-display-large {
+  font-family: var(--md-sys-typescale-display-large-font);
+  font-size: var(--md-sys-typescale-display-large-size);
+  line-height: var(--md-sys-typescale-display-large-line-height);
+  font-weight: var(--md-sys-typescale-display-large-weight);
+}
+
+.md3-headline-large {
+  font-family: var(--md-sys-typescale-headline-large-font);
+  font-size: var(--md-sys-typescale-headline-large-size);
+  line-height: var(--md-sys-typescale-headline-large-line-height);
+  font-weight: var(--md-sys-typescale-headline-large-weight);
+}
+
+.md3-headline-medium {
+  font-family: var(--md-sys-typescale-headline-medium-font);
+  font-size: var(--md-sys-typescale-headline-medium-size);
+  line-height: var(--md-sys-typescale-headline-medium-line-height);
+  font-weight: var(--md-sys-typescale-headline-medium-weight);
+}
+
+.md3-title-large {
+  font-family: var(--md-sys-typescale-title-large-font);
+  font-size: var(--md-sys-typescale-title-large-size);
+  line-height: var(--md-sys-typescale-title-large-line-height);
+  font-weight: var(--md-sys-typescale-title-large-weight);
+}
+
+.md3-body-large {
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+}
+
+.md3-body-medium {
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+}
+
+/* ============================================================================
+   ACCESSIBILITY
+   ============================================================================ */
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus Visible */
+:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .md3-button,
+  .md3-card,
+  .md3-text-field-input {
+    border: 2px solid currentColor;
+  }
+}
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
+.md3-transition-all {
+  transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
+}
+
+.md3-transition-transform {
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+}
+
+.md3-transition-opacity {
+  transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.md3-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--md-sys-elevation-3);
+}
+
+.md3-hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Number Count Animation */
+@keyframes md3-count-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.md3-count-up {
+  animation: md3-count-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+}
