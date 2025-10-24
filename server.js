@@ -880,10 +880,10 @@ async function startServer() {
     // Initialize orchestrator (which initializes other services)
     await orchestratorService.initialize();
 
-    // Initialize course orchestrator (loads quiz questions) - DISABLED
-    // Temporarily disabled - will re-enable after refactoring
-    // const courseOrchestrator = require('./services/course-orchestrator.service');
-    // await courseOrchestrator.initialize();
+    // Initialize course orchestrator (loads quiz questions and M3 formatting)
+    const courseOrchestrator = require('./services/course-orchestrator.service');
+    await courseOrchestrator.initialize();
+    logger.info('✅ Course orchestrator initialized with M3 formatting');
     
     app.listen(PORT, () => {
       logger.info(`🚀 Teachers Training Server running on port ${PORT}`);
