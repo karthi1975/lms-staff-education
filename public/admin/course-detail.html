@@ -1429,11 +1429,12 @@
         }
 
         function addModule() {
-            window.location.href = `/admin/module-create.html?courseId=${courseId}`;
+            alert('Modules are managed directly in this course detail page. Use the course management interface to add content.');
         }
 
         function viewModule(moduleId) {
-            window.location.href = `/admin/module-detail.html?id=${moduleId}`;
+            // Module details are shown in this course detail page
+            console.log('View module:', moduleId);
         }
 
         // Quiz Upload Functions

@@ -289,7 +289,7 @@
     <div class="header">
         <div class="header-content">
             <h1>📝 Module Quiz</h1>
-            <button class="btn btn-secondary" onclick="window.location.href='modules.html'">← Back to Modules</button>
+            <button class="btn btn-secondary" onclick="window.location.href='courses.html'">← Back to Courses</button>
         </div>
     </div>
 
@@ -297,7 +297,7 @@
         <div style="background: white; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             <a href="dashboard.html" style="color: #667eea; text-decoration: none;">🏠 Home</a>
             <span style="color: #999;"> / </span>
-            <a href="modules.html" style="color: #667eea; text-decoration: none;">Modules</a>
+            <a href="courses.html" style="color: #667eea; text-decoration: none;">Courses</a>
             <span style="color: #999;"> / </span>
             <span style="color: #333; font-weight: 500;">Quiz</span>
         </div>
@@ -332,7 +332,7 @@
 
         if (!moduleId) {
             alert('No module specified');
-            window.location.href = 'modules.html';
+            window.location.href = 'courses.html';
         }
 
         // Load quiz on page load
@@ -363,7 +363,7 @@
                         <div class="quiz-header">
                             <h2>No Quiz Available</h2>
                             <p>This module doesn't have any quiz questions yet.</p>
-                            <button class="btn btn-primary" onclick="window.location.href='modules.html'">
+                            <button class="btn btn-primary" onclick="window.location.href='courses.html'">
                                 Back to Modules
                             </button>
                         </div>
@@ -508,7 +508,7 @@
                     Attempt: ${result.attempt_number}
                 </p>
                 <div class="results-actions">
-                    <button class="btn btn-primary" onclick="window.location.href='modules.html'">
+                    <button class="btn btn-primary" onclick="window.location.href='courses.html'">
                         Back to Modules
                     </button>
                     ${!result.passed ? `
