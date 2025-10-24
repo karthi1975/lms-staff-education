@@ -24,7 +24,7 @@ const navigationMenu = [
     id: 'users',
     icon: '👥',
     label: 'Users',
-    url: 'users.html',
+    url: 'user-management.html',
     items: []
   },
   {
