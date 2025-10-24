@@ -1191,10 +1191,10 @@
                 }
 
                 moduleList.innerHTML = modules.map((module, index) => {
-                    // Get quiz count from module data
+                    // Get quiz and question counts from module data
                     const questionCount = module.quiz_questions || 0;
                     const quizCount = questionCount > 0 ? 1 : 0;
-                    const quizText = `${quizCount} quiz${quizCount !== 1 ? 'zes' : ''}`;
+                    const quizText = `${quizCount} quiz${quizCount !== 1 ? 'zes' : ''} • ${questionCount} question${questionCount !== 1 ? 's' : ''}`;
 
                     return `
                         <li class="module-item" style="animation-delay: ${index * 50}ms;">
