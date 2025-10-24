@@ -104,7 +104,7 @@ class WhatsAppM3FormatterService {
   formatCourseSelection(courses) {
     const lines = [];
 
-    // Header card
+    // Header card - centered
     lines.push(this.symbols.divider.repeat(32));
     lines.push(`${this.symbols.rocket} *Teachers Training Platform*`);
     lines.push(`   _Your Learning Journey Starts Here_`);
@@ -115,26 +115,28 @@ class WhatsAppM3FormatterService {
     lines.push(`${this.symbols.course} *Available Courses*`);
     lines.push('');
 
-    // Course list with M3 cards
+    // Course list with improved M3 cards
     courses.forEach((course, idx) => {
       const number = `${idx + 1}`;
       const emoji = this.getCourseEmoji(course.name);
 
-      lines.push(`┌${this.symbols.horizontal.repeat(30)}`);
-      lines.push(`│ ${emoji} *${number}. ${course.name}*`);
+      // Clean card design without borders
+      lines.push(`${emoji} *${number}. ${course.name}*`);
 
       // Description (truncate if too long)
       if (course.description) {
-        const desc = course.description.length > 50
-          ? course.description.substring(0, 47) + '...'
+        const desc = course.description.length > 45
+          ? course.description.substring(0, 42) + '...'
           : course.description;
-        lines.push(`│   _${desc}_`);
+        lines.push(`   _${desc}_`);
       }
 
-      // Module count
+      // Module count with bullet
       const moduleCount = course.modules ? course.modules.length : 0;
-      lines.push(`│   ${this.symbols.bullet} ${moduleCount} modules`);
-      lines.push(`└${this.symbols.horizontal.repeat(30)}`);
+      lines.push(`   ${this.symbols.bullet} ${moduleCount} modules`);
+
+      // Separator line between courses
+      lines.push(`   ${this.symbols.horizontal.repeat(28)}`);
       lines.push('');
     });
 
@@ -142,8 +144,6 @@ class WhatsAppM3FormatterService {
     lines.push(this.symbols.divider.repeat(32));
     lines.push(`${this.symbols.arrow} *How to Select:*`);
     lines.push(`   Reply with the *number* (1-${courses.length})`);
-    lines.push('');
-    lines.push(`   Example: *1* for ${courses[0]?.name || 'first course'}`);
     lines.push(this.symbols.divider.repeat(32));
 
     return lines.join('\n');
@@ -165,31 +165,29 @@ class WhatsAppM3FormatterService {
     lines.push(`${this.symbols.module} *Course Modules*`);
     lines.push('');
 
-    // Module cards
+    // Module cards - clean design without boxes
     course.modules.forEach((module, idx) => {
       const number = `${idx + 1}`;
       const emoji = this.getModuleEmoji(idx);
 
-      lines.push(`┌${this.symbols.horizontal.repeat(30)}`);
-      lines.push(`│ ${emoji} *${number}. ${module.name}*`);
+      // Module title
+      lines.push(`${emoji} *${number}. ${module.name}*`);
 
-      // Description
+      // Description - properly formatted
       if (module.description) {
-        const desc = module.description.length > 55
-          ? module.description.substring(0, 52) + '...'
+        const desc = module.description.length > 50
+          ? module.description.substring(0, 47) + '...'
           : module.description;
-        const descLines = this.wrapText(desc, 28);
-        descLines.forEach(line => {
-          lines.push(`│   ${line}`);
-        });
+        lines.push(`   ${desc}`);
       }
 
       // Quiz indicator
       if (module.has_quiz) {
-        lines.push(`│   ${this.symbols.quiz} Quiz available`);
+        lines.push(`   ${this.symbols.quiz} Quiz available`);
       }
 
-      lines.push(`└${this.symbols.horizontal.repeat(30)}`);
+      // Separator line
+      lines.push(`   ${this.symbols.horizontal.repeat(28)}`);
       lines.push('');
     });
 
@@ -220,7 +218,7 @@ class WhatsAppM3FormatterService {
     questionLines.forEach(line => lines.push(`   ${line}`));
     lines.push('');
 
-    // Options with M3 selectable styling
+    // Options with M3 selectable styling - clean design
     lines.push(`${this.symbols.radio} *Select Your Answer:*`);
     lines.push('');
 
@@ -234,9 +232,12 @@ class WhatsAppM3FormatterService {
 
     options.forEach((option, idx) => {
       const label = optionLabels[idx];
-      lines.push(`┌${this.symbols.horizontal.repeat(30)}`);
-      lines.push(`│ ${this.symbols.radioEmpty} *${label}.* ${option}`);
-      lines.push(`└${this.symbols.horizontal.repeat(30)}`);
+      // Clean option format with radio button
+      lines.push(`${this.symbols.radioEmpty} *${label}.* ${option}`);
+      // Separator between options
+      if (idx < options.length - 1) {
+        lines.push(`   ${this.symbols.horizontal.repeat(28)}`);
+      }
       lines.push('');
     });
 
@@ -301,16 +302,25 @@ class WhatsAppM3FormatterService {
   formatChatResponse({ content, sources = [], moduleName = null }) {
     const lines = [];
 
-    // Response card
+    // Response card header
     lines.push(this.symbols.divider.repeat(32));
     if (moduleName) {
       lines.push(`${this.symbols.chat} *${moduleName}*`);
+      lines.push(this.symbols.divider.repeat(32));
       lines.push('');
     }
 
-    // Content
+    // Content - properly indented for better readability
     const contentLines = this.wrapText(content, 30);
-    contentLines.forEach(line => lines.push(line));
+
+    // Add subtle left padding to content
+    contentLines.forEach(line => {
+      if (line.trim()) {
+        lines.push(line);
+      } else {
+        lines.push('');
+      }
+    });
     lines.push('');
 
     // Sources footer

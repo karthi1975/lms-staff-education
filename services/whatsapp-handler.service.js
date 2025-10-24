@@ -193,17 +193,26 @@ class WhatsAppHandlerService {
   }
 
   /**
-   * Send response (handles text, list, buttons, quiz questions, etc.)
+   * Send response (handles text, list, button, buttons, quiz questions, etc.)
    */
   async sendResponse(to, response) {
     if (!response) return;
 
     // Handle different response types
-    if (response.type === 'list') {
+    if (response.type === 'button') {
+      // NEW: Interactive button message (from course orchestrator)
+      await whatsappService.sendButtons(
+        to,
+        response.body,
+        response.buttons,
+        response.header
+      );
+    } else if (response.type === 'list') {
+      // Interactive list message (from course orchestrator or legacy)
       await whatsappService.sendInteractiveList(
         to,
-        'Select an Option',
-        response.text,
+        response.header || 'Select an Option',
+        response.body || response.text,
         response.buttonText || 'Select',
         response.sections
       );
@@ -215,6 +224,7 @@ class WhatsAppHandlerService {
       const questionFormatted = this.formatQuizQuestion(response.question, response.questionNum, response.totalQuestions);
       await this.sendQuizQuestion(to, questionFormatted);
     } else if (response.type === 'buttons' || response.question?.type === 'buttons') {
+      // LEGACY: Old button format (for backward compatibility)
       // Send answer confirmation if provided
       if (response.text) {
         await whatsappService.sendMessage(to, response.text);
@@ -224,7 +234,7 @@ class WhatsAppHandlerService {
       const question = response.question || response;
       await whatsappService.sendButtons(to, question.bodyText, question.buttons);
     } else if (response.type === 'text' || response.question?.type === 'text') {
-      // Text-based question (for 4+ options)
+      // Text-based question (for 4+ options or fallback)
       if (response.text && response.question?.text) {
         // Separate messages for answer confirmation and next question
         await whatsappService.sendMessage(to, response.text);

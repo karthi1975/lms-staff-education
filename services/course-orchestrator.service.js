@@ -207,12 +207,43 @@ class CourseOrchestratorService {
   }
 
   /**
-   * Show course selection with WhatsApp list
+   * Show course selection with interactive buttons/list (if supported)
    */
   showCourseSelection() {
-    // Use M3 formatter for beautiful course selection
-    const formattedMessage = m3Formatter.formatCourseSelection(this.courses);
+    // If WhatsApp adapter supports interactive UI, use buttons or list
+    if (whatsappService.supportsInteractive()) {
+      // Use buttons for 1-3 courses, list for 4+ courses
+      if (this.courses.length <= 3) {
+        return {
+          type: 'button',
+          header: '📚 Teachers Training Platform',
+          body: 'Welcome! Choose your course to get started:',
+          buttons: this.courses.map((course, index) => ({
+            id: `course_${course.id}`,
+            title: `${index + 1}. ${course.name.substring(0, 15)}` // Max 20 chars
+          }))
+        };
+      } else {
+        // Use interactive list for 4+ courses
+        return {
+          type: 'list',
+          header: '📚 Available Courses',
+          body: 'Select a course to begin your learning journey:',
+          buttonText: 'View Courses',
+          sections: [{
+            title: 'All Courses',
+            rows: this.courses.map((course, index) => ({
+              id: `course_${course.id}`,
+              title: `${index + 1}. ${course.name.substring(0, 20)}`, // Max 24 chars
+              description: course.description ? course.description.substring(0, 70) : '' // Max 72 chars
+            }))
+          }]
+        };
+      }
+    }
 
+    // Fallback: Use M3 text formatter for Twilio or non-interactive mode
+    const formattedMessage = m3Formatter.formatCourseSelection(this.courses);
     return {
       type: 'text',
       text: formattedMessage
@@ -250,12 +281,32 @@ class CourseOrchestratorService {
   }
 
   /**
-   * Show module selection
+   * Show module selection with interactive list (if supported)
    */
   showModuleSelection(course) {
-    // Use M3 formatter for beautiful module selection
-    const formattedMessage = m3Formatter.formatModuleSelection(course);
+    // If WhatsApp adapter supports interactive UI, use list
+    if (whatsappService.supportsInteractive() && course.modules && course.modules.length > 0) {
+      // Use interactive list for modules (max 10)
+      const modulesToShow = course.modules.slice(0, 10); // Limit to 10 for Meta API
 
+      return {
+        type: 'list',
+        header: `📚 ${course.name}`,
+        body: `Course Modules (${course.modules.length} available):`,
+        buttonText: 'View Modules',
+        sections: [{
+          title: 'Available Modules',
+          rows: modulesToShow.map((module, index) => ({
+            id: `module_${module.id}`,
+            title: `${index + 1}. ${module.name.substring(0, 20)}`, // Max 24 chars
+            description: module.has_quiz ? '📝 Quiz available' : '📖 Learning module' // Max 72 chars
+          }))
+        }]
+      };
+    }
+
+    // Fallback: Use M3 text formatter for Twilio or non-interactive mode
+    const formattedMessage = m3Formatter.formatModuleSelection(course);
     return {
       type: 'text',
       text: formattedMessage
@@ -676,10 +727,10 @@ class CourseOrchestratorService {
   }
 
   /**
-   * Format question for WhatsApp (returns button config with M3 styling)
+   * Format question for WhatsApp with interactive buttons/list (if supported)
    */
   formatQuestionForWhatsApp(question, currentNum, total) {
-    // Prepare question data for M3 formatter
+    // Prepare question data
     const questionData = {
       question_text: question.questionText,
       option_a: question.options && question.options[0] ? question.options[0] : null,
@@ -696,7 +747,59 @@ class CourseOrchestratorService {
       questionData.option_d = null;
     }
 
-    // Use M3 formatter for beautiful quiz presentation
+    // If WhatsApp adapter supports interactive UI, use buttons/list
+    if (whatsappService.supportsInteractive()) {
+      // Count options
+      const optionCount = [questionData.option_a, questionData.option_b, questionData.option_c, questionData.option_d]
+        .filter(opt => opt !== null).length;
+
+      if (optionCount <= 3) {
+        // Use interactive buttons for 2-3 options (max 3 buttons allowed)
+        const buttons = [];
+        ['A', 'B', 'C', 'D'].forEach((letter) => {
+          const optionKey = `option_${letter.toLowerCase()}`;
+          if (questionData[optionKey]) {
+            buttons.push({
+              id: `answer_${letter}`,
+              title: `${letter}) ${questionData[optionKey].substring(0, 15)}` // Max 20 chars
+            });
+          }
+        });
+
+        return {
+          type: 'button',
+          header: `📝 Question ${currentNum}/${total}`,
+          body: questionData.question_text,
+          buttons: buttons
+        };
+      } else {
+        // Use interactive list for 4-option questions
+        const rows = [];
+        ['A', 'B', 'C', 'D'].forEach((letter) => {
+          const optionKey = `option_${letter.toLowerCase()}`;
+          if (questionData[optionKey]) {
+            rows.push({
+              id: `answer_${letter}`,
+              title: `${letter}) ${questionData[optionKey].substring(0, 20)}`, // Max 24 chars
+              description: questionData[optionKey].substring(0, 70) // Max 72 chars
+            });
+          }
+        });
+
+        return {
+          type: 'list',
+          header: `📝 Question ${currentNum}/${total}`,
+          body: questionData.question_text,
+          buttonText: 'Select Answer',
+          sections: [{
+            title: 'Answer Options',
+            rows: rows
+          }]
+        };
+      }
+    }
+
+    // Fallback: Use M3 text formatter for Twilio or non-interactive mode
     const formattedText = m3Formatter.formatQuizQuestion(questionData, currentNum, total);
 
     // Return as text (WhatsApp will display it beautifully)
