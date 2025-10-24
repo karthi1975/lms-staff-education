@@ -1201,7 +1201,6 @@
                                     <span id="module-${module.id}-files"></span>
                                 </div>
                                 <div class="module-stat">
-                                    <span>❓</span>
                                     <span id="module-${module.id}-quizzes">...</span>
                                 </div>
                             </div>
@@ -1258,13 +1257,15 @@
                     const questionCount = quizResult.data?.length || 0;
                     const quizzesElement = document.getElementById(`module-${moduleId}-quizzes`);
                     if (quizzesElement) {
-                        quizzesElement.textContent = `${questionCount} question${questionCount !== 1 ? 's' : ''}`;
+                        // Show quiz count (1 quiz if there are questions, 0 otherwise)
+                        const quizCount = questionCount > 0 ? 1 : 0;
+                        quizzesElement.textContent = `${quizCount} quiz${quizCount !== 1 ? 'zes' : ''}`;
                     }
                 } else {
                     // If quiz API fails, show 0
                     const quizzesElement = document.getElementById(`module-${moduleId}-quizzes`);
                     if (quizzesElement) {
-                        quizzesElement.textContent = '0 questions';
+                        quizzesElement.textContent = '0 quizzes';
                     }
                 }
 
@@ -1273,7 +1274,7 @@
                 // Show 0 on error
                 const quizzesElement = document.getElementById(`module-${moduleId}-quizzes`);
                 if (quizzesElement) {
-                    quizzesElement.textContent = '0 questions';
+                    quizzesElement.textContent = '0 quizzes';
                 }
             }
         }
