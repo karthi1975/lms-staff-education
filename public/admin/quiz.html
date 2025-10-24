@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Module Quiz - Teachers Training System</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
     <style>
         * {
             margin: 0;
@@ -19,9 +23,10 @@
 
         .header {
             background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             padding: 20px;
             margin-bottom: 30px;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .header-content {
@@ -40,10 +45,39 @@
         .btn {
             padding: 10px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 20px;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+            opacity: 1;
+            transition: 0s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .btn-secondary {
@@ -63,10 +97,13 @@
 
         .quiz-header {
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 30px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.1s;
+            animation-fill-mode: both;
         }
 
         .quiz-header h2 {
@@ -91,14 +128,31 @@
 
         .question-card {
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 30px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
+            transition: all var(--md-sys-motion-duration-medium2);
         }
 
+        .question-card:hover {
+            box-shadow: var(--md-sys-elevation-2);
+        }
+
+        .question-card:nth-child(2) { animation-delay: 0.2s; }
+        .question-card:nth-child(3) { animation-delay: 0.25s; }
+        .question-card:nth-child(4) { animation-delay: 0.3s; }
+        .question-card:nth-child(5) { animation-delay: 0.35s; }
+        .question-card:nth-child(6) { animation-delay: 0.4s; }
+        .question-card:nth-child(7) { animation-delay: 0.45s; }
+        .question-card:nth-child(8) { animation-delay: 0.5s; }
+        .question-card:nth-child(9) { animation-delay: 0.55s; }
+        .question-card:nth-child(10) { animation-delay: 0.6s; }
+
         .question-number {
-            color: #667eea;
+            color: var(--md-sys-color-primary);
             font-weight: 600;
             font-size: 14px;
             margin-bottom: 10px;
@@ -121,20 +175,51 @@
             display: flex;
             align-items: center;
             padding: 15px 20px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            border: 2px solid var(--md-sys-color-outline);
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--md-sys-color-primary);
+            opacity: 0;
+            transition: opacity var(--md-sys-motion-duration-short2);
+            z-index: 0;
         }
 
         .option:hover {
-            border-color: #667eea;
+            border-color: var(--md-sys-color-primary);
             background: #f9fafb;
+            transform: translateX(4px) scale(1.01);
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .option:hover::before {
+            opacity: 0.05;
         }
 
         .option.selected {
-            border-color: #667eea;
-            background: #eef2ff;
+            border-color: var(--md-sys-color-primary);
+            background: rgba(0, 137, 123, 0.1);
+            box-shadow: var(--md-sys-elevation-2);
+            transform: scale(1.02);
+        }
+
+        .option.selected::before {
+            opacity: 0.1;
+        }
+
+        .option:active {
+            transform: scale(0.98);
         }
 
         .option input[type="radio"] {
@@ -142,6 +227,17 @@
             width: 20px;
             height: 20px;
             cursor: pointer;
+            position: relative;
+            z-index: 1;
+            transition: transform var(--md-sys-motion-duration-short2);
+        }
+
+        .option:hover input[type="radio"] {
+            transform: scale(1.1);
+        }
+
+        .option.selected input[type="radio"] {
+            transform: scale(1.15);
         }
 
         .option label {
@@ -149,6 +245,8 @@
             cursor: pointer;
             font-size: 16px;
             color: #333;
+            position: relative;
+            z-index: 1;
         }
 
         .difficulty-badge {
@@ -158,6 +256,12 @@
             font-size: 12px;
             font-weight: 600;
             margin-left: 10px;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            transition: transform var(--md-sys-motion-duration-short2);
+        }
+
+        .difficulty-badge:hover {
+            transform: scale(1.05);
         }
 
         .difficulty-easy {
@@ -177,39 +281,90 @@
 
         .submit-container {
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             text-align: center;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.65s;
+            animation-fill-mode: both;
         }
 
         .btn-submit {
-            background: #667eea;
+            background: var(--md-sys-color-primary);
             color: white;
             padding: 15px 40px;
             font-size: 16px;
             font-weight: 600;
             border: none;
-            border-radius: 8px;
+            border-radius: 24px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-submit::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .btn-submit:active::before {
+            width: 400px;
+            height: 400px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .btn-submit:hover {
-            background: #5568d3;
+            background: #00695C;
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: var(--md-sys-elevation-4);
         }
 
         .btn-submit:disabled {
             background: #ccc;
             cursor: not-allowed;
+            opacity: 0.6;
+            transform: none;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .btn-submit.loading::after {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-left: 10px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: btn-spinner 0.6s linear infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes btn-spinner {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         .results {
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 40px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-3);
             text-align: center;
+            animation: md3-scale-in var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized);
         }
 
         .results.hidden {
@@ -226,6 +381,27 @@
             justify-content: center;
             font-size: 48px;
             font-weight: bold;
+            animation: score-pop 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: var(--md-sys-elevation-3);
+        }
+
+        @keyframes score-pop {
+            0% {
+                transform: scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            60% {
+                transform: scale(1.15) rotate(10deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        .score-circle:hover {
+            transform: scale(1.05);
+            transition: transform var(--md-sys-motion-duration-medium2);
         }
 
         .score-circle.passed {
@@ -241,42 +417,53 @@
         .results h2 {
             font-size: 32px;
             margin-bottom: 10px;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.3s;
+            animation-fill-mode: both;
         }
 
         .results p {
             font-size: 16px;
             color: #666;
             margin-bottom: 30px;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.4s;
+            animation-fill-mode: both;
         }
 
         .results-actions {
             display: flex;
             gap: 15px;
             justify-content: center;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.5s;
+            animation-fill-mode: both;
         }
 
         .btn-primary {
-            background: #667eea;
+            background: var(--md-sys-color-primary);
             color: white;
         }
 
         .btn-primary:hover {
-            background: #5568d3;
+            background: #00695C;
         }
 
         .loading {
             text-align: center;
             padding: 60px 20px;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .spinner {
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            border-top: 3px solid var(--md-sys-color-primary);
             border-radius: 50%;
             width: 40px;
             height: 40px;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             margin: 0 auto 20px;
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         @keyframes spin {
@@ -294,10 +481,10 @@
     </div>
 
     <div class="container">
-        <div style="background: white; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <a href="dashboard.html" style="color: #667eea; text-decoration: none;">🏠 Home</a>
+        <div style="background: white; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); animation: md3-fade-in 0.3s ease;">
+            <a href="dashboard.html" style="color: var(--md-sys-color-primary); text-decoration: none;">🏠 Home</a>
             <span style="color: #999;"> / </span>
-            <a href="courses.html" style="color: #667eea; text-decoration: none;">Courses</a>
+            <a href="courses.html" style="color: var(--md-sys-color-primary); text-decoration: none;">Courses</a>
             <span style="color: #999;"> / </span>
             <span style="color: #333; font-weight: 500;">Quiz</span>
         </div>
@@ -460,7 +647,8 @@
         async function submitQuiz() {
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
+            submitBtn.classList.add('loading');
+            submitBtn.textContent = 'Submitting';
 
             try {
                 const response = await fetch(`${API_BASE}/quiz/${moduleId}/submit`, {
@@ -482,6 +670,7 @@
                 console.error('Error submitting quiz:', error);
                 alert('Error submitting quiz. Please try again.');
                 submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
                 submitBtn.textContent = 'Submit Quiz';
             }
         }
