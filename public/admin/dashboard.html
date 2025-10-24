@@ -1190,23 +1190,30 @@
                     return;
                 }
 
-                moduleList.innerHTML = modules.map((module, index) => `
-                    <li class="module-item" style="animation-delay: ${index * 50}ms;">
-                        <div class="module-number">${module.sequence_order || index + 1}</div>
-                        <div class="module-info">
-                            <div class="module-name">${module.title || 'Untitled Module'}</div>
-                            <div class="module-stats">
-                                <div class="module-stat" id="module-${module.id}-files-container" style="display: none;">
-                                    <span>📄</span>
-                                    <span id="module-${module.id}-files"></span>
-                                </div>
-                                <div class="module-stat">
-                                    <span id="module-${module.id}-quizzes">...</span>
+                moduleList.innerHTML = modules.map((module, index) => {
+                    // Get quiz count from module data
+                    const questionCount = module.quiz_questions || 0;
+                    const quizCount = questionCount > 0 ? 1 : 0;
+                    const quizText = `${quizCount} quiz${quizCount !== 1 ? 'zes' : ''}`;
+
+                    return `
+                        <li class="module-item" style="animation-delay: ${index * 50}ms;">
+                            <div class="module-number">${module.sequence_order || index + 1}</div>
+                            <div class="module-info">
+                                <div class="module-name">${module.title || 'Untitled Module'}</div>
+                                <div class="module-stats">
+                                    <div class="module-stat" id="module-${module.id}-files-container" style="display: none;">
+                                        <span>📄</span>
+                                        <span id="module-${module.id}-files"></span>
+                                    </div>
+                                    <div class="module-stat">
+                                        <span>${quizText}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </li>
-                `).join('');
+                        </li>
+                    `;
+                }).join('');
 
                 // Load content stats for each module
                 modules.forEach(module => loadModuleStats(module.id));
@@ -1247,35 +1254,10 @@
                     }
                 }
 
-                // Load quiz questions
-                const quizResponse = await fetch(`${API_BASE}/quizzes/${moduleId}/questions`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-
-                if (quizResponse.ok) {
-                    const quizResult = await quizResponse.json();
-                    const questionCount = quizResult.data?.length || 0;
-                    const quizzesElement = document.getElementById(`module-${moduleId}-quizzes`);
-                    if (quizzesElement) {
-                        // Show quiz count (1 quiz if there are questions, 0 otherwise)
-                        const quizCount = questionCount > 0 ? 1 : 0;
-                        quizzesElement.textContent = `${quizCount} quiz${quizCount !== 1 ? 'zes' : ''}`;
-                    }
-                } else {
-                    // If quiz API fails, show 0
-                    const quizzesElement = document.getElementById(`module-${moduleId}-quizzes`);
-                    if (quizzesElement) {
-                        quizzesElement.textContent = '0 quizzes';
-                    }
-                }
+                // Quiz count is already displayed from module data, no separate API call needed
 
             } catch (error) {
                 console.error(`Error loading stats for module ${moduleId}:`, error);
-                // Show 0 on error
-                const quizzesElement = document.getElementById(`module-${moduleId}-quizzes`);
-                if (quizzesElement) {
-                    quizzesElement.textContent = '0 quizzes';
-                }
             }
         }
 
