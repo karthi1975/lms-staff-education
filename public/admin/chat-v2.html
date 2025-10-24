@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Module Chat - Teachers Training System</title>
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
     <style>
         * {
             margin: 0;
@@ -21,8 +22,9 @@
 
         .header {
             background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             padding: 20px;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .header-content {
@@ -46,10 +48,34 @@
         .btn {
             padding: 10px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 20px;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .btn-primary {
@@ -59,6 +85,8 @@
 
         .btn-primary:hover {
             background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .btn-secondary {
@@ -82,10 +110,13 @@
         .sidebar {
             width: 300px;
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             height: fit-content;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.1s;
+            animation-fill-mode: both;
         }
 
         .sidebar h2 {
@@ -101,21 +132,36 @@
         .module-item {
             padding: 12px;
             margin-bottom: 8px;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
             display: flex;
             align-items: center;
             gap: 10px;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
         }
+
+        .module-item:nth-child(1) { animation-delay: 0.2s; }
+        .module-item:nth-child(2) { animation-delay: 0.25s; }
+        .module-item:nth-child(3) { animation-delay: 0.3s; }
+        .module-item:nth-child(4) { animation-delay: 0.35s; }
+        .module-item:nth-child(5) { animation-delay: 0.4s; }
 
         .module-item:hover {
             background: #f0f0f0;
+            transform: translateX(4px) scale(1.02);
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .module-item:active {
+            transform: translateX(2px) scale(0.98);
         }
 
         .module-item.active {
-            background: #00897B;
+            background: var(--md-sys-color-primary);
             color: white;
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .module-number {
@@ -138,11 +184,14 @@
         .chat-container {
             flex: 1;
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
             display: flex;
             flex-direction: column;
             height: calc(100vh - 180px);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.2s;
+            animation-fill-mode: both;
         }
 
         .chat-header {
@@ -186,12 +235,26 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            scroll-behavior: smooth;
         }
 
         .message {
             display: flex;
             gap: 10px;
             max-width: 80%;
+            animation: message-slide-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
+        }
+
+        @keyframes message-slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         .message.user {
@@ -203,13 +266,21 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: #00897B;
+            background: var(--md-sys-color-primary);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             flex-shrink: 0;
+            box-shadow: var(--md-sys-elevation-2);
+            animation: avatar-pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes avatar-pop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
         }
 
         .message.user .message-avatar {
@@ -219,13 +290,20 @@
         .message-content {
             background: #f9fafb;
             padding: 12px 16px;
-            border-radius: 12px;
+            border-radius: 16px;
             flex: 1;
+            box-shadow: var(--md-sys-elevation-1);
+            transition: all var(--md-sys-motion-duration-medium2);
+        }
+
+        .message-content:hover {
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .message.user .message-content {
-            background: #00897B;
+            background: var(--md-sys-color-primary);
             color: white;
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .message-text {
@@ -263,23 +341,51 @@
 
         .message-input:focus {
             outline: none;
-            border-color: #00897B;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 4px rgba(0, 137, 123, 0.1);
+            transform: scale(1.01);
         }
 
         .send-button {
             padding: 12px 24px;
-            background: #00897B;
+            background: var(--md-sys-color-primary);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            transition: all 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .send-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .send-button:active::before {
+            width: 200px;
+            height: 200px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .send-button:hover {
             background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .send-button:disabled {
@@ -329,6 +435,9 @@
             text-align: center;
             padding: 60px 20px;
             color: #666;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.3s;
+            animation-fill-mode: both;
         }
 
         .empty-state-icon {
@@ -362,10 +471,18 @@
         .source-tag {
             display: inline-block;
             background: rgba(0,0,0,0.05);
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
             margin-right: 5px;
             margin-top: 5px;
+            font-size: 11px;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            transition: all var(--md-sys-motion-duration-short2);
+        }
+
+        .source-tag:hover {
+            background: rgba(0,0,0,0.1);
+            transform: scale(1.05);
         }
     </style>
 </head>
