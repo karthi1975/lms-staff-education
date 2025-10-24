@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp AI Chat - Material Design 3</title>
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* WhatsApp M3 Colors */
+            --whatsapp-green: #25D366;
+            --whatsapp-green-dark: #128C7E;
+            --whatsapp-green-light: #DCF8C6;
+            --whatsapp-blue: #34B7F1;
+            --whatsapp-gray: #E5DDD5;
+            --whatsapp-dark: #075E54;
+
+            /* M3 WhatsApp Theme */
+            --wa-primary: var(--whatsapp-green);
+            --wa-primary-dark: var(--whatsapp-green-dark);
+            --wa-surface: #ffffff;
+            --wa-surface-variant: #F7F8FA;
+            --wa-background: #ECE5DD;
+            --wa-on-primary: #ffffff;
+            --wa-on-surface: #111B21;
+            --wa-outline: #8696A0;
+
+            /* Message Bubbles */
+            --wa-bubble-sent: var(--whatsapp-green-light);
+            --wa-bubble-received: #ffffff;
+            --wa-bubble-shadow: rgba(0, 0, 0, 0.04);
+
+            /* M3 Motion */
+            --wa-motion-quick: 150ms;
+            --wa-motion-standard: 250ms;
+            --wa-motion-emphasized: 400ms;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--wa-background);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* WhatsApp-style Header */
+        .whatsapp-header {
+            background: var(--wa-primary-dark);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            position: relative;
+            z-index: 10;
+            animation: md3-slide-down var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        @keyframes md3-slide-down {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background var(--wa-motion-standard);
+            font-size: 24px;
+        }
+
+        .header-back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            animation: md3-bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes md3-bounce-in {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+
+        .header-info {
+            flex: 1;
+        }
+
+        .header-name {
+            font-size: 17px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .header-status {
+            font-size: 13px;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #25D366;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .header-action-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background var(--wa-motion-standard);
+            font-size: 20px;
+        }
+
+        .header-action-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Main Container */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 100%;
+            margin: 0 auto;
+            background: var(--wa-background);
+            position: relative;
+        }
+
+        /* Background Pattern (WhatsApp style) */
+        .chat-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(45deg, rgba(0, 0, 0, 0.02) 25%, transparent 25%),
+                linear-gradient(-45deg, rgba(0, 0, 0, 0.02) 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.02) 75%),
+                linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.02) 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* Messages Area */
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
+            scroll-behavior: smooth;
+        }
+
+        .messages-area::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages-area::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        /* Message Bubble (WhatsApp M3 Style) */
+        .message-bubble {
+            max-width: 75%;
+            display: flex;
+            flex-direction: column;
+            animation: message-pop-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
+        }
+
+        @keyframes message-pop-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(10px);
+            }
+            60% {
+                transform: scale(1.02) translateY(-2px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Sent Messages (User) */
+        .message-bubble.sent {
+            align-self: flex-end;
+        }
+
+        .message-bubble.sent .bubble-content {
+            background: var(--wa-bubble-sent);
+            color: #000000;
+            border-radius: 8px 8px 0 8px;
+            box-shadow: 0 1px 1px var(--wa-bubble-shadow);
+        }
+
+        /* Received Messages (AI) */
+        .message-bubble.received {
+            align-self: flex-start;
+        }
+
+        .message-bubble.received .bubble-content {
+            background: var(--wa-bubble-received);
+            color: #000000;
+            border-radius: 8px 8px 8px 0;
+            box-shadow: 0 1px 1px var(--wa-bubble-shadow);
+        }
+
+        .bubble-content {
+            padding: 6px 9px 8px 9px;
+            position: relative;
+            word-wrap: break-word;
+            transition: all var(--wa-motion-standard);
+        }
+
+        .bubble-content:hover {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Message Text */
+        .message-text {
+            font-size: 14.2px;
+            line-height: 1.5;
+            margin-bottom: 3px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Message Meta (Time + Status) */
+        .message-meta {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 3px;
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.45);
+            margin-top: 2px;
+        }
+
+        .message-bubble.sent .message-meta {
+            color: rgba(0, 0, 0, 0.45);
+        }
+
+        /* WhatsApp Checkmarks */
+        .message-status {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .checkmark {
+            width: 16px;
+            height: 12px;
+            position: relative;
+            animation: checkmark-appear 0.3s ease-out;
+        }
+
+        @keyframes checkmark-appear {
+            from { opacity: 0; transform: scale(0.5); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .checkmark::before,
+        .checkmark::after {
+            content: '';
+            position: absolute;
+            height: 2px;
+            background: #53bdeb;
+            border-radius: 1px;
+        }
+
+        .checkmark::before {
+            width: 6px;
+            transform: rotate(45deg);
+            left: 2px;
+            top: 7px;
+        }
+
+        .checkmark::after {
+            width: 10px;
+            transform: rotate(-45deg);
+            left: 6px;
+            top: 4px;
+        }
+
+        /* Double check (read) */
+        .checkmark.read {
+            margin-left: -4px;
+        }
+
+        .checkmark.read::before,
+        .checkmark.read::after {
+            background: #53bdeb;
+        }
+
+        /* Sources Tags (M3 Chips) */
+        .message-sources {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .source-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 16px;
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.6);
+            transition: all var(--wa-motion-quick);
+            cursor: pointer;
+            animation: md3-scale-in var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .source-chip:hover {
+            background: rgba(0, 0, 0, 0.08);
+            transform: scale(1.05);
+        }
+
+        .source-chip::before {
+            content: '📚';
+            margin-right: 4px;
+        }
+
+        /* Typing Indicator (WhatsApp style) */
+        .typing-bubble {
+            max-width: 75px;
+            align-self: flex-start;
+            animation: message-pop-in 0.3s ease-out;
+        }
+
+        .typing-bubble .bubble-content {
+            background: var(--wa-bubble-received);
+            padding: 12px 16px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #9E9E9E;
+            animation: typing-animation 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing-animation {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.7;
+            }
+            30% {
+                transform: translateY(-6px);
+                opacity: 1;
+            }
+        }
+
+        /* Input Area (WhatsApp M3 Style) */
+        .input-area {
+            background: var(--wa-surface-variant);
+            padding: 8px 12px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.05);
+            position: relative;
+            z-index: 2;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .input-actions-left {
+            display: flex;
+            gap: 4px;
+        }
+
+        .input-action-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: #54656F;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: background var(--wa-motion-quick);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .input-action-btn::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s;
+        }
+
+        .input-action-btn:hover::before {
+            opacity: 0.1;
+            transform: scale(1);
+        }
+
+        .input-action-btn:active {
+            transform: scale(0.95);
+        }
+
+        .message-input-wrapper {
+            flex: 1;
+            background: white;
+            border-radius: 24px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: all var(--wa-motion-standard);
+        }
+
+        .message-input-wrapper:focus-within {
+            box-shadow: 0 2px 4px rgba(37, 211, 102, 0.2);
+        }
+
+        .message-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            font-family: inherit;
+            resize: none;
+            max-height: 120px;
+            line-height: 20px;
+        }
+
+        .message-input::placeholder {
+            color: #8696A0;
+        }
+
+        .send-button {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: var(--wa-primary);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all var(--wa-motion-standard);
+            box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .send-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+
+        .send-button:active::before {
+            width: 120%;
+            height: 120%;
+        }
+
+        .send-button:hover {
+            background: var(--wa-primary-dark);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+        }
+
+        .send-button:disabled {
+            background: #E9EDEF;
+            color: #8696A0;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .send-button:disabled:hover {
+            transform: none;
+        }
+
+        /* Module Selector Fab */
+        .module-selector-fab {
+            position: fixed;
+            bottom: 80px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: var(--wa-primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
+            transition: all var(--wa-motion-emphasized);
+            z-index: 100;
+            animation: fab-entrance 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes fab-entrance {
+            from {
+                opacity: 0;
+                transform: scale(0) rotate(-180deg);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) rotate(0);
+            }
+        }
+
+        .module-selector-fab:hover {
+            transform: scale(1.1) rotate(10deg);
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4);
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--wa-on-surface);
+            margin-bottom: 8px;
+        }
+
+        .empty-subtitle {
+            font-size: 14px;
+            color: var(--wa-outline);
+        }
+
+        /* Module Selector Modal */
+        .module-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            animation: modal-fade-in 0.3s ease-out;
+        }
+
+        .module-modal.active {
+            display: flex;
+        }
+
+        @keyframes modal-fade-in {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .module-modal-content {
+            background: white;
+            border-radius: 28px;
+            max-width: 440px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: modal-slide-up 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes modal-slide-up {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .module-modal-header {
+            padding: 24px 24px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .module-modal-title {
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--wa-on-surface);
+            margin-bottom: 8px;
+        }
+
+        .module-modal-subtitle {
+            font-size: 14px;
+            color: var(--wa-outline);
+        }
+
+        .module-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .module-item {
+            padding: 16px 20px;
+            margin: 4px 0;
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all var(--wa-motion-standard);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
+        }
+
+        .module-item:nth-child(1) { animation-delay: 0.05s; }
+        .module-item:nth-child(2) { animation-delay: 0.1s; }
+        .module-item:nth-child(3) { animation-delay: 0.15s; }
+        .module-item:nth-child(4) { animation-delay: 0.2s; }
+        .module-item:nth-child(5) { animation-delay: 0.25s; }
+
+        .module-item:hover {
+            background: rgba(37, 211, 102, 0.08);
+            transform: translateX(4px) scale(1.02);
+        }
+
+        .module-item.active {
+            background: rgba(37, 211, 102, 0.12);
+        }
+
+        .module-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--wa-primary) 0%, var(--wa-primary-dark) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
+        }
+
+        .module-details {
+            flex: 1;
+        }
+
+        .module-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--wa-on-surface);
+            margin-bottom: 4px;
+        }
+
+        .module-desc {
+            font-size: 13px;
+            color: var(--wa-outline);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .message-bubble {
+                max-width: 85%;
+            }
+
+            .module-selector-fab {
+                bottom: 70px;
+                right: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- WhatsApp Header -->
+    <div class="whatsapp-header">
+        <button class="header-back-btn" onclick="window.location.href='dashboard.html'">←</button>
+        <div class="header-avatar">AI</div>
+        <div class="header-info">
+            <div class="header-name">Training Assistant</div>
+            <div class="header-status">
+                <span class="status-dot"></span>
+                <span>Online</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="header-action-btn" title="Voice Call">📞</button>
+            <button class="header-action-btn" title="Video Call">📹</button>
+            <button class="header-action-btn" onclick="logout()" title="Logout">⋮</button>
+        </div>
+    </div>
+
+    <!-- Chat Container -->
+    <div class="chat-container">
+        <div class="chat-background"></div>
+
+        <!-- Messages Area -->
+        <div class="messages-area" id="messagesArea">
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">💬</div>
+                <div class="empty-title">Start Learning!</div>
+                <div class="empty-subtitle">Choose a module to begin your training</div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="input-actions-left">
+                <button class="input-action-btn" title="Attach">📎</button>
+            </div>
+
+            <div class="message-input-wrapper">
+                <textarea
+                    class="message-input"
+                    id="messageInput"
+                    placeholder="Type a message..."
+                    rows="1"
+                    disabled
+                ></textarea>
+                <button class="input-action-btn" title="Emoji">😊</button>
+            </div>
+
+            <button class="send-button" id="sendButton" onclick="sendMessage()" disabled>
+                ✈
+            </button>
+        </div>
+    </div>
+
+    <!-- Module Selector FAB -->
+    <button class="module-selector-fab" onclick="openModuleSelector()" title="Select Module">
+        📚
+    </button>
+
+    <!-- Module Selector Modal -->
+    <div class="module-modal" id="moduleModal" onclick="closeModalOnOutsideClick(event)">
+        <div class="module-modal-content" onclick="event.stopPropagation()">
+            <div class="module-modal-header">
+                <div class="module-modal-title">Training Modules</div>
+                <div class="module-modal-subtitle">Select a module to start learning</div>
+            </div>
+            <div class="module-list" id="moduleList">
+                <!-- Modules will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let currentModuleId = null;
+        let currentModuleName = '';
+        let authToken = localStorage.getItem('adminToken');
+
+        // Check authentication
+        if (!authToken) {
+            window.location.href = 'login.html';
+        }
+
+        // Load modules on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadModules();
+            setupInputHandlers();
+        });
+
+        async function loadModules() {
+            try {
+                const response = await fetch(`${API_BASE}/modules`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        logout();
+                        return;
+                    }
+                    throw new Error('Failed to load modules');
+                }
+
+                const result = await response.json();
+                displayModules(result.data);
+            } catch (error) {
+                console.error('Error loading modules:', error);
+            }
+        }
+
+        function displayModules(modules) {
+            const list = document.getElementById('moduleList');
+            list.innerHTML = modules.map((module, index) => `
+                <div class="module-item" onclick="selectModule(${module.id}, '${module.title.replace(/'/g, "\\'")}', '${(module.description || '').replace(/'/g, "\\'")}')">
+                    <div class="module-icon">${module.sequence_order}</div>
+                    <div class="module-details">
+                        <div class="module-name">${module.title}</div>
+                        <div class="module-desc">${module.description || 'Click to learn more'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openModuleSelector() {
+            document.getElementById('moduleModal').classList.add('active');
+        }
+
+        function closeModuleSelector() {
+            document.getElementById('moduleModal').classList.remove('active');
+        }
+
+        function closeModalOnOutsideClick(event) {
+            if (event.target.id === 'moduleModal') {
+                closeModuleSelector();
+            }
+        }
+
+        function selectModule(moduleId, title, description) {
+            currentModuleId = moduleId;
+            currentModuleName = title;
+
+            // Update header
+            document.querySelector('.header-name').textContent = title;
+
+            // Mark module as active
+            document.querySelectorAll('.module-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            // Enable input
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+
+            // Clear empty state
+            document.getElementById('emptyState').style.display = 'none';
+
+            // Add welcome message
+            const welcomeText = `👋 Welcome to **${title}**!\n\nI'm your AI assistant. Ask me anything about this module, and I'll help you learn.\n\n💡 Try asking:\n• "What topics are covered?"\n• "Give me key concepts"\n• "How can I apply this?"`;
+            addMessage(welcomeText, 'received', []);
+
+            closeModuleSelector();
+            document.getElementById('messageInput').focus();
+        }
+
+        function setupInputHandlers() {
+            const input = document.getElementById('messageInput');
+
+            // Auto-resize textarea
+            input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+
+            // Send on Enter (Shift+Enter for new line)
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message || !currentModuleId) return;
+
+            // Add user message
+            addMessage(message, 'sent');
+
+            // Clear input
+            input.value = '';
+            input.style.height = 'auto';
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                const response = await fetch(`/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        module_id: currentModuleId,
+                        message: message,
+                        useContext: true,
+                        language: 'english'
+                    })
+                });
+
+                hideTypingIndicator();
+
+                if (!response.ok) throw new Error('Failed to get response');
+
+                const result = await response.json();
+                const sources = result.context ? result.context.map(c =>
+                    c.title || c.original_file || c.file_name || c.original_name || 'Unknown'
+                ) : [];
+
+                addMessage(result.response, 'received', sources);
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('Sorry, I encountered an error. Please try again.', 'received', []);
+                console.error('Chat error:', error);
+            }
+        }
+
+        function addMessage(text, type, sources = []) {
+            const messagesArea = document.getElementById('messagesArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message-bubble ${type}`;
+
+            const formattedText = formatMarkdown(text);
+            const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+            let sourcesHtml = '';
+            if (sources && sources.length > 0) {
+                sourcesHtml = `
+                    <div class="message-sources">
+                        ${sources.map(s => `<span class="source-chip">${s}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            const statusHtml = type === 'sent' ? `
+                <span class="message-status">
+                    <span class="checkmark"></span>
+                    <span class="checkmark read"></span>
+                </span>
+            ` : '';
+
+            messageDiv.innerHTML = `
+                <div class="bubble-content">
+                    <div class="message-text">${formattedText}</div>
+                    ${sourcesHtml}
+                    <div class="message-meta">
+                        <span>${time}</span>
+                        ${statusHtml}
+                    </div>
+                </div>
+            `;
+
+            messagesArea.appendChild(messageDiv);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const messagesArea = document.getElementById('messagesArea');
+            const indicator = document.createElement('div');
+            indicator.id = 'typingIndicator';
+            indicator.className = 'typing-bubble';
+            indicator.innerHTML = `
+                <div class="bubble-content">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            messagesArea.appendChild(indicator);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        function formatMarkdown(text) {
+            if (!text) return '';
+
+            const div = document.createElement('div');
+            div.textContent = text;
+            let html = div.innerHTML;
+
+            // Bold: **text**
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+            // Line breaks
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <!-- Moodle-style Sidebar Navigation -->
+    <script src="../js/sidebar-nav.js"></script>
+</body>
+</html>
