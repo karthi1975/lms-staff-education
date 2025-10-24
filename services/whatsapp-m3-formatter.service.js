@@ -313,13 +313,14 @@ class WhatsAppM3FormatterService {
     // Convert markdown to WhatsApp formatting
     const formattedContent = this.convertMarkdownToWhatsApp(content);
 
-    // Content - wrap to WhatsApp optimal width (no indentation to avoid awkward breaks)
-    const contentLines = this.wrapText(formattedContent, 40);
+    // Content - wrap to narrower width to allow for center padding
+    const contentLines = this.wrapText(formattedContent, 36);
 
-    // Add content lines without indentation for clean flow
+    // Add center-aligned padding for balanced appearance
     contentLines.forEach((line, idx) => {
       if (line.trim()) {
-        lines.push(line);
+        // Add 4 spaces for visual centering
+        lines.push(`    ${line}`);
       } else {
         lines.push('');
       }
