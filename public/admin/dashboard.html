@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teachers Training - Admin Dashboard</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
     <style>
         * {
             margin: 0;
@@ -13,8 +17,9 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f7fa;
-            color: #333;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         /* Sidebar Navigation */
@@ -72,20 +77,38 @@
             padding: 12px 20px;
             color: #ecf0f1;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
             cursor: pointer;
+            position: relative;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: var(--md-sys-color-secondary);
+            transition: width var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized);
         }
 
         .nav-item:hover {
             background: rgba(255,255,255,0.1);
-            border-left: 3px solid #26A69A;
-            padding-left: 17px;
+            padding-left: 23px;
+        }
+
+        .nav-item:hover::before {
+            width: 3px;
         }
 
         .nav-item.active {
             background: rgba(38, 166, 154, 0.2);
-            border-left: 3px solid #26A69A;
-            padding-left: 17px;
+            padding-left: 23px;
+        }
+
+        .nav-item.active::before {
+            width: 3px;
         }
 
         .nav-item-icon {
@@ -183,13 +206,15 @@
         .page-title {
             font-size: 28px;
             font-weight: 700;
-            color: #2c3e50;
+            color: var(--md-sys-color-on-background);
             margin-bottom: 5px;
+            animation: md3-slide-down var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .page-subtitle {
-            color: #7f8c8d;
+            color: var(--md-sys-color-on-surface-variant);
             font-size: 14px;
+            animation: md3-fade-in var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized);
         }
 
         /* Stats Cards */
@@ -203,15 +228,22 @@
         .stat-card {
             background: white;
             padding: 24px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
             border-left: 4px solid #3498db;
-            transition: all 0.3s ease;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
+        /* Staggered animation for stat cards */
+        .stat-card:nth-child(1) { animation-delay: 0s; }
+        .stat-card:nth-child(2) { animation-delay: 0.1s; }
+        .stat-card:nth-child(3) { animation-delay: 0.2s; }
+        .stat-card:nth-child(4) { animation-delay: 0.3s; }
+
         .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            transform: translateY(-6px);
+            box-shadow: var(--md-sys-elevation-4);
         }
 
         .stat-card.green {
@@ -261,6 +293,7 @@
             font-weight: 700;
             color: #2c3e50;
             margin-bottom: 8px;
+            animation: md3-count-up var(--md-sys-motion-duration-long2) var(--md-sys-motion-easing-emphasized);
         }
 
         .stat-change {
@@ -269,6 +302,11 @@
             display: flex;
             align-items: center;
             gap: 4px;
+        }
+
+        .stat-change span {
+            display: inline-block;
+            animation: md3-pulse 2s var(--md-sys-motion-easing-standard) infinite;
         }
 
         .stat-change.negative {
@@ -291,9 +329,15 @@
 
         .card {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
             overflow: hidden;
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .card:hover {
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .card-header {
@@ -354,42 +398,84 @@
 
         tr:hover {
             background: #f8f9fa;
+            transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+        }
+
+        tbody tr {
+            animation: md3-slide-up var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
         }
 
         /* Buttons */
         .btn {
+            position: relative;
             padding: 10px 20px;
             border: none;
-            border-radius: 6px;
+            border-radius: 20px;
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
+            overflow: hidden;
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
             text-decoration: none;
             display: inline-block;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .btn:hover {
+            box-shadow: var(--md-sys-elevation-2);
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: var(--md-sys-elevation-1);
         }
 
         .btn-primary {
-            background: #3498db;
-            color: white;
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
         }
 
         .btn-primary:hover {
-            background: #2980b9;
+            background: #00796B;
         }
 
         .btn-success {
-            background: #27ae60;
-            color: white;
+            background: var(--md-sys-color-success);
+            color: var(--md-sys-color-on-success);
         }
 
         .btn-success:hover {
-            background: #229954;
+            background: #2C6B2F;
         }
 
         .btn-sm {
-            padding: 6px 12px;
+            padding: 6px 16px;
             font-size: 12px;
+        }
+
+        /* Ripple Effect */
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard),
+                        height var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard),
+                        opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+            opacity: 1;
+            transition: 0s;
         }
 
         /* Badges */
@@ -399,26 +485,32 @@
             font-size: 11px;
             font-weight: 600;
             display: inline-block;
+            transition: all var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
+            animation: md3-scale-in var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .badge:hover {
+            transform: scale(1.05);
         }
 
         .badge-success {
-            background: #d5f5e3;
-            color: #27ae60;
+            background: var(--md-sys-color-success-container);
+            color: var(--md-sys-color-on-success-container);
         }
 
         .badge-warning {
-            background: #fdebd0;
-            color: #f39c12;
+            background: var(--md-sys-color-warning-container);
+            color: var(--md-sys-color-on-warning-container);
         }
 
         .badge-info {
-            background: #d6eaf8;
-            color: #3498db;
+            background: var(--md-sys-color-tertiary-container);
+            color: var(--md-sys-color-on-tertiary-container);
         }
 
         .badge-danger {
-            background: #fadbd8;
-            color: #e74c3c;
+            background: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
         }
 
         /* Activity Feed */
@@ -427,6 +519,12 @@
             gap: 12px;
             padding: 12px 0;
             border-bottom: 1px solid #ecf0f1;
+            transition: all var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium3) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .activity-item:hover {
+            transform: translateX(4px);
         }
 
         .activity-item:last-child {
@@ -437,12 +535,17 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: #e3f2fd;
-            color: #3498db;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-primary);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .activity-item:hover .activity-icon {
+            transform: scale(1.1);
         }
 
         .activity-content {
@@ -476,19 +579,52 @@
         }
 
         .logout-btn {
-            background: #e74c3c;
-            color: white;
+            position: relative;
+            background: var(--md-sys-color-error);
+            color: var(--md-sys-color-on-error);
             padding: 8px 16px;
             border: none;
-            border-radius: 6px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 500;
-            transition: all 0.3s ease;
+            overflow: hidden;
+            box-shadow: var(--md-sys-elevation-1);
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
         }
 
         .logout-btn:hover {
-            background: #c0392b;
+            background: #A31515;
+            box-shadow: var(--md-sys-elevation-2);
+            transform: translateY(-1px);
+        }
+
+        .logout-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Ripple for logout button */
+        .logout-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard),
+                        height var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard),
+                        opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+        }
+
+        .logout-btn:active::before {
+            width: 200px;
+            height: 200px;
+            opacity: 1;
+            transition: 0s;
         }
     </style>
 </head>
