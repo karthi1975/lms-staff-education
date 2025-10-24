@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Course Management - Teachers Training</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
     <style>
         * {
             margin: 0;
@@ -48,22 +52,34 @@
         }
 
         .btn {
+            position: relative;
             padding: 10px 20px;
             border: none;
-            border-radius: 6px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
-            transition: all 0.2s;
+            overflow: hidden;
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--md-sys-elevation-2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
         }
 
         .btn-primary {
-            background: #00897B;
-            color: white;
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
         }
 
         .btn-primary:hover {
@@ -80,12 +96,36 @@
         }
 
         .btn-danger {
-            background: #ef4444;
-            color: white;
+            background: var(--md-sys-color-error);
+            color: var(--md-sys-color-on-error);
         }
 
         .btn-danger:hover {
-            background: #dc2626;
+            background: #A31515;
+        }
+
+        /* Ripple Effect for buttons */
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard),
+                        height var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-standard),
+                        opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .btn-sm {
@@ -124,8 +164,24 @@
         .stat-card {
             background: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium3) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--md-sys-elevation-3);
+        }
+
+        .stat-card:nth-child(1) { animation-delay: 0s; }
+        .stat-card:nth-child(2) { animation-delay: 0.1s; }
+        .stat-card:nth-child(3) { animation-delay: 0.2s; }
+        .stat-card:nth-child(4) { animation-delay: 0.3s; }
+
+        .stat-card .value {
+            animation: md3-count-up var(--md-sys-motion-duration-long2) var(--md-sys-motion-easing-emphasized);
         }
 
         .stat-card h3 {
@@ -178,17 +234,26 @@
 
         .course-card {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
             overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
             cursor: pointer;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .course-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: var(--md-sys-elevation-4);
         }
+
+        /* Staggered animation for course cards */
+        .course-card:nth-child(1) { animation-delay: 0s; }
+        .course-card:nth-child(2) { animation-delay: 0.1s; }
+        .course-card:nth-child(3) { animation-delay: 0.15s; }
+        .course-card:nth-child(4) { animation-delay: 0.2s; }
+        .course-card:nth-child(5) { animation-delay: 0.25s; }
+        .course-card:nth-child(6) { animation-delay: 0.3s; }
 
         .course-header {
             background: linear-gradient(135deg, #00897B 0%, #00695C 100%);

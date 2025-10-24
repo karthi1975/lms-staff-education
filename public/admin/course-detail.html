@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Course Management - Teachers Training</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
     <style>
         * {
             margin: 0;
@@ -90,26 +94,49 @@
         .btn {
             padding: 10px 20px;
             border: none;
-            border-radius: 10px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            transition: all 0.3s ease;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
-            color: white;
+            background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, #00695C 100%);
+            color: var(--md-sys-color-on-primary);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 137, 123, 0.4);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .btn-success {
@@ -119,18 +146,43 @@
 
         .btn-success:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .btn-secondary {
             background: white;
             color: #374151;
-            border: 2px solid #e5e7eb;
+            border: 2px solid var(--md-sys-color-outline);
         }
 
         .btn-secondary:hover {
-            border-color: #00897B;
-            color: #00897B;
+            border-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-primary);
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        /* Button Loading State */
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn-loading::after {
+            content: '';
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-left: 8px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: btn-spinner 0.6s linear infinite;
+        }
+
+        @keyframes btn-spinner {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         /* Main Grid Layout */
@@ -177,19 +229,24 @@
         }
 
         .dropzone {
-            border: 3px dashed #d1d5db;
+            border: 3px dashed var(--md-sys-color-outline);
             border-radius: 16px;
             padding: 60px 20px;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
             background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
             cursor: pointer;
+            box-shadow: var(--md-sys-elevation-1);
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .dropzone.dragover {
-            border-color: #00897B;
+            border-color: var(--md-sys-color-primary);
+            border-width: 4px;
             background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
-            transform: scale(1.02);
+            transform: scale(1.03);
+            box-shadow: var(--md-sys-elevation-3);
+            animation: md3-pulse 1s ease-in-out infinite;
         }
 
         .dropzone-icon {
@@ -332,10 +389,12 @@
             padding: 24px;
             margin-top: 20px;
             border: 2px solid #fbbf24;
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .progress-section.active {
             display: block;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .progress-header {
@@ -388,14 +447,24 @@
 
         .progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-            transition: width 0.5s ease;
+            background: linear-gradient(90deg,
+                var(--md-sys-color-primary) 0%,
+                var(--md-sys-color-secondary) 50%,
+                var(--md-sys-color-primary) 100%);
+            background-size: 200% 100%;
+            transition: width var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: 700;
             font-size: 14px;
+            animation: progress-shimmer 2s linear infinite;
+        }
+
+        @keyframes progress-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         .progress-current-file {
@@ -586,12 +655,13 @@
             color: white;
             font-size: 16px;
             padding: 14px 28px;
-            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+            box-shadow: var(--md-sys-elevation-2);
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
         }
 
         .btn-process:hover {
             transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+            box-shadow: var(--md-sys-elevation-4);
         }
 
         .btn-process:disabled {
@@ -613,16 +683,18 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
         }
 
         .modal-content {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border-radius: 28px;
+            box-shadow: var(--md-sys-elevation-5);
             max-width: 600px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .modal-header {
