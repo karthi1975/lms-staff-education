@@ -1196,17 +1196,15 @@
                         <div class="module-info">
                             <div class="module-name">${module.title || 'Untitled Module'}</div>
                             <div class="module-stats">
-                                <div class="module-stat">
+                                <div class="module-stat" id="module-${module.id}-files-container" style="display: none;">
                                     <span>📄</span>
-                                    <span id="module-${module.id}-files">-</span>
+                                    <span id="module-${module.id}-files"></span>
                                 </div>
                                 <div class="module-stat">
                                     <span>❓</span>
-                                    <span id="module-${module.id}-quizzes">-</span>
+                                    <span id="module-${module.id}-quizzes">...</span>
                                 </div>
-                                <span class="badge badge-${module.is_published ? 'success' : 'warning'}">
-                                    ${module.is_published ? 'Active' : 'Draft'}
-                                </span>
+                                <span class="badge badge-success">Active</span>
                             </div>
                         </div>
                     </li>
@@ -1239,9 +1237,15 @@
                 if (contentResponse.ok) {
                     const contentResult = await contentResponse.json();
                     const fileCount = contentResult.data?.length || 0;
-                    const filesElement = document.getElementById(`module-${moduleId}-files`);
-                    if (filesElement) {
-                        filesElement.textContent = `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
+
+                    // Only show if there are files
+                    if (fileCount > 0) {
+                        const filesContainer = document.getElementById(`module-${moduleId}-files-container`);
+                        const filesElement = document.getElementById(`module-${moduleId}-files`);
+                        if (filesContainer && filesElement) {
+                            filesContainer.style.display = 'flex';
+                            filesElement.textContent = `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
+                        }
                     }
                 }
 
@@ -1257,10 +1261,21 @@
                     if (quizzesElement) {
                         quizzesElement.textContent = `${questionCount} question${questionCount !== 1 ? 's' : ''}`;
                     }
+                } else {
+                    // If quiz API fails, show 0
+                    const quizzesElement = document.getElementById(`module-${moduleId}-quizzes`);
+                    if (quizzesElement) {
+                        quizzesElement.textContent = '0 questions';
+                    }
                 }
 
             } catch (error) {
                 console.error(`Error loading stats for module ${moduleId}:`, error);
+                // Show 0 on error
+                const quizzesElement = document.getElementById(`module-${moduleId}-quizzes`);
+                if (quizzesElement) {
+                    quizzesElement.textContent = '0 questions';
+                }
             }
         }
 
