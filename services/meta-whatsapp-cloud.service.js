@@ -10,7 +10,7 @@
  */
 
 const axios = require('axios');
-const logger = require('./logger.service');
+const logger = require('../utils/logger');
 
 class MetaWhatsAppCloudService {
     constructor() {
