@@ -310,8 +310,11 @@ class WhatsAppM3FormatterService {
       lines.push('');
     }
 
+    // Convert markdown to WhatsApp formatting
+    const formattedContent = this.convertMarkdownToWhatsApp(content);
+
     // Content - properly indented for better readability
-    const contentLines = this.wrapText(content, 35);
+    const contentLines = this.wrapText(formattedContent, 35);
 
     // Add indentation to content for better visual distribution
     contentLines.forEach((line, idx) => {
@@ -406,6 +409,26 @@ class WhatsAppM3FormatterService {
     lines.push(this.symbols.divider.repeat(32));
 
     return lines.join('\n');
+  }
+
+  /**
+   * Helper: Convert markdown to WhatsApp native formatting
+   */
+  convertMarkdownToWhatsApp(text) {
+    if (!text) return text;
+
+    // Convert markdown headings (## Heading) to WhatsApp bold (*Heading*)
+    text = text.replace(/^#{1,3}\s+(.+)$/gm, '*$1*');
+
+    // Convert markdown bold (**text**) to WhatsApp bold (*text*)
+    text = text.replace(/\*\*([^*]+?)\*\*/g, '*$1*');
+
+    // Convert markdown italic (__text__) to WhatsApp italic (_text_)
+    text = text.replace(/__([^_]+?)__/g, '_$1_');
+
+    // Keep existing WhatsApp formatting as is (*bold*, _italic_, ~strike~, `code`)
+
+    return text;
   }
 
   /**
