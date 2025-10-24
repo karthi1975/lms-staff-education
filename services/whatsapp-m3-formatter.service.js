@@ -311,12 +311,13 @@ class WhatsAppM3FormatterService {
     }
 
     // Content - properly indented for better readability
-    const contentLines = this.wrapText(content, 30);
+    const contentLines = this.wrapText(content, 35);
 
-    // Add subtle left padding to content
-    contentLines.forEach(line => {
+    // Add indentation to content for better visual distribution
+    contentLines.forEach((line, idx) => {
       if (line.trim()) {
-        lines.push(line);
+        // Add indentation to create visual hierarchy
+        lines.push(`   ${line}`);
       } else {
         lines.push('');
       }
