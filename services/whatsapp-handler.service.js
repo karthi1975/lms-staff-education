@@ -740,7 +740,7 @@ class WhatsAppHandlerService {
   async handleLearningQuestion(from, question, session) {
     try {
       // Use orchestrator service for RAG-powered responses
-      const orchestratorService = require('./orchestrator.service');
+      const orchestratorService = require('./orchestrator'); // SOLID-refactored orchestrator
 
       // Process question with RAG pipeline
       const response = await orchestratorService.processContentQuery(

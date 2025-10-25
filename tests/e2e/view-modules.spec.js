@@ -74,7 +74,7 @@ test.describe('View Modules Flow', () => {
     await page.click('button[type="submit"]');
 
     // Wait for redirect to dashboard
-    await page.waitForURL('**/lms-dashboard.html');
+    await page.waitForURL('**/dashboard.html');
     await page.waitForTimeout(1000);
 
     // Navigate to Courses tab
@@ -104,7 +104,7 @@ test.describe('View Modules Flow', () => {
     await page.click('button[type="submit"]');
 
     // Wait for redirect to dashboard
-    await page.waitForURL('**/lms-dashboard.html');
+    await page.waitForURL('**/dashboard.html');
     await page.waitForTimeout(1000);
 
     // Navigate to Courses tab

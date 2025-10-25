@@ -246,7 +246,7 @@ test.describe('Admin Portal Endurance Test - 120 Minutes (Realistic)', () => {
       // 1. TEST DASHBOARD (with realistic interactions)
       // ============================================================
       console.log('📊 [1/7] Testing Dashboard...');
-      await page.goto(`${BASE_URL}/admin/lms-dashboard.html`);
+      await page.goto(`${BASE_URL}/admin/dashboard.html`);
       const dashboardLoadDelay = getPageLoadDelay();
       console.log(`   ⏱️ Waiting ${dashboardLoadDelay}ms for page load...`);
       await page.waitForTimeout(dashboardLoadDelay);
@@ -322,7 +322,7 @@ test.describe('Admin Portal Endurance Test - 120 Minutes (Realistic)', () => {
       // 3. TEST USER MANAGEMENT (with keyboard navigation)
       // ============================================================
       console.log('👥 [3/7] Testing User Management...');
-      await page.goto(`${BASE_URL}/admin/users.html`);
+      await page.goto(`${BASE_URL}/admin/user-management.html`);
       await page.waitForTimeout(getPageLoadDelay());
 
       // Wait for user table

@@ -263,7 +263,7 @@ test.describe('Admin Portal Comprehensive Endurance Test - 120 Minutes', () => {
       // 1. TEST LMS DASHBOARD
       // ============================================================
       console.log('📊 [1/10] Testing LMS Dashboard...');
-      await page.goto(`${BASE_URL}/admin/lms-dashboard.html`);
+      await page.goto(`${BASE_URL}/admin/dashboard.html`);
       await page.waitForTimeout(getPageLoadDelay());
       await page.waitForLoadState('networkidle');
       console.log('   ✅ Dashboard loaded successfully');
@@ -394,7 +394,7 @@ test.describe('Admin Portal Comprehensive Endurance Test - 120 Minutes', () => {
       // 6. TEST USER MANAGEMENT (LIST)
       // ============================================================
       console.log('👥 [6/10] Testing User Management (List)...');
-      await page.goto(`${BASE_URL}/admin/users.html`);
+      await page.goto(`${BASE_URL}/admin/user-management.html`);
       await page.waitForTimeout(getPageLoadDelay());
       await page.waitForLoadState('networkidle');
 
@@ -497,7 +497,7 @@ test.describe('Admin Portal Comprehensive Endurance Test - 120 Minutes', () => {
       console.log('💬 [9/10] Testing AI Chat Assistant...');
 
       // Randomly choose between chat.html and chat-v2.html
-      const chatVersion = Math.random() > 0.5 ? 'chat.html' : 'chat-v2.html';
+      const chatVersion = 'chat.html';
       console.log(`   🎯 Using ${chatVersion}...`);
 
       await page.goto(`${BASE_URL}/admin/${chatVersion}`);

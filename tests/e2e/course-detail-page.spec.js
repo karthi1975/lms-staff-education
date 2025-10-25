@@ -27,7 +27,7 @@ test.describe('Course Detail Page', () => {
     await page.click('button[type="submit"]');
 
     // Wait for redirect to dashboard
-    await page.waitForURL('**/admin/lms-dashboard.html', { timeout: 10000 });
+    await page.waitForURL('**/admin/dashboard.html', { timeout: 10000 });
   });
 
   test('should load course detail page with purple gradient UI', async () => {

@@ -10,7 +10,7 @@ const pdfParse = require('pdf-parse');
 require('dotenv').config();
 
 // Existing Services
-const orchestratorService = require('./services/orchestrator.service');
+const orchestratorService = require('./services/orchestrator'); // SOLID-refactored orchestrator
 const whatsappService = require('./services/whatsapp-adapter.service'); // Use adapter for both Meta and Twilio
 const whatsappHandler = require('./services/whatsapp-handler.service');
 const chromaService = require('./services/chroma.service');
