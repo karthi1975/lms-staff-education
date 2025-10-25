@@ -8,6 +8,7 @@ const contentProcessorService = require('../services/content-processor.service')
 const verificationService = require('../services/verification.service');
 const enrollmentService = require('../services/enrollment.service');
 const contentClassificationService = require('../services/content-classification.service');
+const postgresService = require('../services/database/postgres.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
