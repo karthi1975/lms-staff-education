@@ -589,7 +589,7 @@
                     <tr>
                         <th>Name</th>
                         <th>WhatsApp / Email</th>
-                        <th>Module / Role</th>
+                        <th>Role</th>
                         <th>Progress</th>
                         <th>Last Active</th>
                         <th>Status</th>
@@ -831,10 +831,10 @@
                     ? `<span style="color: #6b7280; font-size: 12px;">${user.email || 'N/A'}</span>`
                     : (user.whatsapp_id || 'N/A');
 
-                // Module/Role field: show role for admin users, module for WhatsApp users
+                // Role field: show "Admin" or "WhatsApp User"
                 const moduleField = isAdminUser
-                    ? `<span class="badge" style="background: #dbeafe; color: #1e40af;">${user.role || 'N/A'}</span>`
-                    : `Module ${user.current_module_id || 1}`;
+                    ? `<span class="badge" style="background: #dbeafe; color: #1e40af;">Admin</span>`
+                    : `<span class="badge" style="background: #dcfce7; color: #166534;">WhatsApp User</span>`;
 
                 // Progress field: show dash for admin users
                 const progressField = isAdminUser ? '-' : `${progress}%`;
