@@ -697,7 +697,7 @@
               </div>
               <div class="module-meta">
                 <span>✅ Pass Rate: ${stats.quizzes_taken > 0 ? ((stats.quizzes_passed / stats.quizzes_taken) * 100).toFixed(0) : 0}%</span>
-                <span>📊 Avg Score: ${stats.average_quiz_score ? stats.average_quiz_score.toFixed(1) : 'N/A'}</span>
+                <span>📊 Avg Score: ${stats.average_quiz_score ? parseFloat(stats.average_quiz_score).toFixed(1) : 'N/A'}</span>
                 <span>🎯 Quizzes Taken: ${stats.quizzes_taken}</span>
               </div>
             </div>
