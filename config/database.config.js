@@ -35,8 +35,8 @@ module.exports = {
         database: process.env.DB_NAME || 'teachers_training',
         user: process.env.DB_USER || 'karthi', // Your local user
         password: process.env.DB_PASSWORD || '',
-        // Lower limits for local development
-        max: 10,
+        // Increased limits to support up to 2000 users
+        max: 30, // Increased from 10 to support more concurrent users
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
         ssl: false,
@@ -61,7 +61,7 @@ module.exports = {
     return {
       ...config,
       // Additional pool settings
-      min: this.isProduction ? 5 : 2,
+      min: this.isProduction ? 5 : 5, // Increased min connections for better performance
       log: !this.isProduction, // Enable logging in development
       allowExitOnIdle: !this.isProduction,
     };
