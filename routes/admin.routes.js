@@ -1990,7 +1990,7 @@ router.get('/users/:userId/progress-detailed', authMiddleware.authenticateToken,
         quiz_score,
         quiz_attempts_count,
         completion_method,
-        quiz_percentage as final_quiz_percentage,
+        final_quiz_percentage,
         time_to_complete_minutes,
         quiz_questions_available
       FROM user_module_progress_summary
