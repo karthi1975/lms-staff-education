@@ -889,10 +889,18 @@ async function startServer() {
     await courseOrchestrator.initialize();
     logger.info('✅ Course orchestrator initialized with M3 formatting');
 
-    // Start coaching scheduler (automated nudges and reflections)
+    // Start coaching scheduler AFTER server starts (non-blocking, delayed start)
+    // This prevents blocking server initialization
     const coachingScheduler = require('./services/coaching/scheduler.service');
-    coachingScheduler.start();
-    logger.info('✅ Coaching scheduler started');
+    setTimeout(() => {
+      try {
+        coachingScheduler.start();
+        logger.info('✅ Coaching scheduler started (delayed)');
+      } catch (error) {
+        logger.error('⚠️ Failed to start coaching scheduler:', error);
+        logger.error('   Nudging disabled, but server continues');
+      }
+    }, 5000); // Wait 5 seconds after server start
 
     app.listen(PORT, () => {
       logger.info(`🚀 Teachers Training Server running on port ${PORT}`);

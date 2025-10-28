@@ -62,15 +62,17 @@ class CoachingScheduler {
    * Schedule periodic nudge checks
    */
   scheduleNudgeChecks() {
-    // Run immediately on startup
-    this.runNudgeCheck();
+    // FIXED: Delay first run by 30 seconds to ensure server is fully initialized
+    setTimeout(() => {
+      this.runNudgeCheck();
+    }, 30000); // Wait 30 seconds before first nudge check
 
     // Then run every X hours
     this.timers.nudgeCheck = setInterval(() => {
       this.runNudgeCheck();
     }, this.config.nudgeCheckInterval);
 
-    logger.info(`Nudge checks scheduled every ${this.config.nudgeCheckInterval / (60 * 60 * 1000)} hours`);
+    logger.info(`Nudge checks scheduled every ${this.config.nudgeCheckInterval / (60 * 60 * 1000)} hours (first run in 30 seconds)`);
   }
 
   /**
@@ -81,8 +83,20 @@ class CoachingScheduler {
       logger.info('🔔 Running automated nudge check...');
 
       const startTime = Date.now();
-      const results = await nudgingService.checkAndSendNudges();
+
+      // FIXED: Add overall timeout to prevent hanging
+      const checkPromise = nudgingService.checkAndSendNudges();
+      const timeoutPromise = new Promise((resolve) =>
+        setTimeout(() => resolve({ total_sent: 0, timeout: true }), 60000) // 60 second timeout
+      );
+
+      const results = await Promise.race([checkPromise, timeoutPromise]);
       const duration = Date.now() - startTime;
+
+      if (results.timeout) {
+        logger.error(`⏱️ Nudge check timed out after 60 seconds`);
+        return;
+      }
 
       logger.info(`✅ Nudge check completed in ${duration}ms. Sent ${results.total_sent} nudges.`, {
         total_sent: results.total_sent,
