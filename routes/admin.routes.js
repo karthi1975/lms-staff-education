@@ -90,6 +90,59 @@ router.get('/modules/:moduleId/content', authMiddleware.authenticateToken, async
 });
 
 /**
+ * @route GET /api/admin/modules/:moduleId/quiz
+ * @desc Get quiz questions for a module
+ * @access Admin
+ */
+router.get('/modules/:moduleId/quiz', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    const result = await postgresService.pool.query(`
+      SELECT id, question, options, correct_answer, explanation, difficulty, created_at
+      FROM quiz_questions
+      WHERE module_id = $1
+      ORDER BY id
+    `, [moduleId]);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    logger.error(`Error fetching quiz for module ${req.params.moduleId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/modules/:moduleId/graph-stats
+ * @desc Get Neo4j graph statistics for a module
+ * @access Admin
+ */
+router.get('/modules/:moduleId/graph-stats', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const neo4jService = require('../services/neo4j.service');
+
+    // Get module content graph
+    const graphData = await neo4jService.getModuleContentGraph(moduleId);
+
+    const nodeCount = (graphData?.chunks?.length || 0) + (graphData?.topics?.length || 0);
+
+    res.json({
+      success: true,
+      data: {
+        nodeCount,
+        chunkCount: graphData?.chunks?.length || 0,
+        topicCount: graphData?.topics?.length || 0
+      }
+    });
+  } catch (error) {
+    logger.error(`Error fetching graph stats for module ${req.params.moduleId}:`, error);
+    res.json({ success: true, data: { nodeCount: 0, chunkCount: 0, topicCount: 0 } });
+  }
+});
+
+/**
  * @route POST /api/admin/modules/:moduleId/content
  * @desc Upload content file for a module
  * @access Admin
@@ -1187,14 +1240,12 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
 
     const moduleIds = modulesResult.rows.map(row => row.id);
 
-    // Delete from Neo4j (if module IDs exist)
+    // Delete from Neo4j graph
     try {
-      if (moduleIds.length > 0) {
-        for (const moduleId of moduleIds) {
-          await neo4jService.deleteModuleGraph(moduleId);
-        }
-        logger.info(`Deleted Neo4j graph for course ${courseId}`);
-      }
+      // Delete course graph (uses moodle_course_id or course id)
+      const moodleCourseId = course.moodle_course_id || courseId;
+      await neo4jService.deleteCourseGraph(moodleCourseId);
+      logger.info(`Deleted Neo4j graph for course ${courseId}`);
     } catch (neo4jError) {
       logger.warn('Error deleting from Neo4j:', neo4jError);
     }
