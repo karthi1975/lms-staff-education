@@ -305,6 +305,10 @@ class WhatsAppHandlerService {
 
     const user = result.rows[0];
 
+    // 🔔 UPDATE: Update last_active_at in database for nudging logic
+    const UserModel = require('../models/user.model');
+    await UserModel.updateLastActive(user.id);
+
     // Check if cached session exists and has the same user_id
     if (this.userSessions.has(normalizedPhone)) {
       const cachedSession = this.userSessions.get(normalizedPhone);
