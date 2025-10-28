@@ -214,7 +214,61 @@ class UserModel {
       AND (last_active_at IS NULL OR last_active_at < NOW() - INTERVAL '${hoursInactive} hours')
       ORDER BY last_active_at ASC NULLS FIRST
     `;
-    
+
+    const result = await postgresService.query(query);
+    return result.rows;
+  }
+
+  /**
+   * Get active users since a cutoff date
+   */
+  static async getActiveUsers(cutoffDate) {
+    const query = `
+      SELECT * FROM users
+      WHERE is_active = true
+      AND last_active_at >= $1
+      ORDER BY last_active_at DESC
+    `;
+
+    const result = await postgresService.query(query, [cutoffDate]);
+    return result.rows;
+  }
+
+  /**
+   * Get users ready for quiz (completed enough content)
+   */
+  static async getUsersReadyForQuiz() {
+    const query = `
+      SELECT u.*
+      FROM users u
+      WHERE u.is_active = true
+      AND u.current_module_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM quiz_attempts qa
+        WHERE qa.user_id = u.id
+        AND qa.module_id = u.current_module_id
+        AND qa.passed = true
+      )
+      ORDER BY u.last_active_at DESC
+    `;
+
+    const result = await postgresService.query(query);
+    return result.rows;
+  }
+
+  /**
+   * Get users who failed their last quiz attempt
+   */
+  static async getUsersFailedQuiz() {
+    const query = `
+      SELECT DISTINCT ON (u.id) u.*, qa.completed_at as last_quiz_attempt
+      FROM users u
+      INNER JOIN quiz_attempts qa ON u.id = qa.user_id
+      WHERE u.is_active = true
+      AND qa.passed = false
+      ORDER BY u.id, qa.completed_at DESC
+    `;
+
     const result = await postgresService.query(query);
     return result.rows;
   }
