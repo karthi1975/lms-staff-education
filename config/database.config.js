@@ -64,6 +64,9 @@ module.exports = {
       min: this.isProduction ? 5 : 5, // Increased min connections for better performance
       log: !this.isProduction, // Enable logging in development
       allowExitOnIdle: !this.isProduction,
+      // CRITICAL: Add statement timeout to prevent hung queries
+      statement_timeout: 10000, // 10 seconds - prevents queries from hanging indefinitely
+      query_timeout: 10000, // 10 seconds - additional safety
     };
   },
 
