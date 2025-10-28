@@ -114,13 +114,26 @@ class NudgingService {
       const users = await UserService.getUsersForNudging(inactiveDays);
       let sentCount = 0;
 
+      logger.info(`🔔 Processing ${users.length} inactive users for nudging...`);
+
       for (const user of users) {
         // Check last nudge time
-        if (this.shouldSendNudge(user)) {
+        const shouldSend = this.shouldSendNudge(user);
+        logger.info(`User ${user.id} (${user.name}): shouldSend=${shouldSend}, lastNudge=${user.metadata?.last_nudge_sent || 'never'}`);
+
+        if (shouldSend) {
           const nudgeType = inactiveDays > 7 ? 'inactive_gentle' : 'welcome_back';
+          logger.info(`Sending ${nudgeType} nudge to user ${user.id} (${user.name})...`);
           const sent = await this.sendNudge(user, nudgeType);
-          
-          if (sent) sentCount++;
+
+          if (sent) {
+            sentCount++;
+            logger.info(`✅ Nudge sent successfully to ${user.name}`);
+          } else {
+            logger.warn(`❌ Failed to send nudge to ${user.name}`);
+          }
+        } else {
+          logger.info(`⏭️ Skipping user ${user.name} due to cooldown`);
         }
       }
 
