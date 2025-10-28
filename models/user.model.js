@@ -274,6 +274,20 @@ class UserModel {
   }
 
   /**
+   * Update user metadata
+   */
+  static async updateMetadata(id, metadata) {
+    const query = `
+      UPDATE users
+      SET metadata = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `;
+    const result = await postgresService.query(query, [metadata, id]);
+    return result.rows[0];
+  }
+
+  /**
    * Delete user (cascade will handle related records)
    */
   static async delete(id) {
