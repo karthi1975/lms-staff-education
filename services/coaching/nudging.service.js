@@ -305,12 +305,18 @@ class NudgingService {
         message += "\n\nReply 'CONTINUE' to resume your learning journey!";
       }
 
-      // Send via WhatsApp
-      const sent = await whatsappService.sendMessage(user.whatsapp_id, message);
-      
+      // Send via WhatsApp with timeout
+      const sendPromise = whatsappService.sendMessage(user.whatsapp_id, message);
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(false), 10000)); // 10 second timeout
+
+      const sent = await Promise.race([sendPromise, timeoutPromise]);
+
       if (sent) {
         // Record nudge
         await UserService.recordNudge(user.id, nudgeType, message);
+        logger.info(`✅ Nudge sent and recorded for user ${user.id}`);
+      } else {
+        logger.warn(`⚠️ WhatsApp send failed or timed out for user ${user.id} (${user.whatsapp_id})`);
       }
 
       return sent;
