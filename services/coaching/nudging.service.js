@@ -5,7 +5,7 @@
 
 const UserService = require('../auth/user.service');
 const UserModel = require('../../models/user.model');
-const whatsappService = require('../whatsapp.service');
+const whatsappService = require('../whatsapp-adapter.service'); // FIXED: Use adapter to route to Twilio
 const ContentService = require('../rag/content.service');
 const logger = require('../../utils/logger');
 
@@ -277,7 +277,7 @@ class NudgingService {
    */
   static async sendNudge(user, nudgeType, variables = {}) {
     try {
-      logger.info(`📤 sendNudge START: user=${user.id}, type=${nudgeType}`);
+      logger.info(`📤 sendNudge START: user=${user.id}, type=${nudgeType}, phone=${user.whatsapp_id}`);
 
       const template = this.NUDGE_TEMPLATES[nudgeType];
 
@@ -309,23 +309,50 @@ class NudgingService {
         message += "\n\nReply 'CONTINUE' to resume your learning journey!";
       }
 
-      logger.info(`📲 About to send WhatsApp message to ${user.whatsapp_id}...`);
+      logger.info(`📲 Sending WhatsApp message to ${user.whatsapp_id}...`);
+      logger.info(`📝 Message preview: "${message.substring(0, 100)}..."`);
 
-      // Send via WhatsApp with timeout
-      const sendPromise = whatsappService.sendMessage(user.whatsapp_id, message);
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(false), 10000)); // 10 second timeout
+      // Send via WhatsApp with proper timeout and error handling
+      let sent = false;
+      let sendError = null;
 
-      const sent = await Promise.race([sendPromise, timeoutPromise]);
+      try {
+        const sendPromise = whatsappService.sendMessage(user.whatsapp_id, message)
+          .then(result => ({ success: true, result }))
+          .catch(error => ({ success: false, error }));
+
+        const timeoutPromise = new Promise((resolve) =>
+          setTimeout(() => resolve({ success: false, timeout: true }), 10000)
+        );
+
+        const result = await Promise.race([sendPromise, timeoutPromise]);
+
+        if (result.timeout) {
+          logger.warn(`⏱️ Timeout after 10s sending to user ${user.id} (${user.whatsapp_id})`);
+          sent = false;
+        } else if (result.success) {
+          logger.info(`✅ WhatsApp API returned success for user ${user.id}`);
+          sent = true;
+        } else {
+          logger.error(`❌ WhatsApp API error for user ${user.id}:`, result.error);
+          sendError = result.error;
+          sent = false;
+        }
+      } catch (unexpectedError) {
+        logger.error(`💥 Unexpected error sending to user ${user.id}:`, unexpectedError);
+        sent = false;
+        sendError = unexpectedError;
+      }
 
       if (sent) {
         // Record nudge
         await UserService.recordNudge(user.id, nudgeType, message);
         logger.info(`✅ Nudge sent and recorded for user ${user.id}`);
+        return true;
       } else {
-        logger.warn(`⚠️ WhatsApp send failed or timed out for user ${user.id} (${user.whatsapp_id})`);
+        logger.warn(`⚠️ Failed to send nudge to user ${user.id} (${user.whatsapp_id})${sendError ? ': ' + sendError.message : ''}`);
+        return false;
       }
-
-      return sent;
     } catch (error) {
       logger.error(`Send nudge error for user ${user.id}:`, error);
       return false;
