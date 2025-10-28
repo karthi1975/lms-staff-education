@@ -365,8 +365,8 @@
     <script>
         const API_BASE = '/api/coaching';
 
-        // Auth token
-        const token = localStorage.getItem('authToken');
+        // Auth token (use adminToken for consistency with login.html)
+        const token = localStorage.getItem('adminToken');
 
         if (!token) {
             window.location.href = '/admin/login.html';
