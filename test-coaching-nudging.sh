@@ -25,11 +25,11 @@ echo ""
 # Step 1: Login to get token
 echo -e "${YELLOW}Step 1: Authenticating...${NC}"
 LOGIN_RESPONSE=$(curl -s -X POST \
-  "${BASE_URL}/api/auth/login" \
+  "${BASE_URL}/api/admin/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@school.edu","password":"Admin123!"}')
 
-TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+TOKEN=$(echo $LOGIN_RESPONSE | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
 
 if [ -z "$TOKEN" ]; then
   echo -e "${RED}❌ Login failed${NC}"
