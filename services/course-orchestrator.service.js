@@ -160,28 +160,75 @@ class CourseOrchestratorService {
       }
 
       // Route based on conversation state (use sanitized message)
+      let response;
       switch (context.conversation_state) {
         case 'idle':
-          return await this.handleIdleState(userId, sanitizedMessage, context);
+          response = await this.handleIdleState(userId, sanitizedMessage, context);
+          break;
 
         case 'course_selection':
-          return await this.handleCourseSelection(userId, sanitizedMessage, context);
+          response = await this.handleCourseSelection(userId, sanitizedMessage, context);
+          break;
 
         case 'module_selection':
-          return await this.handleModuleSelection(userId, sanitizedMessage, context);
+          response = await this.handleModuleSelection(userId, sanitizedMessage, context);
+          break;
 
         case 'learning':
-          return await this.handleLearningState(userId, sanitizedMessage, context);
+          response = await this.handleLearningState(userId, sanitizedMessage, context);
+          break;
 
         case 'quiz_active':
-          return await this.handleQuizState(userId, sanitizedMessage, context);
+          response = await this.handleQuizState(userId, sanitizedMessage, context);
+          break;
 
         default:
-          return { text: "Something went wrong. Type 'start' to begin again." };
+          response = { text: "Something went wrong. Type 'start' to begin again." };
       }
+
+      // COACHING INTEGRATION: Check if user needs coaching/nudging
+      // Run this asynchronously to not block response
+      setImmediate(async () => {
+        try {
+          await this.checkCoachingOpportunities(userId, context, sanitizedMessage);
+        } catch (coachingError) {
+          logger.warn('Error in coaching check:', coachingError);
+        }
+      });
+
+      return response;
+
     } catch (error) {
       logger.error('Error in MoodleOrchestrator:', error);
       return { text: "Sorry, an error occurred. Type 'help' for assistance." };
+    }
+  }
+
+  /**
+   * Check for coaching opportunities (nudging, reflection, etc.)
+   */
+  async checkCoachingOpportunities(userId, context, message) {
+    try {
+      const coachingEngine = require('./coaching/coaching-engine.service');
+      const neo4jService = require('./neo4j.service');
+
+      // Track learning behavior
+      await neo4jService.trackLearningBehavior(userId, {
+        type: 'message_interaction',
+        state: context.conversation_state,
+        module_id: context.current_module_id,
+        metadata: { timestamp: new Date().toISOString() }
+      });
+
+      // Check if user might need encouragement based on state
+      const needsCoaching = await coachingEngine.checkAndSendNudges(userId);
+
+      if (needsCoaching) {
+        logger.info(`Coaching opportunity detected for user ${userId}`);
+      }
+
+    } catch (error) {
+      logger.warn('Error checking coaching opportunities:', error);
     }
   }
 

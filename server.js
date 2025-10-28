@@ -40,6 +40,7 @@ const classificationRoutes = require('./routes/classification.routes');
 const fileProcessingRoutes = require('./routes/file-processing.routes');
 const simpleUploadRoutes = require('./routes/simple-upload.routes');
 const fileListRoutes = require('./routes/file-list.routes');
+const coachingRoutes = require('./routes/coaching.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -106,6 +107,9 @@ app.use('/api/admin', simpleUploadRoutes);
 
 // Add file list routes (view uploaded files with processing status)
 app.use('/api/admin', fileListRoutes);
+
+// Add coaching routes (nudging, reflection, coaching analytics)
+app.use('/api/coaching', coachingRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
@@ -869,14 +873,14 @@ app.get('/index', (req, res) => {
 async function startServer() {
   try {
     logger.info('Initializing services...');
-    
+
     // Initialize PostgreSQL connection (non-blocking for existing functionality)
     postgresService.initialize().then(() => {
       logger.info('✅ PostgreSQL connected successfully');
     }).catch(err => {
       logger.warn('⚠️  PostgreSQL connection failed - auth features disabled:', err.message);
     });
-    
+
     // Initialize orchestrator (which initializes other services)
     await orchestratorService.initialize();
 
@@ -884,7 +888,12 @@ async function startServer() {
     const courseOrchestrator = require('./services/course-orchestrator.service');
     await courseOrchestrator.initialize();
     logger.info('✅ Course orchestrator initialized with M3 formatting');
-    
+
+    // Start coaching scheduler (automated nudges and reflections)
+    const coachingScheduler = require('./services/coaching/scheduler.service');
+    coachingScheduler.start();
+    logger.info('✅ Coaching scheduler started');
+
     app.listen(PORT, () => {
       logger.info(`🚀 Teachers Training Server running on port ${PORT}`);
       logger.info(`📚 Admin Dashboard: http://localhost:${PORT}/admin`);
@@ -901,14 +910,20 @@ async function startServer() {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Shutting down gracefully...');
-  
+
   try {
+    // Stop coaching scheduler
+    const coachingScheduler = require('./services/coaching/scheduler.service');
+    coachingScheduler.stop();
+
+    // Close database connections
     await neo4jService.close();
+
     logger.info('All connections closed');
   } catch (error) {
     logger.error('Error during shutdown:', error);
   }
-  
+
   process.exit(0);
 });
 
