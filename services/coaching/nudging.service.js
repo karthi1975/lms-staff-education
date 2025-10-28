@@ -10,6 +10,10 @@ const ContentService = require('../rag/content.service');
 const logger = require('../../utils/logger');
 
 class NudgingService {
+  // Configuration
+  static INACTIVITY_THRESHOLD_HOURS = parseFloat(process.env.NUDGE_INACTIVITY_HOURS || '48');
+  static INACTIVITY_THRESHOLD_DAYS = NudgingService.INACTIVITY_THRESHOLD_HOURS / 24;
+
   // Nudge templates
   static NUDGE_TEMPLATES = {
     welcome_back: {
@@ -70,11 +74,14 @@ class NudgingService {
       logger.info('Starting nudge check process...');
       
       // Get users for different nudge types
+      const inactiveDays = NudgingService.INACTIVITY_THRESHOLD_DAYS;
+      logger.info(`Checking for users inactive for ${inactiveDays} days (${NudgingService.INACTIVITY_THRESHOLD_HOURS} hours)`);
+
       const nudgeTasks = [
-        this.nudgeInactiveUsers(3),      // 3 days inactive
-        this.nudgeQuizReminders(),       // Ready for quiz
-        this.nudgeQuizRetry(),          // Failed quiz recently
-        this.sendDailyTips()            // Daily learning tips
+        this.nudgeInactiveUsers(inactiveDays),  // Configurable inactivity threshold
+        this.nudgeQuizReminders(),              // Ready for quiz
+        this.nudgeQuizRetry(),                  // Failed quiz recently
+        this.sendDailyTips()                    // Daily learning tips
       ];
 
       const results = await Promise.all(nudgeTasks);
