@@ -1,0 +1,88 @@
+╔══════════════════════════════════════════════════════════════╗
+║           GCP VM SNAPSHOT - AUTOMATED BACKUP                 ║
+║                   Simple Steps                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+OPTION 1: Quick Manual Snapshot (Right Now)
+────────────────────────────────────────────────────────────────
+gcloud compute disks snapshot teachers-training \
+  --zone=us-east5-a \
+  --snapshot-names=teachers-training-manual-$(date +%Y%m%d) \
+  --project=lms-tanzania-consultant
+
+
+OPTION 2: Setup Automated Daily Snapshots
+────────────────────────────────────────────────────────────────
+
+Step 1: Create snapshot schedule
+gcloud compute resource-policies create snapshot-schedule teachers-training-daily-backup \
+  --region=us-east5 \
+  --max-retention-days=7 \
+  --on-source-disk-delete=keep-auto-snapshots \
+  --daily-schedule \
+  --start-time=02:00 \
+  --project=lms-tanzania-consultant
+
+Step 2: Attach schedule to disk
+gcloud compute disks add-resource-policies teachers-training \
+  --zone=us-east5-a \
+  --resource-policies=teachers-training-daily-backup \
+  --project=lms-tanzania-consultant
+
+
+CHECK SNAPSHOTS:
+────────────────────────────────────────────────────────────────
+gcloud compute snapshots list \
+  --filter="sourceDisk:teachers-training" \
+  --project=lms-tanzania-consultant
+
+
+DELETE SNAPSHOT SCHEDULE (if needed):
+────────────────────────────────────────────────────────────────
+gcloud compute disks remove-resource-policies teachers-training \
+  --zone=us-east5-a \
+  --resource-policies=teachers-training-daily-backup \
+  --project=lms-tanzania-consultant
+
+gcloud compute resource-policies delete teachers-training-daily-backup \
+  --region=us-east5 \
+  --project=lms-tanzania-consultant
+
+
+RESTORE FROM SNAPSHOT:
+────────────────────────────────────────────────────────────────
+1. List snapshots:
+   gcloud compute snapshots list --project=lms-tanzania-consultant
+
+2. Create new disk from snapshot:
+   gcloud compute disks create teachers-training-restored \
+     --zone=us-east5-a \
+     --source-snapshot=SNAPSHOT_NAME \
+     --project=lms-tanzania-consultant
+
+3. Create new instance from disk (or attach to existing)
+
+
+WHAT GETS BACKED UP:
+────────────────────────────────────────────────────────────────
+✅ Entire VM disk (100 GB)
+✅ All data, files, Docker containers, databases
+✅ Complete system state
+✅ Can restore entire VM in minutes
+
+
+BACKUP SCHEDULE:
+────────────────────────────────────────────────────────────────
+• Daily at 2:00 AM UTC
+• Keeps last 7 days automatically
+• Old snapshots deleted automatically
+• Storage cost: ~$2.60/GB/month (compressed)
+
+
+COST ESTIMATE:
+────────────────────────────────────────────────────────────────
+Disk size: 100 GB
+Snapshot size: ~30 GB (compressed, incremental after first)
+Cost: ~$78/month for 7 days of snapshots
+First snapshot: Full (larger)
+Subsequent snapshots: Incremental (smaller)

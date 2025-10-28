@@ -277,12 +277,16 @@ class NudgingService {
    */
   static async sendNudge(user, nudgeType, variables = {}) {
     try {
+      logger.info(`📤 sendNudge START: user=${user.id}, type=${nudgeType}`);
+
       const template = this.NUDGE_TEMPLATES[nudgeType];
-      
+
       if (!template) {
         logger.error(`Unknown nudge type: ${nudgeType}`);
         return false;
       }
+
+      logger.info(`📝 Template found, constructing message...`);
 
       // Select random message from template
       const messageTemplate = template.messages[
@@ -304,6 +308,8 @@ class NudgingService {
       } else if (nudgeType === 'inactive_gentle' || nudgeType === 'welcome_back') {
         message += "\n\nReply 'CONTINUE' to resume your learning journey!";
       }
+
+      logger.info(`📲 About to send WhatsApp message to ${user.whatsapp_id}...`);
 
       // Send via WhatsApp with timeout
       const sendPromise = whatsappService.sendMessage(user.whatsapp_id, message);

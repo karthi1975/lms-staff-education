@@ -1,70 +1,38 @@
 #!/bin/bash
 
 # Monitor Endurance Test Progress
-# Shows real-time status and latest activity
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-echo "🔍 Endurance Test Monitor"
-echo "═══════════════════════════════════════════════════"
+echo -e "${BLUE}🔍 Endurance Test Monitor${NC}"
 echo ""
 
-# Check if test is running
-if pgrep -f "admin-portal-endurance" > /dev/null; then
-    echo "✅ Test Status: RUNNING"
-else
-    echo "⏹️  Test Status: NOT RUNNING"
+STATS_FILE=$(ls -t endurance-test-stats-*.json 2>/dev/null | head -1)
+
+if [ -z "$STATS_FILE" ]; then
+    echo -e "${RED}❌ No stats file found. Test may not be running yet.${NC}"
+    exit 1
 fi
 
-echo ""
-echo "⏱️  Test Details:"
-echo "   Duration: 120 minutes (2 hours)"
-echo "   Target: http://34.162.136.203:3000"
-echo "   Mode: Headless (background)"
+echo "Monitoring: $STATS_FILE"
+echo "Press Ctrl+C to stop"
 echo ""
 
-# Show start time if log exists
-if [ -f endurance-test.log ]; then
-    START_TIME=$(grep "Start time:" endurance-test.log | head -1 | cut -d: -f2-)
-    echo "   Start Time: $START_TIME"
-
-    # Show latest iteration
-    LATEST_ITERATION=$(grep "ITERATION" endurance-test.log | tail -1)
-    if [ -n "$LATEST_ITERATION" ]; then
-        echo ""
-        echo "📊 Latest Progress:"
-        echo "   $LATEST_ITERATION"
-    fi
-
-    # Show latest activity
+while true; do
+    clear
+    echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}  SOLID REFACTORING - ENDURANCE TEST STATUS  ${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
     echo ""
-    echo "🔄 Latest Activity (last 10 lines):"
-    echo "───────────────────────────────────────────────────"
-    tail -10 endurance-test.log | grep -v "^$"
-    echo "───────────────────────────────────────────────────"
-
-    # Count iterations
-    ITERATION_COUNT=$(grep -c "^🔄 ITERATION" endurance-test.log)
-    echo ""
-    echo "📈 Statistics:"
-    echo "   Iterations completed: $ITERATION_COUNT"
-
-    # Count successes
-    SUCCESS_COUNT=$(grep -c "✅" endurance-test.log)
-    echo "   Successful actions: $SUCCESS_COUNT"
-
-    # Count failures (if any)
-    FAILURE_COUNT=$(grep -c "❌\|Error\|Failed" endurance-test.log)
-    if [ $FAILURE_COUNT -gt 0 ]; then
-        echo "   ⚠️  Failures detected: $FAILURE_COUNT"
+    
+    if [ -f "$STATS_FILE" ]; then
+        cat "$STATS_FILE" | python3 -m json.tool 2>/dev/null || cat "$STATS_FILE"
     fi
-else
-    echo "   Log file not found yet..."
-fi
-
-echo ""
-echo "═══════════════════════════════════════════════════"
-echo ""
-echo "Commands:"
-echo "  ./monitor-endurance-test.sh    - Refresh this view"
-echo "  tail -f endurance-test.log     - Watch live output"
-echo "  pkill -f admin-portal-endurance - Stop the test"
-echo ""
+    
+    echo ""
+    echo -e "${BLUE}Last Updated: $(date)${NC}"
+    sleep 5
+done
