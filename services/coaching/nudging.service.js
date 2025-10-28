@@ -84,15 +84,21 @@ class NudgingService {
         this.sendDailyTips()                    // Daily learning tips
       ];
 
-      const results = await Promise.all(nudgeTasks);
-      
-      const totalNudges = results.reduce((sum, r) => sum + r.sent, 0);
+      // Use Promise.allSettled to continue even if some tasks fail
+      const results = await Promise.allSettled(nudgeTasks);
+
+      // Extract successful results and count nudges
+      const successfulResults = results
+        .filter(r => r.status === 'fulfilled')
+        .map(r => r.value);
+
+      const totalNudges = successfulResults.reduce((sum, r) => sum + (r?.sent || 0), 0);
       
       logger.info(`Nudge check complete. Sent ${totalNudges} nudges.`);
-      
+
       return {
         total_sent: totalNudges,
-        details: results
+        details: successfulResults
       };
     } catch (error) {
       logger.error('Check and send nudges error:', error);
