@@ -252,10 +252,10 @@ class UserService {
    */
   static async getUsersForNudging(inactiveDays = 3) {
     try {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - inactiveDays);
+      // Convert days to hours for getInactiveUsers
+      const hoursInactive = inactiveDays * 24;
 
-      const users = await UserModel.getInactiveUsers(cutoffDate);
+      const users = await UserModel.getInactiveUsers(hoursInactive);
       
       // Filter users who haven't completed all modules
       const nudgeableUsers = users.filter(user => {
