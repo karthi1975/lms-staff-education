@@ -1284,38 +1284,50 @@
             return `<span class="status-badge ${badge.class}">${badge.icon} ${badge.text}</span>`;
         }
 
+        // Track if drag and drop is already initialized to prevent duplicate event listeners
+        let dragDropInitialized = false;
+
         // Drag and drop
         function setupDragAndDrop() {
             const dropzone = document.getElementById('dropzone');
 
-            // Prevent default drag/drop behavior on the entire document
-            // This prevents the browser from opening files in a new tab
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                document.body.addEventListener(eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }, false);
-            });
+            // Only set up document-level listeners once
+            if (!dragDropInitialized) {
+                // Prevent default drag/drop behavior on the entire document
+                // This prevents the browser from opening files in a new tab
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    document.body.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }, false);
+                });
+                dragDropInitialized = true;
+            }
+
+            // Remove old listeners from dropzone (if any) to prevent duplicates
+            const newDropzone = dropzone.cloneNode(true);
+            dropzone.parentNode.replaceChild(newDropzone, dropzone);
+            const freshDropzone = document.getElementById('dropzone');
 
             // Handle dragover on dropzone
-            dropzone.addEventListener('dragover', (e) => {
+            freshDropzone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                dropzone.classList.add('dragover');
+                freshDropzone.classList.add('dragover');
             });
 
             // Handle dragleave on dropzone
-            dropzone.addEventListener('dragleave', (e) => {
+            freshDropzone.addEventListener('dragleave', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                dropzone.classList.remove('dragover');
+                freshDropzone.classList.remove('dragover');
             });
 
             // Handle drop on dropzone
-            dropzone.addEventListener('drop', (e) => {
+            freshDropzone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                dropzone.classList.remove('dragover');
+                freshDropzone.classList.remove('dragover');
 
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
@@ -1324,11 +1336,14 @@
             });
 
             // Also handle dragenter to show visual feedback
-            dropzone.addEventListener('dragenter', (e) => {
+            freshDropzone.addEventListener('dragenter', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                dropzone.classList.add('dragover');
+                freshDropzone.classList.add('dragover');
             });
+
+            // Re-attach click handler for "Choose Files" button
+            freshDropzone.onclick = () => document.getElementById('fileInput').click();
         }
 
         // Handle file selection
