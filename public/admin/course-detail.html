@@ -1804,7 +1804,8 @@
             uploadBtn.textContent = 'Uploading...';
 
             try {
-                const response = await fetch(`${API_BASE}/courses/${courseId}/modules/${currentModuleId}/quiz`, {
+                // Use the file upload endpoint that accepts our quiz format
+                const response = await fetch(`${API_BASE}/modules/${currentModuleId}/quiz/upload`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${currentToken}`,
