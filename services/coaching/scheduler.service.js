@@ -9,9 +9,23 @@ const logger = require('../../utils/logger');
 class CoachingScheduler {
   constructor() {
     this.timers = {};
+
+    // Auto-detect testing mode based on NUDGE_INACTIVITY_HOURS
+    const inactivityHours = parseFloat(process.env.NUDGE_INACTIVITY_HOURS || '48');
+    const isTestingMode = inactivityHours < 1;
+
+    // In testing mode, check every 60 seconds; in production, check every 6 hours
+    const checkIntervalHours = isTestingMode ? (1/60) : parseInt(process.env.NUDGE_CHECK_INTERVAL_HOURS || '6');
+
     this.config = {
-      // Check for nudges every 6 hours
-      nudgeCheckInterval: parseInt(process.env.NUDGE_CHECK_INTERVAL_HOURS || '6') * 60 * 60 * 1000,
+      // Check for nudges - adaptive based on testing mode
+      nudgeCheckInterval: checkIntervalHours * 60 * 60 * 1000,
+
+      // Testing mode flag
+      isTestingMode: isTestingMode,
+
+      // Inactivity threshold for logging
+      inactivityHours: inactivityHours,
 
       // Send daily tips at 9 AM
       dailyTipHour: parseInt(process.env.DAILY_TIP_HOUR || '9'),
@@ -72,7 +86,15 @@ class CoachingScheduler {
       this.runNudgeCheck();
     }, this.config.nudgeCheckInterval);
 
-    logger.info(`Nudge checks scheduled every ${this.config.nudgeCheckInterval / (60 * 60 * 1000)} hours (first run in 30 seconds)`);
+    const intervalSeconds = this.config.nudgeCheckInterval / 1000;
+    const intervalDisplay = this.config.isTestingMode
+      ? `${intervalSeconds} seconds (TESTING MODE)`
+      : `${this.config.nudgeCheckInterval / (60 * 60 * 1000)} hours`;
+
+    logger.info(`Nudge checks scheduled every ${intervalDisplay} (first run in 30 seconds)`, {
+      inactivityThreshold: `${this.config.inactivityHours} hours`,
+      testingMode: this.config.isTestingMode
+    });
   }
 
   /**
