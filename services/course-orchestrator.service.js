@@ -412,10 +412,25 @@ class CourseOrchestratorService {
     responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
     responseText += `💬 *Ask Me Anything!*\n`;
     responseText += `   Examples:\n`;
-    responseText += `   • "What is entrepreneurship?"\n`;
-    responseText += `   • "How to identify opportunities?"\n`;
-    responseText += `   • "Tell me about market research"\n\n`;
-    responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    // Show course-specific examples based on course type
+    const isTeacherTraining = course.name.toLowerCase().includes('orientation') ||
+                               course.name.toLowerCase().includes('teacher') ||
+                               module.name.toLowerCase().includes('teacher');
+
+    if (isTeacherTraining) {
+      // Teacher Training examples
+      responseText += `   • "How to create engaging lesson plans?"\n`;
+      responseText += `   • "What are effective classroom management techniques?"\n`;
+      responseText += `   • "How to assess student learning in Business Studies?"\n`;
+    } else {
+      // Business Studies examples
+      responseText += `   • "What is entrepreneurship?"\n`;
+      responseText += `   • "How to identify opportunities?"\n`;
+      responseText += `   • "Tell me about market research"\n`;
+    }
+
+    responseText += `\n━━━━━━━━━━━━━━━━━━━━\n\n`;
 
     // Only show quiz option if quiz is available
     if (module.has_quiz) {
