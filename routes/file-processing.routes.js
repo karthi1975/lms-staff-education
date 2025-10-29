@@ -9,6 +9,7 @@ const authMiddleware = require('../middleware/auth.middleware');
 const documentProcessor = require('../services/document-processor.service');
 const chromaService = require('../services/chroma.service');
 const embeddingService = require('../services/embedding.service');
+const neo4jService = require('../services/neo4j.service');
 const postgresService = require('../services/database/postgres.service');
 const logger = require('../utils/logger');
 
@@ -251,6 +252,35 @@ async function processFilesInBackground(jobId, courseId, files, adminUserId) {
         }
 
         logger.info(`✅ Indexed ${chunks.length} chunks to ChromaDB for ${file.original_name}`);
+
+        // STEP 3: Create content graph in Neo4j (if connected)
+        if (neo4jService.isConnected()) {
+          try {
+            job.currentFile.operation = `Creating content graph in Neo4j...`;
+
+            // Prepare chunks with proper metadata for Neo4j
+            const graphChunks = chunks.map((chunk, idx) => ({
+              chunk_id: `file_${file.id}_chunk_${idx}`,
+              content: chunk.content || chunk.text || chunk,
+              chunk_index: idx,
+              metadata: {
+                file_id: file.id,
+                file_name: file.original_name,
+                course_id: parseInt(courseId),
+                ...chunk.metadata
+              }
+            }));
+
+            // Create graph structure with module as parent
+            await neo4jService.createContentGraph(parseInt(courseId), graphChunks);
+            logger.info(`✅ Created content graph in Neo4j for ${file.original_name}`);
+          } catch (graphError) {
+            logger.warn(`Failed to create Neo4j graph (non-fatal): ${graphError.message}`);
+            // Continue even if graph creation fails
+          }
+        } else {
+          logger.warn('Neo4j not connected - skipping graph creation (degraded mode)');
+        }
 
         // Update database record to 'completed'
         await postgresService.pool.query(`

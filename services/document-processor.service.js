@@ -182,6 +182,8 @@ class DocumentProcessorService {
 
       // Run OCR on each image (limited by maxPages)
       let fullText = '';
+      const OCR_PAGE_TIMEOUT = 60000; // 60 seconds per page
+
       for (let i = 0; i < pagesToProcess; i++) {
         const imagePath = imageFiles[i];
         const logMsg = maxPages > 0
@@ -189,15 +191,25 @@ class DocumentProcessorService {
           : `OCR: Processing page ${i + 1}/${pagesToProcess} (FULL processing)`;
         logger.info(logMsg);
 
-        const { data: { text } } = await Tesseract.recognize(imagePath, 'eng', {
-          logger: () => {} // Suppress verbose Tesseract logs
-        });
+        try {
+          // CORNER CASE FIX: Add timeout per page to prevent hangs
+          const result = await this.withTimeout(
+            Tesseract.recognize(imagePath, 'eng', {
+              logger: () => {} // Suppress verbose Tesseract logs
+            }),
+            OCR_PAGE_TIMEOUT,
+            `OCR timeout on page ${i + 1} - skipping`
+          );
 
-        fullText += text + '\n\n';
+          fullText += result.data.text + '\n\n';
 
-        // Log progress every 10 pages for full OCR
-        if (maxPages === 0 && (i + 1) % 10 === 0) {
-          logger.info(`📊 OCR Progress: ${i + 1}/${pagesToProcess} pages completed`);
+          // Log progress every 10 pages for full OCR
+          if (maxPages === 0 && (i + 1) % 10 === 0) {
+            logger.info(`📊 OCR Progress: ${i + 1}/${pagesToProcess} pages completed`);
+          }
+        } catch (pageError) {
+          logger.warn(`OCR failed for page ${i + 1}: ${pageError.message} - continuing with next page`);
+          // Continue with next page instead of failing entire document
         }
       }
 
