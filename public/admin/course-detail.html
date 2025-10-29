@@ -1697,49 +1697,90 @@
 
                     try {
                         const text = await file.text();
-                        const data = JSON.parse(text);
+                        let data = JSON.parse(text);
 
-                        // Validate quiz structure
-                        if (!Array.isArray(data)) {
-                            throw new Error('Quiz must be an array of questions');
+                        // Handle both formats: direct array OR { "questions": [...] }
+                        let questions;
+                        if (Array.isArray(data)) {
+                            questions = data;
+                        } else if (data.questions && Array.isArray(data.questions)) {
+                            questions = data.questions;
+                        } else {
+                            throw new Error('Quiz file must contain a "questions" array or be an array directly');
                         }
 
-                        if (data.length === 0) {
+                        if (questions.length === 0) {
                             throw new Error('Quiz must contain at least one question');
                         }
 
-                        // Validate each question
-                        data.forEach((q, index) => {
-                            if (!q.question || !q.options || !q.correct_answer) {
-                                throw new Error(`Question ${index + 1} is missing required fields (question, options, correct_answer)`);
+                        // Validate each question (supports both formats)
+                        questions.forEach((q, index) => {
+                            if (!q.question) {
+                                throw new Error(`Question ${index + 1} is missing the "question" field`);
                             }
-                            if (!q.options.A || !q.options.B || !q.options.C || !q.options.D) {
-                                throw new Error(`Question ${index + 1} must have options A, B, C, and D`);
+                            if (!q.options) {
+                                throw new Error(`Question ${index + 1} is missing the "options" field`);
                             }
-                            if (!['A', 'B', 'C', 'D'].includes(q.correct_answer)) {
-                                throw new Error(`Question ${index + 1} has invalid correct_answer (must be A, B, C, or D)`);
+
+                            // Handle both option formats: array OR object {A, B, C, D}
+                            if (Array.isArray(q.options)) {
+                                // Array format: ["option1", "option2", ...]
+                                if (q.options.length < 2) {
+                                    throw new Error(`Question ${index + 1} must have at least 2 options`);
+                                }
+                                // Check correctAnswer is valid index
+                                if (q.correctAnswer === undefined || q.correctAnswer < 0 || q.correctAnswer >= q.options.length) {
+                                    throw new Error(`Question ${index + 1} has invalid correctAnswer (must be 0-${q.options.length - 1})`);
+                                }
+                            } else if (typeof q.options === 'object') {
+                                // Object format: {A: "...", B: "...", C: "...", D: "..."}
+                                if (!q.options.A || !q.options.B || !q.options.C || !q.options.D) {
+                                    throw new Error(`Question ${index + 1} must have options A, B, C, and D`);
+                                }
+                                if (!['A', 'B', 'C', 'D'].includes(q.correct_answer)) {
+                                    throw new Error(`Question ${index + 1} has invalid correct_answer (must be A, B, C, or D)`);
+                                }
+                            } else {
+                                throw new Error(`Question ${index + 1} has invalid options format`);
                             }
                         });
 
                         // Show preview
-                        quizData = data;
+                        quizData = questions;
                         previewContent.innerHTML = `
                             <div style="color: #065f46; margin-bottom: 12px;">
-                                ✅ Valid quiz file with ${data.length} questions
+                                ✅ Valid quiz file with ${questions.length} questions
                             </div>
-                            ${data.slice(0, 3).map((q, i) => `
-                                <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb;">
-                                    <div style="font-weight: 600; margin-bottom: 8px;">${i + 1}. ${q.question}</div>
-                                    <div style="font-size: 13px; color: #6b7280;">
+                            ${questions.slice(0, 3).map((q, i) => {
+                                // Handle both option formats for display
+                                let optionsHTML = '';
+                                if (Array.isArray(q.options)) {
+                                    // Array format
+                                    optionsHTML = q.options.map((opt, idx) =>
+                                        `${String.fromCharCode(65 + idx)}) ${opt}`
+                                    ).join('<br>');
+                                    const correctLetter = String.fromCharCode(65 + q.correctAnswer);
+                                    optionsHTML += `<br><span style="color: #065f46; font-weight: 500;">Correct: ${correctLetter}</span>`;
+                                } else {
+                                    // Object format {A, B, C, D}
+                                    optionsHTML = `
                                         A) ${q.options.A}<br>
                                         B) ${q.options.B}<br>
                                         C) ${q.options.C}<br>
                                         D) ${q.options.D}<br>
                                         <span style="color: #065f46; font-weight: 500;">Correct: ${q.correct_answer}</span>
+                                    `;
+                                }
+                                return `
+                                    <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb;">
+                                        <div style="font-weight: 600; margin-bottom: 8px;">${i + 1}. ${q.question}</div>
+                                        <div style="font-size: 13px; color: #6b7280;">
+                                            ${optionsHTML}
+                                        </div>
                                     </div>
-                                </div>
-                            `).join('')}
-                            ${data.length > 3 ? `<div style="color: #6b7280; font-size: 13px;">... and ${data.length - 3} more questions</div>` : ''}
+                                `;
+                            }).join('')}
+                            ${questions.length > 3 ? `<div style="color: #6b7280; font-size: 13px;">... and ${questions.length - 3} more questions</div>` : ''}
                         `;
                         previewDiv.style.display = 'block';
                         errorDiv.style.display = 'none';
