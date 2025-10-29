@@ -1063,16 +1063,48 @@ router.get('/users/:userId/enrollment-history', authMiddleware.authenticateToken
  * @desc Upload quiz questions for a module from JSON file
  * @access Admin
  */
-router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, async (req, res) => {
+// Configure multer for quiz file uploads
+const quizUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JSON files are allowed'));
+    }
+  }
+});
+
+router.post('/modules/:moduleId/quiz/upload',
+  authMiddleware.authenticateToken,
+  quizUpload.single('quizFile'),
+  async (req, res) => {
   try {
     const { moduleId } = req.params;
-    const { questions } = req.body;
     const adminUserId = req.user.id;
+
+    // Parse uploaded JSON file
+    let questions;
+    if (req.file) {
+      // File upload - parse JSON from buffer
+      const fileContent = req.file.buffer.toString('utf-8');
+      const quizData = JSON.parse(fileContent);
+      questions = quizData.questions; // Extract questions array from { "questions": [...] }
+    } else if (req.body.questions) {
+      // Direct JSON in body (for API calls)
+      questions = req.body.questions;
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Please upload a JSON file with quiz questions'
+      });
+    }
 
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Questions array is required and must not be empty'
+        error: 'Quiz file must contain a "questions" array with at least one question'
       });
     }
 
