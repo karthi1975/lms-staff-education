@@ -28,7 +28,7 @@ test.describe('Fresh Course Creation and Viewing', () => {
     await page.fill('input[type="password"]', ADMIN_PASSWORD);
     await page.click('button[type="submit"]');
 
-    await page.waitForURL('**/admin/lms-dashboard.html', { timeout: 10000 });
+    await page.waitForURL('**/admin/dashboard.html', { timeout: 10000 });
     console.log('✅ Login successful');
 
     // Get auth token

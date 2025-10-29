@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Detail - Teachers Training Admin</title>
+  <link rel="stylesheet" href="/admin/css/m3-theme.css">
   <style>
     * {
       margin: 0;
@@ -13,7 +14,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
       min-height: 100vh;
       padding: 20px;
     }
@@ -26,12 +27,13 @@
     .header {
       background: white;
       padding: 20px 30px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-radius: 16px;
+      box-shadow: var(--md-sys-elevation-2);
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
+      animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
     }
 
     .header h1 {
@@ -40,26 +42,56 @@
     }
 
     .back-btn {
-      background: #667eea;
-      color: white;
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
       border: none;
       padding: 10px 20px;
-      border-radius: 5px;
+      border-radius: 20px;
       cursor: pointer;
       text-decoration: none;
       font-size: 14px;
+      box-shadow: var(--md-sys-elevation-1);
+      transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .back-btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.4);
+      opacity: 0;
+      transform: translate(-50%, -50%);
+      transition: width 400ms, height 400ms, opacity 400ms;
+    }
+
+    .back-btn:active::before {
+      width: 200px;
+      height: 200px;
+      opacity: 1;
+      transition: 0s;
     }
 
     .back-btn:hover {
-      background: #5568d3;
+      background: #00695C;
+      transform: translateY(-2px);
+      box-shadow: var(--md-sys-elevation-2);
     }
 
     .user-info {
       background: white;
       padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-radius: 16px;
+      box-shadow: var(--md-sys-elevation-1);
       margin-bottom: 20px;
+      animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+      animation-delay: 0.1s;
+      animation-fill-mode: both;
     }
 
     .user-header {
@@ -75,13 +107,37 @@
       width: 80px;
       height: 80px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, #00695C 100%);
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
       font-size: 32px;
       font-weight: bold;
+      box-shadow: var(--md-sys-elevation-2);
+      animation: avatar-bounce var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+      animation-delay: 0.2s;
+      animation-fill-mode: both;
+      transition: all var(--md-sys-motion-duration-medium2);
+    }
+
+    @keyframes avatar-bounce {
+      0% {
+        opacity: 0;
+        transform: scale(0) rotate(-180deg);
+      }
+      60% {
+        transform: scale(1.1) rotate(10deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+      }
+    }
+
+    .user-avatar:hover {
+      transform: scale(1.1) rotate(5deg);
+      box-shadow: var(--md-sys-elevation-4);
     }
 
     .user-details h2 {
@@ -104,15 +160,45 @@
     .stat-card {
       background: #f8f9fa;
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 16px;
       text-align: center;
+      box-shadow: var(--md-sys-elevation-1);
+      transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+      animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+      animation-fill-mode: both;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.3s; }
+    .stat-card:nth-child(2) { animation-delay: 0.35s; }
+    .stat-card:nth-child(3) { animation-delay: 0.4s; }
+    .stat-card:nth-child(4) { animation-delay: 0.45s; }
+
+    .stat-card:hover {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: var(--md-sys-elevation-3);
+    }
+
+    .stat-card:active {
+      transform: translateY(-2px) scale(0.98);
     }
 
     .stat-value {
       font-size: 32px;
       font-weight: bold;
-      color: #667eea;
+      color: var(--md-sys-color-primary);
       margin-bottom: 5px;
+      animation: count-up 1s ease-out;
+    }
+
+    @keyframes count-up {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.5);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
     .stat-label {
@@ -123,9 +209,12 @@
     .section {
       background: white;
       padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-radius: 16px;
+      box-shadow: var(--md-sys-elevation-1);
       margin-bottom: 20px;
+      animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+      animation-delay: 0.5s;
+      animation-fill-mode: both;
     }
 
     .section h3 {
@@ -140,9 +229,27 @@
     .module-card {
       background: #f8f9fa;
       padding: 20px;
-      border-radius: 8px;
+      border-radius: 12px;
       margin-bottom: 15px;
       border-left: 4px solid #ddd;
+      transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+      animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+      animation-fill-mode: both;
+    }
+
+    .module-card:nth-child(1) { animation-delay: 0.6s; }
+    .module-card:nth-child(2) { animation-delay: 0.65s; }
+    .module-card:nth-child(3) { animation-delay: 0.7s; }
+    .module-card:nth-child(4) { animation-delay: 0.75s; }
+    .module-card:nth-child(5) { animation-delay: 0.8s; }
+
+    .module-card:hover {
+      transform: translateX(6px) scale(1.01);
+      box-shadow: var(--md-sys-elevation-2);
+    }
+
+    .module-card:active {
+      transform: translateX(2px) scale(0.99);
     }
 
     .module-card.completed {
@@ -179,6 +286,13 @@
       font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
+      display: inline-block;
+      animation: md3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+      transition: transform var(--md-sys-motion-duration-short2);
+    }
+
+    .status-badge:hover {
+      transform: scale(1.05);
     }
 
     .status-badge.completed {
@@ -198,17 +312,27 @@
 
     .progress-bar {
       width: 100%;
-      height: 8px;
+      height: 10px;
       background: #e0e0e0;
-      border-radius: 4px;
+      border-radius: 8px;
       overflow: hidden;
       margin-bottom: 10px;
     }
 
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-      transition: width 0.3s ease;
+      background: linear-gradient(90deg,
+        var(--md-sys-color-primary) 0%,
+        var(--md-sys-color-secondary) 50%,
+        var(--md-sys-color-primary) 100%);
+      background-size: 200% 100%;
+      transition: width var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized);
+      animation: progress-shimmer 2s linear infinite;
+    }
+
+    @keyframes progress-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
 
     .module-meta {
@@ -227,9 +351,27 @@
     }
 
     .quiz-score {
-      font-size: 24px;
-      font-weight: bold;
-      color: #667eea;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 12px;
+      display: inline-block;
+      animation: md3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+      transition: transform var(--md-sys-motion-duration-short2);
+    }
+
+    .quiz-score:hover {
+      transform: scale(1.1);
+    }
+
+    .quiz-score.passed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .quiz-score.failed {
+      background: #fee2e2;
+      color: #991b1b;
     }
 
     .loading {
@@ -239,13 +381,14 @@
     }
 
     .spinner {
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #667eea;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid var(--md-sys-color-primary);
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
+      width: 50px;
+      height: 50px;
+      animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
       margin: 0 auto 20px;
+      box-shadow: var(--md-sys-elevation-2);
     }
 
     @keyframes spin {
@@ -277,13 +420,13 @@
     }
 
     .breadcrumb a {
-      color: #667eea;
+      color: #00897B;
       text-decoration: none;
       transition: color 0.2s;
     }
 
     .breadcrumb a:hover {
-      color: #5a67d8;
+      color: #00695C;
       text-decoration: underline;
     }
 
@@ -301,7 +444,7 @@
   <div class="container">
     <!-- Breadcrumb -->
     <nav class="breadcrumb">
-      <a href="/admin/lms-dashboard.html">🏠 Home</a>
+      <a href="/admin/dashboard.html">🏠 Home</a>
       <span class="breadcrumb-separator">›</span>
       <a href="/admin/user-management.html">User Management</a>
       <span class="breadcrumb-separator">›</span>
@@ -352,7 +495,7 @@
 
     if (!userId) {
       alert('No user ID provided');
-      window.location.href = '/admin/users.html';
+      window.location.href = '/admin/user-management.html';
     }
 
     // Check authentication
@@ -382,8 +525,8 @@
         // Display user info
         displayUserInfo(user);
 
-        // Fetch user progress
-        const progressResponse = await fetch(`/api/admin/users/${userId}/progress`, {
+        // Fetch detailed user progress with quiz data
+        const progressResponse = await fetch(`/api/admin/users/${userId}/progress-detailed`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -391,7 +534,7 @@
 
         if (progressResponse.ok) {
           const progressData = await progressResponse.json();
-          displayModuleProgress(progressData.data || []);
+          displayModuleProgress(progressData.modules || [], progressData.stats);
         } else {
           document.getElementById('modulesList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No progress data available</p></div>';
         }
@@ -453,12 +596,12 @@
       `;
     }
 
-    function displayModuleProgress(modules) {
+    function displayModuleProgress(modules, stats) {
       if (modules.length === 0) {
         document.getElementById('modulesList').innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">📭</div>
-            <p>No modules started yet</p>
+            <p>No modules available</p>
           </div>
         `;
         document.getElementById('quizList').innerHTML = `
@@ -476,11 +619,12 @@
       modules.forEach(module => {
         const statusClass = module.status.replace('_', '-');
         const progressPercent = module.progress_percentage || 0;
+        const hasQuiz = module.quiz_questions_available > 0;
 
         modulesHTML += `
           <div class="module-card ${statusClass}">
             <div class="module-header">
-              <div class="module-title">${module.module_title}</div>
+              <div class="module-title">${module.module_number}. ${module.module_title}</div>
               <span class="status-badge ${statusClass}">${module.status.replace('_', ' ')}</span>
             </div>
 
@@ -495,38 +639,78 @@
               ${module.completed_at ? `<span>✅ Completed: ${new Date(module.completed_at).toLocaleDateString()}</span>` : ''}
             </div>
 
-            ${module.quizzes_passed > 0 ? `
+            ${hasQuiz ? `
               <div class="quiz-result">
-                <strong>Quiz Status:</strong>
-                <span class="quiz-score">✅ ${module.quizzes_passed} Passed</span>
+                <strong>Quiz:</strong>
+                ${module.quiz_taken ? `
+                  <span class="quiz-score ${module.quiz_passed ? 'passed' : 'failed'}">
+                    ${module.quiz_passed ? '✅ Passed' : '❌ Failed'}
+                    (${module.quiz_score}/${module.quiz_questions_available} - ${module.final_quiz_percentage ? module.final_quiz_percentage.toFixed(0) : 0}%)
+                  </span>
+                  <span style="font-size: 12px; color: #666;">Attempts: ${module.quiz_attempts_count}</span>
+                ` : `
+                  <span style="color: #999;">📝 ${module.quiz_questions_available} questions available</span>
+                `}
+              </div>
+            ` : ''}
+
+            ${module.status === 'completed' && module.completion_method ? `
+              <div style="font-size: 12px; color: #00897B; margin-top: 8px;">
+                ✓ Completed via ${module.completion_method.replace('_', ' ')}
               </div>
             ` : ''}
           </div>
         `;
+
+        // Build quiz performance list
+        if (module.quiz_taken) {
+          quizzesHTML += `
+            <div class="module-card ${module.quiz_passed ? 'completed' : 'in-progress'}">
+              <div class="module-header">
+                <div class="module-title">${module.module_number}. ${module.module_title}</div>
+                <span class="status-badge ${module.quiz_passed ? 'completed' : 'in-progress'}">
+                  ${module.quiz_passed ? 'Passed' : 'Failed'}
+                </span>
+              </div>
+              <div class="module-meta">
+                <span>📊 Score: ${module.quiz_score}/${module.quiz_questions_available}</span>
+                <span>📈 ${module.final_quiz_percentage ? module.final_quiz_percentage.toFixed(1) : 0}%</span>
+                <span>🔄 Attempts: ${module.quiz_attempts_count}</span>
+                ${module.time_to_complete_minutes ? `<span>⏱️ Time: ${Math.round(module.time_to_complete_minutes)} min</span>` : ''}
+              </div>
+            </div>
+          `;
+        }
       });
 
       document.getElementById('modulesList').innerHTML = modulesHTML;
 
-      // Show quiz summary
-      const totalQuizzes = modules.reduce((sum, m) => sum + (m.quizzes_passed || 0), 0);
-      if (totalQuizzes > 0) {
-        quizzesHTML = `
-          <div class="module-card completed">
-            <div class="module-header">
-              <div class="module-title">Overall Quiz Performance</div>
-              <span class="status-badge completed">${totalQuizzes} Passed</span>
+      // Show quiz performance or empty state
+      if (quizzesHTML) {
+        // Add overall stats if available
+        if (stats && stats.quizzes_taken > 0) {
+          const overallHTML = `
+            <div class="module-card completed" style="border: 2px solid #00897B; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+              <div class="module-header">
+                <div class="module-title">📊 Overall Quiz Performance</div>
+                <span class="status-badge completed">${stats.quizzes_passed}/${stats.quizzes_taken} Passed</span>
+              </div>
+              <div class="module-meta">
+                <span>✅ Pass Rate: ${stats.quizzes_taken > 0 ? ((stats.quizzes_passed / stats.quizzes_taken) * 100).toFixed(0) : 0}%</span>
+                <span>📊 Avg Score: ${stats.average_quiz_score ? parseFloat(stats.average_quiz_score).toFixed(1) : 'N/A'}</span>
+                <span>🎯 Quizzes Taken: ${stats.quizzes_taken}</span>
+              </div>
             </div>
-            <div class="module-meta">
-              <span>🎯 Total Quizzes Passed: ${totalQuizzes}</span>
-            </div>
-          </div>
-        `;
-        document.getElementById('quizList').innerHTML = quizzesHTML;
+          `;
+          document.getElementById('quizList').innerHTML = overallHTML + quizzesHTML;
+        } else {
+          document.getElementById('quizList').innerHTML = quizzesHTML;
+        }
       } else {
         document.getElementById('quizList').innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">🎯</div>
-            <p>No quizzes completed yet</p>
+            <p>No quizzes taken yet</p>
           </div>
         `;
       }
@@ -535,5 +719,7 @@
     // Load data on page load
     loadUserDetails();
   </script>
-</body>
+
+    <!-- Moodle-style Sidebar Navigation -->
+    <script src="../js/sidebar-nav.js"></script></body>
 </html>

@@ -5,11 +5,22 @@ class ChatHistoryService {
   /**
    * Get or create a chat session for a user and module
    * @param {number} userId - User ID
-   * @param {number} moduleId - Module ID (optional)
+   * @param {number|string} moduleId - Module ID (can be integer or string like 'BUSINESS_STUDIES_F2', optional)
    * @returns {Promise<Object>} Session object
    */
   async getOrCreateSession(userId, moduleId = null) {
     try {
+      // Convert moduleId to integer if it's numeric, otherwise use NULL (for string module IDs)
+      let moduleIdInt = null;
+      if (moduleId !== null && moduleId !== undefined) {
+        const parsed = parseInt(moduleId);
+        if (!isNaN(parsed) && String(parsed) === String(moduleId)) {
+          moduleIdInt = parsed;
+        }
+        // If moduleId is a string like 'BUSINESS_STUDIES_F2', we'll use NULL for database
+        // but track it separately in the session metadata
+      }
+
       // Try to find an active session for this user and module
       let result = await postgresService.query(
         `SELECT * FROM chat_sessions
@@ -18,7 +29,7 @@ class ChatHistoryService {
          AND is_active = TRUE
          ORDER BY last_activity_at DESC
          LIMIT 1`,
-        [userId, moduleId]
+        [userId, moduleIdInt]
       );
 
       if (result.rows.length > 0) {
@@ -27,13 +38,13 @@ class ChatHistoryService {
 
       // Create a new session if none exists
       result = await postgresService.query(
-        `INSERT INTO chat_sessions (user_id, module_id, session_title, is_active)
-         VALUES ($1, $2, $3, TRUE)
+        `INSERT INTO chat_sessions (user_id, module_id, is_active)
+         VALUES ($1, $2, TRUE)
          RETURNING *`,
-        [userId, moduleId, moduleId ? `Module ${moduleId} Chat` : 'General Chat']
+        [userId, moduleIdInt]
       );
 
-      logger.info(`Created new chat session ${result.rows[0].id} for user ${userId}`);
+      logger.info(`Created new chat session ${result.rows[0].id} for user ${userId} (module: ${moduleId})`);
       return result.rows[0];
     } catch (error) {
       logger.error('Error getting/creating chat session:', error);

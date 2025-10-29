@@ -1,5 +1,5 @@
 /**
- * Moodle Orchestrator Service - Simplified
+ * Course Orchestrator Service
  * Handles: Course selection → Module selection → Chat → Quiz
  */
 
@@ -9,11 +9,14 @@ const chromaService = require('./chroma.service');
 const vertexAIService = require('./vertexai.service');
 const giftParserService = require('./gift-parser.service');
 const postgresService = require('./database/postgres.service');
-const moodleSyncService = require('./moodle-sync.service');
+const contentModerationService = require('./content-moderation.service');
+const promptInjectionGuard = require('./prompt-injection-guard.service');
+const responseValidator = require('./response-validator.service');
+const m3Formatter = require('./whatsapp-m3-formatter.service');
 const logger = require('../utils/logger');
 const path = require('path');
 
-class MoodleOrchestratorService {
+class CourseOrchestratorService {
   constructor() {
     // Courses and modules will be loaded from database
     this.courses = [];
@@ -50,13 +53,13 @@ class MoodleOrchestratorService {
           return { rows: [] };
         });
 
-        // Load quizzes for each module (check moodle_quizzes for compatibility)
+        // Load quizzes for each module
         const modules = [];
         for (const module of modulesResult.rows) {
           const quizResult = await postgresService.query(`
-            SELECT id, moodle_quiz_id, quiz_name
-            FROM moodle_quizzes
-            WHERE moodle_module_id = $1
+            SELECT id, title as quiz_name
+            FROM quizzes
+            WHERE module_id = $1 AND is_active = true
             LIMIT 1
           `, [module.id]).catch(err => {
             logger.warn(`Quizzes table not ready for module ${module.id}`);
@@ -102,10 +105,41 @@ class MoodleOrchestratorService {
         await this.initialize();
       }
 
+      // LAYER 1: Check message for harmful content BEFORE processing
+      const moderationCheck = await contentModerationService.checkMessage(message, {
+        user_id: userId,
+        phone: whatsappPhone
+      });
+
+      if (!moderationCheck.allowed) {
+        logger.warn(`WhatsApp message blocked: ${moderationCheck.reason} (severity: ${moderationCheck.severity})`);
+        return { text: moderationCheck.blockedMessage };
+      }
+
+      // LAYER 2: Prompt Injection Detection (Security Enhancement)
+      const injectionCheck = promptInjectionGuard.detectInjection(message);
+
+      if (injectionCheck.detected) {
+        logger.warn(`🚨 WhatsApp injection attempt from user ${userId}: ${injectionCheck.pattern}`);
+
+        // Log to database
+        await promptInjectionGuard.logInjectionAttempt(
+          userId,
+          whatsappPhone,
+          message,
+          injectionCheck
+        );
+
+        return { text: injectionCheck.message };
+      }
+
+      // LAYER 3: Sanitize input (defense in depth)
+      const sanitizedMessage = promptInjectionGuard.sanitizeInput(message);
+
       // Get conversation context
       const context = await this.getConversationContext(userId, whatsappPhone);
 
-      const lowerMsg = message.toLowerCase().trim();
+      const lowerMsg = sanitizedMessage.toLowerCase().trim();
 
       // **STRICT FLOW ENFORCEMENT**: Check for fresh start/greeting in ANY state
       // This allows users to restart flow from anywhere
@@ -125,29 +159,76 @@ class MoodleOrchestratorService {
         return this.showCourseSelection();
       }
 
-      // Route based on conversation state
+      // Route based on conversation state (use sanitized message)
+      let response;
       switch (context.conversation_state) {
         case 'idle':
-          return await this.handleIdleState(userId, message, context);
+          response = await this.handleIdleState(userId, sanitizedMessage, context);
+          break;
 
         case 'course_selection':
-          return await this.handleCourseSelection(userId, message, context);
+          response = await this.handleCourseSelection(userId, sanitizedMessage, context);
+          break;
 
         case 'module_selection':
-          return await this.handleModuleSelection(userId, message, context);
+          response = await this.handleModuleSelection(userId, sanitizedMessage, context);
+          break;
 
         case 'learning':
-          return await this.handleLearningState(userId, message, context);
+          response = await this.handleLearningState(userId, sanitizedMessage, context);
+          break;
 
         case 'quiz_active':
-          return await this.handleQuizState(userId, message, context);
+          response = await this.handleQuizState(userId, sanitizedMessage, context);
+          break;
 
         default:
-          return { text: "Something went wrong. Type 'start' to begin again." };
+          response = { text: "Something went wrong. Type 'start' to begin again." };
       }
+
+      // COACHING INTEGRATION: Check if user needs coaching/nudging
+      // Run this asynchronously to not block response
+      setImmediate(async () => {
+        try {
+          await this.checkCoachingOpportunities(userId, context, sanitizedMessage);
+        } catch (coachingError) {
+          logger.warn('Error in coaching check:', coachingError);
+        }
+      });
+
+      return response;
+
     } catch (error) {
       logger.error('Error in MoodleOrchestrator:', error);
       return { text: "Sorry, an error occurred. Type 'help' for assistance." };
+    }
+  }
+
+  /**
+   * Check for coaching opportunities (nudging, reflection, etc.)
+   */
+  async checkCoachingOpportunities(userId, context, message) {
+    try {
+      const coachingEngine = require('./coaching/coaching-engine.service');
+      const neo4jService = require('./neo4j.service');
+
+      // Track learning behavior
+      await neo4jService.trackLearningBehavior(userId, {
+        type: 'message_interaction',
+        state: context.conversation_state,
+        module_id: context.current_module_id,
+        metadata: { timestamp: new Date().toISOString() }
+      });
+
+      // Check if user might need encouragement based on state
+      const needsCoaching = await coachingEngine.checkAndSendNudges(userId);
+
+      if (needsCoaching) {
+        logger.info(`Coaching opportunity detected for user ${userId}`);
+      }
+
+    } catch (error) {
+      logger.warn('Error checking coaching opportunities:', error);
     }
   }
 
@@ -173,27 +254,46 @@ class MoodleOrchestratorService {
   }
 
   /**
-   * Show course selection with WhatsApp list
+   * Show course selection with interactive buttons/list (if supported)
    */
   showCourseSelection() {
-    // Format for numbered text list (Twilio-friendly)
-    let message = `📚 *Welcome to Teachers Training!*\n\n`;
-    message += `🎓 *Select a Course*\n`;
-    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `*Available Courses:*\n\n`;
+    // If WhatsApp adapter supports interactive UI, use buttons or list
+    if (whatsappService.supportsInteractive()) {
+      // Use buttons for 1-3 courses, list for 4+ courses
+      if (this.courses.length <= 3) {
+        return {
+          type: 'button',
+          header: '📚 Teachers Training Platform',
+          body: 'Welcome! Choose your course to get started:',
+          buttons: this.courses.map((course, index) => ({
+            id: `course_${course.id}`,
+            title: `${index + 1}. ${course.name.substring(0, 15)}` // Max 20 chars
+          }))
+        };
+      } else {
+        // Use interactive list for 4+ courses
+        return {
+          type: 'list',
+          header: '📚 Available Courses',
+          body: 'Select a course to begin your learning journey:',
+          buttonText: 'View Courses',
+          sections: [{
+            title: 'All Courses',
+            rows: this.courses.map((course, index) => ({
+              id: `course_${course.id}`,
+              title: `${index + 1}. ${course.name.substring(0, 20)}`, // Max 24 chars
+              description: course.description ? course.description.substring(0, 70) : '' // Max 72 chars
+            }))
+          }]
+        };
+      }
+    }
 
-    this.courses.forEach((course, idx) => {
-      message += `${idx + 1}. 📖 *${course.name}*\n`;
-      message += `   Learn ${course.name}\n\n`;
-    });
-
-    message += `━━━━━━━━━━━━━━━━━━━━\n`;
-    message += `💬 Reply with the number to select\n`;
-    message += `Example: Type *1* for ${this.courses[0]?.name || 'first course'}`;
-
+    // Fallback: Use M3 text formatter for Twilio or non-interactive mode
+    const formattedMessage = m3Formatter.formatCourseSelection(this.courses);
     return {
       type: 'text',
-      text: message
+      text: formattedMessage
     };
   }
 
@@ -228,30 +328,35 @@ class MoodleOrchestratorService {
   }
 
   /**
-   * Show module selection
+   * Show module selection with interactive list (if supported)
    */
   showModuleSelection(course) {
-    let message = `📘 *${course.name}*\n\n`;
-    message += `📚 *Select a Module*\n`;
-    message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `*${course.name} Modules:*\n\n`;
+    // If WhatsApp adapter supports interactive UI, use list
+    if (whatsappService.supportsInteractive() && course.modules && course.modules.length > 0) {
+      // Use interactive list for modules (max 10)
+      const modulesToShow = course.modules.slice(0, 10); // Limit to 10 for Meta API
 
-    course.modules.forEach((module, idx) => {
-      message += `${idx + 1}. 📑 *${module.name}*\n`;
-      // Truncate long names for readability
-      const shortName = module.name.length > 50
-        ? module.name.substring(0, 47) + '...'
-        : module.name;
-      message += `   ${shortName}\n\n`;
-    });
+      return {
+        type: 'list',
+        header: `📚 ${course.name}`,
+        body: `Course Modules (${course.modules.length} available):`,
+        buttonText: 'View Modules',
+        sections: [{
+          title: 'Available Modules',
+          rows: modulesToShow.map((module, index) => ({
+            id: `module_${module.id}`,
+            title: `${index + 1}. ${module.name.substring(0, 20)}`, // Max 24 chars
+            description: module.has_quiz ? '📝 Quiz available' : '📖 Learning module' // Max 72 chars
+          }))
+        }]
+      };
+    }
 
-    message += `━━━━━━━━━━━━━━━━━━━━\n`;
-    message += `💬 Reply with the number to select\n`;
-    message += `Example: Type *1* for ${course.modules[0]?.name || 'first module'}`;
-
+    // Fallback: Use M3 text formatter for Twilio or non-interactive mode
+    const formattedMessage = m3Formatter.formatModuleSelection(course);
     return {
       type: 'text',
-      text: message
+      text: formattedMessage
     };
   }
 
@@ -377,20 +482,80 @@ class MoodleOrchestratorService {
   async processContentQuery(userId, query, context) {
     try {
       const contextData = this.parseContextData(context);
+
+      // CRITICAL FIX: Check if user has a module assigned
+      if (!context.current_module_id) {
+        logger.warn(`User ${userId} has no module assigned (current_module_id is NULL)`);
+        return {
+          type: 'text',
+          text: '⚠️ No courses are currently available for you.\n\n' +
+                'This might mean:\n' +
+                '• Courses are still being set up\n' +
+                '• You haven\'t been assigned to a course yet\n\n' +
+                'Please contact your administrator to be assigned to a course.\n\n' +
+                'Type "help" for more information.'
+        };
+      }
+
       const moduleName = contextData.module_name || 'Entrepreneurship & Business Ideas';
       // Ensure moduleId is an integer (PostgreSQL may return numeric types)
       const moduleId = parseInt(context.current_module_id, 10);
 
+      // Additional safety check for NaN
+      if (isNaN(moduleId)) {
+        logger.error(`Invalid module ID for user ${userId}: ${context.current_module_id}`);
+        return {
+          type: 'text',
+          text: '⚠️ System error: Invalid module assignment.\n\n' +
+                'Please contact your administrator.\n\n' +
+                'Error code: INVALID_MODULE_ID'
+        };
+      }
+
+      // CRITICAL FIX: Validate module exists in database
+      const moduleExists = await this.checkModuleExists(moduleId);
+      if (!moduleExists) {
+        logger.warn(`User ${userId} assigned to deleted/non-existent module ${moduleId}`);
+
+        // Try to reset to first available module
+        const newModuleId = await this.resetUserToFirstModule(userId);
+
+        if (newModuleId) {
+          return {
+            type: 'text',
+            text: '⚠️ Your assigned module was updated.\n\n' +
+                  'Starting from the first available module...\n\n' +
+                  'Please send your question again or type "help" for available commands.'
+          };
+        } else {
+          return {
+            type: 'text',
+            text: '⚠️ No courses are currently available.\n\n' +
+                  'Please contact your administrator.'
+          };
+        }
+      }
+
       logger.info(`RAG+GraphDB query: "${query}" for module ID: ${moduleId}, name: ${moduleName}`);
 
-      // Step 1: Search ChromaDB using module_id (integer) not module name (string)
-      const searchResults = await chromaService.searchSimilar(query, {
+      // Step 1: Search ChromaDB - first try with module filter, then without
+      let searchResults = await chromaService.searchSimilar(query, {
         module_id: moduleId,  // Use module_id instead of module name
         nResults: 3
       });
 
+      // Step 1.5: If no results in current module, search across ALL content
+      let crossModuleSearch = false;
       if (searchResults.length === 0) {
-        // Try to get related content from Neo4j GraphDB as fallback
+        logger.info(`No results in module ${moduleId}, searching across all content...`);
+        searchResults = await chromaService.searchSimilar(query, {
+          nResults: 3  // No module filter - search everything
+        });
+        crossModuleSearch = true;
+      }
+
+      if (searchResults.length === 0) {
+        // Try to get related content from Neo4j GraphDB as final fallback
         const neo4jService = require('./neo4j.service');
         try {
           const relatedModules = await neo4jService.getRelatedContent(moduleId, 3);
@@ -484,17 +649,24 @@ class MoodleOrchestratorService {
         }
       }
 
-      // Step 7: Format response with sources and graph-based suggestions
-      let responseText = response;
+      // Step 7: Format response with M3 styling and sources
+      const formattedResponse = m3Formatter.formatChatResponse({
+        content: response,
+        sources: sources.map(s => s.replace('📄 ', '')), // Remove emoji prefix for formatter
+        moduleName: moduleName
+      });
 
-      if (sources.length > 0) {
-        responseText += `\n\n📚 *Sources:*\n${sources.join('\n')}`;
+      // Add note if content came from other modules
+      let finalResponse = formattedResponse;
+      if (crossModuleSearch) {
+        finalResponse = `📚 _(Content from all available courses)_\n\n${finalResponse}`;
       }
 
-      responseText += `\n\n💡 _Ask another question or type *"quiz please"* to take the quiz!_`;
+      // Add quiz prompt
+      finalResponse += `\n\n💡 _Ask another question or type *"quiz"* to take the quiz!_`;
 
       return {
-        text: responseText
+        text: finalResponse
       };
     } catch (error) {
       logger.error('Error processing content query:', error);
@@ -521,9 +693,9 @@ class MoodleOrchestratorService {
 
     // Get quiz from database
     const quizResult = await postgresService.query(`
-      SELECT mq.id as quiz_id, mq.moodle_quiz_id, mq.quiz_name
-      FROM moodle_quizzes mq
-      WHERE mq.moodle_module_id = $1
+      SELECT id as quiz_id, title as quiz_name
+      FROM quizzes
+      WHERE module_id = $1 AND is_active = true
       LIMIT 1
     `, [moduleId]);
 
@@ -537,10 +709,10 @@ class MoodleOrchestratorService {
 
     // Get quiz questions from database
     const questionsResult = await postgresService.query(`
-      SELECT id, question_text, question_type, options, moodle_question_id, sequence_order
+      SELECT id, question_text, question_type, options, question_number
       FROM quiz_questions
-      WHERE moodle_quiz_id = $1
-      ORDER BY sequence_order
+      WHERE quiz_id = $1
+      ORDER BY question_number
     `, [quiz.quiz_id]);
 
     let questions = questionsResult.rows.map(q => ({
@@ -548,8 +720,7 @@ class MoodleOrchestratorService {
       questionText: q.question_text,
       questionType: q.question_type,
       options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
-      moodleQuestionId: q.moodle_question_id,
-      sequenceOrder: q.sequence_order
+      questionNumber: q.question_number
     }));
 
     if (questions.length === 0) {
@@ -572,10 +743,23 @@ class MoodleOrchestratorService {
       context_data: JSON.stringify({
         ...contextData,
         quiz_id: quiz.quiz_id,
-        moodle_quiz_id: quiz.moodle_quiz_id,
         quiz_questions: selectedQuestions.map(q => q.id)
       })
     });
+
+    // ✅ Update progress when quiz starts (90% - ready for final assessment)
+    try {
+      await postgresService.query(`
+        UPDATE user_progress
+        SET progress_percentage = 90,
+            last_activity_at = NOW()
+        WHERE user_id = $1 AND module_id = $2
+      `, [userId, context.current_module_id]);
+
+      logger.info(`📝 Quiz started for user ${userId}, module ${context.current_module_id}: Progress set to 90%`);
+    } catch (progressError) {
+      logger.error(`Failed to update progress on quiz start:`, progressError);
+    }
 
     // Send first question
     const firstQ = selectedQuestions[0];
@@ -590,55 +774,85 @@ class MoodleOrchestratorService {
   }
 
   /**
-   * Format question for WhatsApp (returns button config)
+   * Format question for WhatsApp with interactive buttons/list (if supported)
    */
   formatQuestionForWhatsApp(question, currentNum, total) {
-    const bodyText = `*Question ${currentNum}/${total}*\n\n${question.questionText}`;
+    // Prepare question data
+    const questionData = {
+      question_text: question.questionText,
+      option_a: question.options && question.options[0] ? question.options[0] : null,
+      option_b: question.options && question.options[1] ? question.options[1] : null,
+      option_c: question.options && question.options[2] ? question.options[2] : null,
+      option_d: question.options && question.options[3] ? question.options[3] : null
+    };
 
-    if (question.options && Array.isArray(question.options)) {
-      // WhatsApp buttons max is 3, so we'll use A/B/C for first 3 options
-      // If 4 options, we'll split into two messages or use list instead
-      const buttons = question.options.slice(0, 3).map((option, idx) => {
-        const letter = String.fromCharCode(65 + idx); // A, B, C
-        return {
-          id: `answer_${letter}`,
-          title: `${letter}) ${option.substring(0, 20)}` // Max 20 chars for button title
-        };
-      });
-
-      // If there's a 4th option, we'll handle it differently
-      if (question.options.length > 3) {
-        // For 4 options, use text-based with reply
-        let optionsText = '\n';
-        question.options.forEach((option, idx) => {
-          const letter = String.fromCharCode(65 + idx);
-          optionsText += `${letter}) ${option}\n`;
-        });
-        return {
-          type: 'text',
-          text: bodyText + optionsText + '\n_Reply with A, B, C, or D_'
-        };
-      }
-
-      return {
-        type: 'buttons',
-        bodyText,
-        buttons
-      };
-    } else if (question.questionType === 'truefalse') {
-      return {
-        type: 'buttons',
-        bodyText,
-        buttons: [
-          { id: 'answer_A', title: 'A) True' },
-          { id: 'answer_B', title: 'B) False' }
-        ]
-      };
+    // True/false questions
+    if (question.questionType === 'truefalse') {
+      questionData.option_a = 'True';
+      questionData.option_b = 'False';
+      questionData.option_c = null;
+      questionData.option_d = null;
     }
 
+    // If WhatsApp adapter supports interactive UI, use buttons/list
+    if (whatsappService.supportsInteractive()) {
+      // Count options
+      const optionCount = [questionData.option_a, questionData.option_b, questionData.option_c, questionData.option_d]
+        .filter(opt => opt !== null).length;
+
+      if (optionCount <= 3) {
+        // Use interactive buttons for 2-3 options (max 3 buttons allowed)
+        const buttons = [];
+        ['A', 'B', 'C', 'D'].forEach((letter) => {
+          const optionKey = `option_${letter.toLowerCase()}`;
+          if (questionData[optionKey]) {
+            buttons.push({
+              id: `answer_${letter}`,
+              title: `${letter}) ${questionData[optionKey].substring(0, 15)}` // Max 20 chars
+            });
+          }
+        });
+
+        return {
+          type: 'button',
+          header: `📝 Question ${currentNum}/${total}`,
+          body: questionData.question_text,
+          buttons: buttons
+        };
+      } else {
+        // Use interactive list for 4-option questions
+        const rows = [];
+        ['A', 'B', 'C', 'D'].forEach((letter) => {
+          const optionKey = `option_${letter.toLowerCase()}`;
+          if (questionData[optionKey]) {
+            rows.push({
+              id: `answer_${letter}`,
+              title: `${letter}) ${questionData[optionKey].substring(0, 20)}`, // Max 24 chars
+              description: questionData[optionKey].substring(0, 70) // Max 72 chars
+            });
+          }
+        });
+
+        return {
+          type: 'list',
+          header: `📝 Question ${currentNum}/${total}`,
+          body: questionData.question_text,
+          buttonText: 'Select Answer',
+          sections: [{
+            title: 'Answer Options',
+            rows: rows
+          }]
+        };
+      }
+    }
+
+    // Fallback: Use M3 text formatter for Twilio or non-interactive mode
+    const formattedText = m3Formatter.formatQuizQuestion(questionData, currentNum, total);
+
+    // Return as text (WhatsApp will display it beautifully)
     return {
       type: 'text',
-      text: bodyText
+      text: formattedText
     };
   }
 
@@ -685,7 +899,7 @@ class MoodleOrchestratorService {
 
     // Get all questions from database
     const questionsResult = await postgresService.query(`
-      SELECT id, question_text, question_type, options, correct_answer, moodle_question_id
+      SELECT id, question_text, question_type, options, correct_answer, explanation
       FROM quiz_questions
       WHERE id = ANY($1::int[])
       ORDER BY ARRAY_POSITION($1::int[], id)
@@ -697,7 +911,7 @@ class MoodleOrchestratorService {
       questionType: q.question_type,
       options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
       correctAnswer: q.correct_answer,
-      moodleQuestionId: q.moodle_question_id
+      explanation: q.explanation
     }));
 
     const currentQuestion = quizQuestions[currentIndex];
@@ -707,10 +921,11 @@ class MoodleOrchestratorService {
     let isCorrect = null; // Default: unknown
 
     // Check if user's answer is correct
-    if (currentQuestion.correctAnswer && currentQuestion.options && currentQuestion.options[answerIndex]) {
-      const userAnswerText = currentQuestion.options[answerIndex];
-      // Compare the option text with correct answer text
-      isCorrect = userAnswerText.trim() === currentQuestion.correctAnswer.trim();
+    // correct_answer is stored as index (0, 1, 2, 3) in database
+    if (currentQuestion.correctAnswer !== null && currentQuestion.correctAnswer !== undefined) {
+      const correctIndex = parseInt(currentQuestion.correctAnswer);
+      isCorrect = answerIndex === correctIndex;
+      logger.info(`Answer validation: User answered ${answer} (index ${answerIndex}), correct is index ${correctIndex}, result: ${isCorrect}`);
     }
 
     // Record answer
@@ -789,12 +1004,12 @@ class MoodleOrchestratorService {
     // Get quiz and module info
     const contextData = this.parseContextData(context);
     const moduleId = context.current_module_id;
-    const moodleQuizId = contextData.moodle_quiz_id;
+    const quizId = contextData.quiz_id;
 
     // Save to local database first (before Moodle sync)
     const attemptResult = await postgresService.query(`
       INSERT INTO quiz_attempts (
-        user_id, module_id, moodle_quiz_id, attempt_number,
+        user_id, module_id, quiz_id, attempt_number,
         score, total_questions, passed, answers
       )
       VALUES ($1, $2, $3,
@@ -802,62 +1017,14 @@ class MoodleOrchestratorService {
         $4, $5, $6, $7
       )
       RETURNING id
-    `, [userId, moduleId, contextData.quiz_id || null, score, total, passed, JSON.stringify(answers)]);
+    `, [userId, moduleId, quizId || null, score, total, passed, JSON.stringify(answers)]);
 
     const attemptId = attemptResult.rows[0].id;
 
-    // Sync to Moodle (always, regardless of pass/fail)
-    let moodleResult = null;
-    if (moodleQuizId) {
-      try {
-        logger.info(`Syncing quiz attempt to Moodle (quiz_id: ${moodleQuizId})...`);
-
-        // Prepare answers array with just the letters
-        const answerLetters = answers.map(a => a.userAnswer);
-
-        // Prepare questions with answer text for Moodle matching
-        const questionsWithText = answers.map(a => ({
-          questionText: a.questionText,
-          options: a.options
-        }));
-
-        moodleResult = await moodleSyncService.syncQuizResultToMoodle(
-          userId,
-          moduleId,
-          answerLetters,
-          questionsWithText,
-          score,
-          total,
-          moodleQuizId  // Pass the actual Moodle quiz ID
-        );
-
-        if (moodleResult.success) {
-          // Update local attempt with Moodle grade
-          await postgresService.query(`
-            UPDATE quiz_attempts
-            SET moodle_attempt_id = $1,
-                metadata = jsonb_set(
-                  COALESCE(metadata, '{}'::jsonb),
-                  '{moodle_grade}',
-                  $2::text::jsonb
-                )
-            WHERE id = $3
-          `, [moodleResult.moodleAttemptId, moodleResult.moodleGrade || 'null', attemptId]);
-
-          logger.info(`✅ Moodle sync successful: Attempt ${moodleResult.moodleAttemptId}, Grade: ${moodleResult.moodleGrade}`);
-        }
-      } catch (error) {
-        logger.error('Failed to sync to Moodle:', error);
-      }
-    }
-
     // Generate certificate for passed quizzes
     let certificateUrl = null;
-    const actualPassed = (moodleResult && moodleResult.success && moodleResult.moodleGrade !== null)
-      ? (parseFloat(moodleResult.moodleGrade) >= 7.0)
-      : passed;
 
-    if (actualPassed) {
+    if (passed) {
       try {
         const certificateService = require('./certificate.service');
         const certResult = await certificateService.generateQuizCertificate(
@@ -876,6 +1043,23 @@ class MoodleOrchestratorService {
         logger.error('Failed to generate certificate:', certError);
         // Continue without certificate - don't fail the quiz completion
       }
+
+      // ✅ Mark module as completed when quiz is passed
+      try {
+        await postgresService.query(`
+          UPDATE user_progress
+          SET status = 'completed',
+              completed_at = NOW(),
+              progress_percentage = 100,
+              last_activity_at = NOW()
+          WHERE user_id = $1 AND module_id = $2
+        `, [userId, moduleId]);
+
+        logger.info(`✅ Module ${moduleId} marked as completed for user ${userId} (WhatsApp: ${whatsappPhone})`);
+      } catch (progressError) {
+        logger.error(`Failed to update module completion for user ${userId}, module ${moduleId}:`, progressError);
+        // Continue - don't fail quiz completion due to progress tracking error
+      }
     }
 
     // Reset conversation state
@@ -886,56 +1070,26 @@ class MoodleOrchestratorService {
       quiz_answers: JSON.stringify([])
     });
 
-    // Build response message
-    let message = `🎯 *Quiz Complete!*\n\n`;
-
-    if (moodleResult && moodleResult.success && moodleResult.moodleGrade !== null) {
-      // Use Moodle's grade as the source of truth
-      const moodleScore = parseFloat(moodleResult.moodleGrade) || 0;
-      const moodlePassed = moodleScore >= 7.0; // Assuming 7/10 is passing (70%)
-
-      message += `📊 *Moodle Grade*: ${moodleScore.toFixed(1)}/10\n`;
-      message += `Status: ${moodlePassed ? '✅ *PASSED*' : '❌ *FAILED*'}\n\n`;
-
-      if (moodlePassed) {
-        message += `🎉 *Congratulations!* You've passed the quiz!\n\n`;
-        message += `✅ Results recorded in Moodle (Attempt ID: ${moodleResult.moodleAttemptId})\n\n`;
-
-        // Add certificate download link if generated
-        if (certificateUrl) {
-          message += `📜 *Download your certificate:*\n${certificateUrl}\n\n`;
-        }
-
-        message += `Continue learning or type 'menu' to select another module.`;
-      } else {
-        message += `📚 You need 70% to pass. Review the material and try again!\n\n`;
-        message += `Type *'quiz please'* to retake, or ask more questions to learn.`;
+    // Build response message with M3 formatting
+    let feedback = '';
+    if (passed) {
+      feedback = 'Congratulations! You\'ve mastered this module!';
+      if (certificateUrl) {
+        feedback += `\n\n📜 Download your certificate:\n${certificateUrl}`;
       }
     } else {
-      // Fallback to local scoring
-      message += `Score: *${score}/${total}* (${percentage.toFixed(0)}%)\n`;
-      message += `Status: ${passed ? '✅ *PASSED*' : '❌ *FAILED*'}\n\n`;
-
-      if (passed) {
-        message += `🎉 *Congratulations!* You've passed the quiz!\n\n`;
-
-        // Add certificate download link if generated
-        if (certificateUrl) {
-          message += `📜 *Download your certificate:*\n${certificateUrl}\n\n`;
-        }
-
-        message += `Continue learning or type 'menu' to select another module.`;
-      } else {
-        message += `📚 You need 70% to pass. Review the material and try again!\n\n`;
-        message += `Type *'quiz please'* to retake, or ask more questions to learn.`;
-      }
-
-      if (!moodleResult || !moodleResult.success) {
-        message += `\n\n_Note: Could not sync to Moodle. Contact admin if needed._`;
-      }
+      feedback = 'You need 70% to pass. Review the material and try again! Type *"quiz"* to retake.';
     }
 
-    return { text: message };
+    const formattedMessage = m3Formatter.formatQuizResults({
+      score: percentage,
+      totalQuestions: total,
+      correctAnswers: score,
+      passed,
+      feedback
+    });
+
+    return { text: formattedMessage };
   }
 
   /**
@@ -1045,6 +1199,7 @@ class MoodleOrchestratorService {
    */
   async trackLearningInteraction(userId, moduleId, question, response) {
     try {
+      // Track the interaction
       await postgresService.query(`
         INSERT INTO learning_interactions (
           user_id, moodle_module_id, interaction_type,
@@ -1052,6 +1207,26 @@ class MoodleOrchestratorService {
         )
         VALUES ($1, $2, 'question', $3, $4)
       `, [userId, moduleId, question, response]);
+
+      // ✅ Update progressive learning progress
+      // Each question increases progress by 8% (up to max 80% before quiz)
+      const progressResult = await postgresService.query(`
+        SELECT COUNT(*) as interaction_count
+        FROM learning_interactions
+        WHERE user_id = $1 AND moodle_module_id = $2
+      `, [userId, moduleId]);
+
+      const interactionCount = parseInt(progressResult.rows[0].interaction_count) || 0;
+      const progressPercentage = Math.min(interactionCount * 8, 80); // Max 80% before quiz
+
+      await postgresService.query(`
+        UPDATE user_progress
+        SET progress_percentage = $3,
+            last_activity_at = NOW()
+        WHERE user_id = $1 AND module_id = $2
+      `, [userId, moduleId, progressPercentage]);
+
+      logger.info(`📈 Progress updated for user ${userId}, module ${moduleId}: ${progressPercentage}% (${interactionCount} interactions)`);
     } catch (error) {
       logger.error('Failed to track interaction:', error);
     }
@@ -1067,6 +1242,78 @@ class MoodleOrchestratorService {
     }
     return array;
   }
+
+  /**
+   * Check if module exists and is active
+   * CORNER CASE FIX: Validate module before using
+   */
+  async checkModuleExists(moduleId) {
+    try {
+      const result = await postgresService.query(
+        'SELECT id FROM modules WHERE id = $1',
+        [moduleId]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error('Error checking module existence:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Reset user to first available module
+   * CORNER CASE FIX: Recover from deleted module assignment
+   */
+  async resetUserToFirstModule(userId) {
+    try {
+      // Get first available module
+      const moduleResult = await postgresService.query(`
+        SELECT m.id, m.title FROM modules m
+        JOIN courses c ON m.course_id = c.id
+        WHERE m.is_active = true AND c.is_active = true
+        ORDER BY c.sequence_order, m.sequence_order
+        LIMIT 1
+      `);
+
+      if (moduleResult.rows.length === 0) {
+        logger.error('No active modules available to assign');
+        return null;
+      }
+
+      const newModule = moduleResult.rows[0];
+      const newModuleId = newModule.id;
+
+      logger.info(`Resetting user ${userId} to module ${newModuleId} (${newModule.title})`);
+
+      // Update user's current module
+      await postgresService.query(
+        'UPDATE users SET current_module_id = $1, updated_at = NOW() WHERE id = $2',
+        [newModuleId, userId]
+      );
+
+      // Initialize progress for new module
+      await postgresService.query(
+        `INSERT INTO user_progress (user_id, module_id, status, progress_percentage, started_at, last_activity_at)
+         VALUES ($1, $2, 'not_started', 0, NOW(), NOW())
+         ON CONFLICT (user_id, module_id) DO UPDATE
+         SET last_activity_at = NOW()`,
+        [userId, newModuleId]
+      );
+
+      // Update conversation state
+      await this.updateConversationState(userId, {
+        current_module_id: newModuleId,
+        conversation_state: 'learning'
+      });
+
+      logger.info(`✅ Successfully reset user ${userId} to module ${newModuleId}`);
+      return newModuleId;
+
+    } catch (error) {
+      logger.error('Error resetting user module:', error);
+      return null;
+    }
+  }
 }
 
-module.exports = new MoodleOrchestratorService();
+module.exports = new CourseOrchestratorService();

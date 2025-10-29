@@ -39,7 +39,9 @@ class DocumentProcessorService {
   async processDocument(filePath, metadata = {}) {
     try {
       // Extract text based on file type
-      const text = await this.extractText(filePath);
+      // ocrPageLimit: 5 for fast classification, 0 for full processing, -1 to skip OCR
+      const ocrPageLimit = metadata.ocrPageLimit !== undefined ? metadata.ocrPageLimit : 0;
+      const text = await this.extractText(filePath, ocrPageLimit);
       
       if (!text || text.length < this.minChunkSize) {
         logger.warn(`Document too short for processing: ${filePath}`);
@@ -62,30 +64,62 @@ class DocumentProcessorService {
   }
 
   /**
-   * Extract text from various file formats
+   * Extract text from various file formats with timeout protection
+   * CORNER CASE FIX: Prevents hangs on corrupted/complex files
+   * @param {string} filePath - Path to file
+   * @param {number} ocrPageLimit - Max pages for OCR (0=all pages, 5=fast classification, -1=skip OCR)
    */
-  async extractText(filePath) {
+  async extractText(filePath, ocrPageLimit = 0) {
+    // CORNER CASE FIX: Check file size first
+    const fileStats = fsSync.statSync(filePath);
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+    if (fileStats.size > MAX_FILE_SIZE) {
+      throw new Error(
+        `File too large: ${(fileStats.size / 1024 / 1024).toFixed(1)}MB. ` +
+        `Maximum allowed: ${MAX_FILE_SIZE / 1024 / 1024}MB`
+      );
+    }
+
     const fileContent = await fs.readFile(filePath);
 
     if (filePath.toLowerCase().endsWith('.pdf')) {
-      // Try standard text extraction first
-      const pdfData = await pdfParse(fileContent);
+      // CORNER CASE FIX: Try standard text extraction with timeout
+      const PDF_TIMEOUT = 30000; // 30 seconds
+      const pdfData = await this.withTimeout(
+        pdfParse(fileContent),
+        PDF_TIMEOUT,
+        'PDF parsing timeout - file may be corrupted or too complex'
+      );
       const text = pdfData.text;
 
       // Check if PDF is image-based (low text extraction)
       const fileStats = fsSync.statSync(filePath);
       const estimatedPages = Math.max(1, Math.floor(fileStats.size / (1024 * 50))); // ~50KB per page estimate
+      // CORNER CASE FIX: Validate extracted text
+      if (text.length < 100) {
+        logger.warn(`PDF extraction yielded minimal text (${text.length} chars) - may be image-based or corrupted`);
+      }
+
       const avgCharsPerPage = text.length / estimatedPages;
 
       logger.info(`PDF text extraction: ${text.length} chars, ${estimatedPages} pages (est), ${avgCharsPerPage.toFixed(0)} chars/page`);
 
-      // If very low text per page, likely image-based PDF - use OCR
-      if (avgCharsPerPage < this.ocrThresholdCharsPerPage) {
-        logger.warn(`Low text density detected (${avgCharsPerPage.toFixed(0)} chars/page) - attempting OCR`);
+      // CORNER CASE FIX: Limit pages for OCR to prevent timeouts
+      const MAX_OCR_PAGES = 100;
+      if (estimatedPages > MAX_OCR_PAGES && ocrPageLimit === 0) {
+        logger.warn(`PDF has ${estimatedPages} pages - limiting OCR to ${MAX_OCR_PAGES} pages to prevent timeout`);
+        ocrPageLimit = MAX_OCR_PAGES;
+      }
+
+      // If very low text per page, likely image-based PDF - use OCR (unless ocrPageLimit is -1)
+      if (avgCharsPerPage < this.ocrThresholdCharsPerPage && ocrPageLimit !== -1) {
+        const limitMsg = ocrPageLimit > 0 ? ` (limited to first ${ocrPageLimit} pages)` : '';
+        logger.warn(`Low text density detected (${avgCharsPerPage.toFixed(0)} chars/page) - attempting OCR${limitMsg}`);
 
         if (Tesseract) {
           try {
-            const ocrText = await this.extractTextWithOCR(filePath);
+            const ocrText = await this.extractTextWithOCR(filePath, ocrPageLimit);
             if (ocrText && ocrText.length > text.length) {
               logger.info(`OCR successful: extracted ${ocrText.length} chars (vs ${text.length} from PDF text)`);
               return ocrText;
@@ -117,8 +151,10 @@ class DocumentProcessorService {
 
   /**
    * Extract text from image-based PDF using OCR
+   * @param {string} filePath - Path to PDF file
+   * @param {number} maxPages - Maximum pages to OCR (0 = all pages, default for classification is 5)
    */
-  async extractTextWithOCR(filePath) {
+  async extractTextWithOCR(filePath, maxPages = 0) {
     const tmpDir = '/tmp/ocr_' + Date.now();
 
     try {
@@ -127,7 +163,13 @@ class DocumentProcessorService {
 
       // Convert PDF pages to images using pdftoppm
       const outputPrefix = path.join(tmpDir, 'page');
-      execSync(`pdftoppm -png "${filePath}" "${outputPrefix}"`);
+
+      // Limit pages if maxPages is set (for fast classification)
+      const pdfToPpmCmd = maxPages > 0
+        ? `pdftoppm -png -l ${maxPages} "${filePath}" "${outputPrefix}"`  // -l limits pages
+        : `pdftoppm -png "${filePath}" "${outputPrefix}"`;  // Process all pages
+
+      execSync(pdfToPpmCmd);
 
       // Get all generated images
       const imageFiles = fsSync.readdirSync(tmpDir)
@@ -135,20 +177,43 @@ class DocumentProcessorService {
         .sort()
         .map(f => path.join(tmpDir, f));
 
-      logger.info(`OCR: Processing ${imageFiles.length} pages`);
+      const pagesToProcess = maxPages > 0 ? Math.min(imageFiles.length, maxPages) : imageFiles.length;
+      logger.info(`OCR: Processing ${pagesToProcess}/${imageFiles.length} pages`);
 
-      // Run OCR on each image
+      // Run OCR on each image (limited by maxPages)
       let fullText = '';
-      for (let i = 0; i < imageFiles.length; i++) {
+      const OCR_PAGE_TIMEOUT = 60000; // 60 seconds per page
+
+      for (let i = 0; i < pagesToProcess; i++) {
         const imagePath = imageFiles[i];
-        logger.info(`OCR: Processing page ${i + 1}/${imageFiles.length}`);
+        const logMsg = maxPages > 0
+          ? `OCR: Processing page ${i + 1}/${pagesToProcess} (LIMITED for classification)`
+          : `OCR: Processing page ${i + 1}/${pagesToProcess} (FULL processing)`;
+        logger.info(logMsg);
 
-        const { data: { text } } = await Tesseract.recognize(imagePath, 'eng', {
-          logger: () => {} // Suppress verbose Tesseract logs
-        });
+        try {
+          // CORNER CASE FIX: Add timeout per page to prevent hangs
+          const result = await this.withTimeout(
+            Tesseract.recognize(imagePath, 'eng', {
+              logger: () => {} // Suppress verbose Tesseract logs
+            }),
+            OCR_PAGE_TIMEOUT,
+            `OCR timeout on page ${i + 1} - skipping`
+          );
 
-        fullText += text + '\n\n';
+          fullText += result.data.text + '\n\n';
+
+          // Log progress every 10 pages for full OCR
+          if (maxPages === 0 && (i + 1) % 10 === 0) {
+            logger.info(`📊 OCR Progress: ${i + 1}/${pagesToProcess} pages completed`);
+          }
+        } catch (pageError) {
+          logger.warn(`OCR failed for page ${i + 1}: ${pageError.message} - continuing with next page`);
+          // Continue with next page instead of failing entire document
+        }
       }
+
+      logger.info(`✅ OCR Complete: Extracted text from ${pagesToProcess} pages`);
 
       return fullText;
 
@@ -445,8 +510,21 @@ class DocumentProcessorService {
         concepts.push(term);
       }
     }
-    
+
     return concepts.slice(0, 10); // Limit to top 10 concepts
+  }
+
+  /**
+   * Timeout wrapper for async operations
+   * CORNER CASE FIX: Prevents indefinite hangs
+   */
+  async withTimeout(promise, timeoutMs, errorMessage) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+      )
+    ]);
   }
 
   /**

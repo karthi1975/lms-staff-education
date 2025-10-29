@@ -186,7 +186,7 @@ class OrchestratorService {
     if (lowerInput.startsWith('module')) {
       const moduleMatch = lowerInput.match(/module\s*(\d)/);
       if (moduleMatch) {
-        return this.handleModuleSelection(userId, `module_${moduleMatch[1]}`, userProgress);
+        return this.handleModuleSelection(userId, `module_${moduleMatch[1]}`);
       }
     }
     
@@ -195,6 +195,8 @@ class OrchestratorService {
       if (moduleMatch) {
         return this.startQuiz(userId, `module_${moduleMatch[1]}`, session);
       }
+      // If just "quiz" without module number, help the user
+      return this.getQuizHelp(userId, userProgress);
     }
     
     // Check if user is in quiz mode
@@ -246,6 +248,58 @@ class OrchestratorService {
     }
   }
 
+  async getQuizHelp(userId, userProgress) {
+    try {
+      // Find which modules the user can take quizzes for
+      const availableModules = [];
+
+      for (const module of this.modules) {
+        const canAccess = await neo4jService.canUserAccessModule(userId, module.id);
+        if (canAccess) {
+          const moduleProgress = userProgress?.modules?.find(m => m.id === module.id);
+          const status = moduleProgress?.progress?.status || 'unlocked';
+
+          if (status !== 'completed') {
+            availableModules.push({
+              ...module,
+              status
+            });
+          }
+        }
+      }
+
+      if (availableModules.length === 0) {
+        return {
+          type: 'text',
+          content: '🎉 You have completed all available quizzes!\n\nType "progress" to see your achievements.'
+        };
+      }
+
+      // Suggest the current module or the first available one
+      const currentModule = availableModules[0];
+
+      let helpText = `📝 *Quiz Help*\n\n`;
+      helpText += `To take a quiz, type the module number. For example:\n\n`;
+
+      availableModules.forEach(m => {
+        helpText += `• *quiz ${m.order}* - ${m.name}\n`;
+      });
+
+      helpText += `\nRecommended: *quiz ${currentModule.order}* (${currentModule.name})`;
+
+      return {
+        type: 'text',
+        content: helpText
+      };
+    } catch (error) {
+      logger.error('Error getting quiz help:', error);
+      return {
+        type: 'text',
+        content: 'To take a quiz, type "quiz" followed by the module number (e.g., "quiz 1", "quiz 2").'
+      };
+    }
+  }
+
   async startQuiz(userId, moduleId, session) {
     try {
       // Check if user can access this module
@@ -256,23 +310,23 @@ class OrchestratorService {
           content: '🔒 You need to complete previous modules first!'
         };
       }
-      
+
       // Get module content for quiz generation
       const moduleContent = await chromaService.getDocumentsByModule(moduleId, 5);
-      
+
       if (moduleContent.length === 0) {
         return {
           type: 'text',
           content: '📚 No content available for this module yet. Please upload training materials first.'
         };
       }
-      
+
       // Generate quiz questions
       const quiz = await vertexAIService.generateQuizQuestions(
         moduleContent.map(d => d.content).join('\n'),
         moduleId
       );
-      
+
       // Store quiz state in session
       session.quizState = {
         moduleId,
@@ -281,7 +335,7 @@ class OrchestratorService {
         answers: [],
         startTime: new Date()
       };
-      
+
       // Send first question
       const firstQuestion = quiz.questions[0];
       return {
@@ -451,7 +505,7 @@ class OrchestratorService {
     };
   }
 
-  async handleModuleSelection(userId, moduleId, userProgress) {
+  async handleModuleSelection(userId, moduleId) {
     const canAccess = await neo4jService.canUserAccessModule(userId, moduleId);
     
     if (!canAccess) {

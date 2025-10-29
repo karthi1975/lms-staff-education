@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Coaching Analytics - Teachers Training</title>
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: var(--md-sys-elevation-1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #1f2937;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .btn-primary {
+            background: #00897B;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
+        }
+
+        .btn-secondary {
+            background: #6366f1;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4f46e5;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: #9ca3af;
+        }
+
+        .chart-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            margin-bottom: 20px;
+        }
+
+        .chart-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #1f2937;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        thead {
+            background: #f9fafb;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: #6b7280;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #00897B;
+            border-bottom-color: #00897B;
+        }
+
+        .tab:hover {
+            color: #1f2937;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Coaching Analytics</h1>
+            <div>
+                <a href="/admin/dashboard.html" class="btn btn-primary">Back to Dashboard</a>
+                <button id="refreshBtn" class="btn btn-secondary">Refresh Data</button>
+            </div>
+        </header>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Nudges Sent</h3>
+                <div class="value" id="totalNudges">--</div>
+                <div class="label">Lifetime</div>
+            </div>
+            <div class="stat-card">
+                <h3>Response Rate</h3>
+                <div class="value" id="responseRate">--%</div>
+                <div class="label">User Engagement</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Reflections</h3>
+                <div class="value" id="activeReflections">--</div>
+                <div class="label">This Week</div>
+            </div>
+            <div class="stat-card">
+                <h3>Avg. Engagement Score</h3>
+                <div class="value" id="avgEngagement">--%</div>
+                <div class="label">Platform-wide</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="nudges">Nudging Stats</button>
+            <button class="tab" data-tab="reflections">Reflections</button>
+            <button class="tab" data-tab="engagement">User Engagement</button>
+        </div>
+
+        <!-- Tab: Nudging Stats -->
+        <div class="tab-content active" id="nudges-tab">
+            <div class="chart-section">
+                <h2>Nudge Distribution</h2>
+                <div id="nudgeDistribution">
+                    <canvas id="nudgeChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-section">
+                <h2>Recent Nudges</h2>
+                <div id="recentNudgesLoading" class="loading">Loading nudges...</div>
+                <div id="recentNudgesEmpty" class="empty-state" style="display: none;">
+                    No nudges sent yet. Use the "Send Nudges" button to trigger manual nudges.
+                </div>
+                <table id="recentNudgesTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Sent</th>
+                            <th>Eligible Users</th>
+                            <th>Success Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentNudgesBody"></tbody>
+                </table>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="sendNudgesBtn" class="btn btn-primary">Trigger Nudge Check Now</button>
+            </div>
+        </div>
+
+        <!-- Tab: Reflections -->
+        <div class="tab-content" id="reflections-tab">
+            <div class="chart-section">
+                <h2>Reflection Statistics</h2>
+                <div id="reflectionStatsLoading" class="loading">Loading reflection data...</div>
+                <div id="reflectionStatsContent" style="display: none;">
+                    <p><strong>Total Reflections:</strong> <span id="totalReflections">0</span></p>
+                    <p><strong>Avg. Reflection Length:</strong> <span id="avgReflectionLength">0</span> words</p>
+                    <p><strong>Consistency Score:</strong> <span id="reflectionConsistency">0</span>%</p>
+                </div>
+            </div>
+
+            <div class="chart-section">
+                <h2>Recent Reflections</h2>
+                <div id="reflectionsTableLoading" class="loading">Loading reflections...</div>
+                <table id="reflectionsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Type</th>
+                            <th>Depth</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reflectionsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab: User Engagement -->
+        <div class="tab-content" id="engagement-tab">
+            <div class="chart-section">
+                <h2>Engagement Distribution</h2>
+                <div id="engagementDistribution">
+                    <p><strong>High Engagement:</strong> <span id="highEngagement">0</span> users</p>
+                    <p><strong>Medium Engagement:</strong> <span id="mediumEngagement">0</span> users</p>
+                    <p><strong>Low Engagement:</strong> <span id="lowEngagement">0</span> users</p>
+                </div>
+            </div>
+
+            <div class="chart-section">
+                <h2>Top Engaged Users</h2>
+                <table id="engagementTable">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Engagement Level</th>
+                            <th>Nudges Received</th>
+                            <th>Reflections</th>
+                        </tr>
+                    </thead>
+                    <tbody id="engagementBody">
+                        <tr><td colspan="4" class="loading">Loading engagement data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/coaching';
+
+        // Auth token (use adminToken for consistency with login.html)
+        const token = localStorage.getItem('adminToken');
+
+        if (!token) {
+            window.location.href = '/admin/login.html';
+        }
+
+        // Tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.getAttribute('data-tab');
+
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update active content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+            });
+        });
+
+        // Load analytics data
+        async function loadAnalytics() {
+            try {
+                // Load overview stats
+                const statsRes = await fetch(`${API_BASE}/nudges/stats`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const statsData = await statsRes.json();
+
+                if (statsData.success && statsData.data) {
+                    document.getElementById('totalNudges').textContent = statsData.data.total_nudges_sent || 0;
+                    document.getElementById('responseRate').textContent = `${Math.round(statsData.data.response_rate || 0)}%`;
+                }
+
+                // Load analytics overview
+                const analyticsRes = await fetch(`${API_BASE}/analytics/overview`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const analyticsData = await analyticsRes.json();
+
+                if (analyticsData.success && analyticsData.data) {
+                    // Update stats
+                    document.getElementById('activeReflections').textContent = analyticsData.data.reflection_stats?.weekly_count || 0;
+                    document.getElementById('avgEngagement').textContent = `${Math.round((analyticsData.data.avg_engagement_score || 0) * 100)}%`;
+
+                    // Engagement distribution
+                    const dist = analyticsData.data.engagement_distribution || {};
+                    document.getElementById('highEngagement').textContent = dist.high || 0;
+                    document.getElementById('mediumEngagement').textContent = dist.medium || 0;
+                    document.getElementById('lowEngagement').textContent = dist.low || 0;
+                }
+
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+            }
+        }
+
+        // Send nudges manually
+        document.getElementById('sendNudgesBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('sendNudgesBtn');
+            btn.textContent = 'Sending Nudges...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/nudges/send-all`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`Nudge check completed!\n\nTotal nudges sent: ${data.data.total_sent}`);
+                    loadAnalytics();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error sending nudges:', error);
+                alert('Failed to send nudges: ' + error.message);
+            } finally {
+                btn.textContent = 'Trigger Nudge Check Now';
+                btn.disabled = false;
+            }
+        });
+
+        // Refresh button
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadAnalytics();
+        });
+
+        // Load data on page load
+        loadAnalytics();
+    </script>
+</body>
+</html>

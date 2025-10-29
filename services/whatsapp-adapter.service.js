@@ -1,8 +1,9 @@
 /**
  * WhatsApp Adapter Service
- * Provides a unified interface for both Meta and Twilio WhatsApp implementations
+ * Provides a unified interface for Meta Cloud API, Meta (legacy), and Twilio WhatsApp implementations
  */
 
+const metaCloudService = require('./meta-whatsapp-cloud.service');
 const metaWhatsAppService = require('./whatsapp.service');
 const twilioWhatsAppService = require('./twilio-whatsapp.service');
 const logger = require('../utils/logger');
@@ -10,14 +11,23 @@ const logger = require('../utils/logger');
 class WhatsAppAdapterService {
   constructor() {
     // Determine which provider to use based on environment
-    this.provider = process.env.WHATSAPP_PROVIDER || 'meta'; // 'meta' or 'twilio'
+    // Priority: USE_META_CLOUD_API > WHATSAPP_PROVIDER
+    const useMetaCloud = process.env.USE_META_CLOUD_API === 'true';
+    this.provider = process.env.WHATSAPP_PROVIDER || 'twilio'; // Default to twilio for backward compatibility
 
-    if (this.provider === 'twilio') {
+    if (useMetaCloud && metaCloudService.isEnabled()) {
+      this.service = metaCloudService;
+      this.provider = 'meta-cloud';
+      this.supportsInteractiveUI = true;
+      logger.info('✅ Using Meta WhatsApp Cloud API (Interactive UI enabled)');
+    } else if (this.provider === 'twilio') {
       this.service = twilioWhatsAppService;
-      logger.info('Using Twilio WhatsApp provider');
+      this.supportsInteractiveUI = false;
+      logger.info('✅ Using Twilio WhatsApp provider (Text-based UI)');
     } else {
       this.service = metaWhatsAppService;
-      logger.info('Using Meta WhatsApp provider');
+      this.supportsInteractiveUI = true;
+      logger.info('✅ Using Meta WhatsApp provider (legacy)');
     }
   }
 
@@ -30,6 +40,10 @@ class WhatsAppAdapterService {
 
     // If message is short enough, send directly
     if (text.length <= MAX_LENGTH) {
+      // Meta Cloud API has different method name
+      if (this.provider === 'meta-cloud') {
+        return await this.service.sendTextMessage(to, text);
+      }
       return await this.service.sendMessage(to, text);
     }
 
@@ -40,8 +54,15 @@ class WhatsAppAdapterService {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       const prefix = chunks.length > 1 ? `📄 Part ${i + 1}/${chunks.length}\n\n` : '';
-      const result = await this.service.sendMessage(to, prefix + chunk);
-      results.push(result);
+
+      // Meta Cloud API has different method name
+      if (this.provider === 'meta-cloud') {
+        const result = await this.service.sendTextMessage(to, prefix + chunk);
+        results.push(result);
+      } else {
+        const result = await this.service.sendMessage(to, prefix + chunk);
+        results.push(result);
+      }
 
       // Add small delay between chunks to ensure proper ordering
       if (i < chunks.length - 1) {
@@ -95,13 +116,34 @@ class WhatsAppAdapterService {
    * Send interactive list
    */
   async sendInteractiveList(to, headerText, bodyText, buttonText, sections) {
+    if (this.provider === 'meta-cloud') {
+      // Meta Cloud API uses different parameter format
+      return await this.service.sendListMessage(to, {
+        header: headerText,
+        body: bodyText,
+        buttonText: buttonText,
+        sections: sections
+      });
+    }
     return await this.service.sendInteractiveList(to, headerText, bodyText, buttonText, sections);
   }
 
   /**
    * Send buttons
+   * @param {string} to - Recipient phone number
+   * @param {string} bodyText - Message body
+   * @param {Array<{id: string, title: string}>} buttons - Buttons (max 3)
+   * @param {string} header - Optional header text
    */
-  async sendButtons(to, bodyText, buttons) {
+  async sendButtons(to, bodyText, buttons, header = null) {
+    if (this.provider === 'meta-cloud') {
+      // Meta Cloud API uses different parameter format
+      return await this.service.sendButtonMessage(to, {
+        header: header,
+        body: bodyText,
+        buttons: buttons
+      });
+    }
     return await this.service.sendButtons(to, bodyText, buttons);
   }
 
@@ -139,13 +181,17 @@ class WhatsAppAdapterService {
    * Check if provider supports interactive messages
    */
   supportsInteractive() {
-    return this.provider === 'meta';
+    return this.supportsInteractiveUI || this.provider === 'meta' || this.provider === 'meta-cloud';
   }
 
   /**
    * Extract message from webhook payload
    */
   extractMessage(body) {
+    if (this.provider === 'meta-cloud') {
+      // Meta Cloud API uses different webhook format
+      return this.service.parseWebhookMessage(body);
+    }
     return this.service.extractMessage(body);
   }
 

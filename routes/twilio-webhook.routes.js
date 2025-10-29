@@ -12,11 +12,9 @@ const whatsappHandler = require('../services/whatsapp-handler.service');
 const logger = require('../utils/logger');
 
 /**
- * @route POST /webhook/twilio
- * @desc Receive WhatsApp messages from Twilio - WITH EDUCATION FLOW
- * @access Public (validated by Twilio signature)
+ * Shared webhook handler function
  */
-router.post('/webhook/twilio', async (req, res) => {
+async function handleTwilioWebhook(req, res) {
   try {
     // Log incoming webhook
     logger.info('📚 Twilio webhook received - EDUCATION MODE');
@@ -58,7 +56,17 @@ router.post('/webhook/twilio', async (req, res) => {
     const twiml = new MessagingResponse();
     res.type('text/xml').send(twiml.toString());
   }
-});
+}
+
+/**
+ * @route POST /webhook/twilio
+ * @route POST /webhook/twilio/
+ * @desc Receive WhatsApp messages from Twilio - WITH EDUCATION FLOW
+ * @access Public (validated by Twilio signature)
+ * Handles both with and without trailing slash
+ */
+router.post('/webhook/twilio', handleTwilioWebhook);
+router.post('/webhook/twilio/', handleTwilioWebhook);
 
 /**
  * @route POST /webhook/twilio/status
@@ -68,6 +76,30 @@ router.post('/webhook/twilio', async (req, res) => {
 router.post('/webhook/twilio/status', async (req, res) => {
   try {
     logger.info('Twilio status callback received');
+    console.log('Twilio status:', JSON.stringify(req.body, null, 2));
+
+    const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = req.body;
+
+    // Log status updates
+    if (MessageStatus === 'failed' || MessageStatus === 'undelivered') {
+      logger.error(`Message ${MessageSid} failed: ${ErrorCode} - ${ErrorMessage}`);
+    } else {
+      logger.info(`Message ${MessageSid} status: ${MessageStatus}`);
+    }
+
+    // Acknowledge receipt
+    res.status(200).send('OK');
+
+  } catch (error) {
+    logger.error('Error processing Twilio status callback:', error);
+    res.status(200).send('OK'); // Still acknowledge to prevent retries
+  }
+});
+
+// Also handle status with trailing slash
+router.post('/webhook/twilio/status/', async (req, res) => {
+  try {
+    logger.info('Twilio status callback received (trailing slash)');
     console.log('Twilio status:', JSON.stringify(req.body, null, 2));
 
     const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = req.body;

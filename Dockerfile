@@ -29,13 +29,16 @@ RUN rm -rf .git .env.local .env.development \
 # Stage 2: Production stage
 FROM node:18-alpine
 
-# Install production dependencies (including build tools for bcrypt)
+# Install production dependencies (including build tools for bcrypt and OCR tools)
 RUN apk add --no-cache \
     curl \
     tini \
     python3 \
     make \
     g++ \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-data-eng \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user

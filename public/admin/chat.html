@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Module Chat - Teachers Training System</title>
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
     <style>
         * {
             margin: 0;
@@ -21,8 +22,9 @@
 
         .header {
             background: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             padding: 20px;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .header-content {
@@ -46,19 +48,45 @@
         .btn {
             padding: 10px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 20px;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .btn-primary {
-            background: #667eea;
+            background: #00897B;
             color: white;
         }
 
         .btn-primary:hover {
-            background: #5568d3;
+            background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .btn-secondary {
@@ -82,10 +110,13 @@
         .sidebar {
             width: 300px;
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             height: fit-content;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.1s;
+            animation-fill-mode: both;
         }
 
         .sidebar h2 {
@@ -101,21 +132,36 @@
         .module-item {
             padding: 12px;
             margin-bottom: 8px;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
             display: flex;
             align-items: center;
             gap: 10px;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
         }
+
+        .module-item:nth-child(1) { animation-delay: 0.2s; }
+        .module-item:nth-child(2) { animation-delay: 0.25s; }
+        .module-item:nth-child(3) { animation-delay: 0.3s; }
+        .module-item:nth-child(4) { animation-delay: 0.35s; }
+        .module-item:nth-child(5) { animation-delay: 0.4s; }
 
         .module-item:hover {
             background: #f0f0f0;
+            transform: translateX(4px) scale(1.02);
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .module-item:active {
+            transform: translateX(2px) scale(0.98);
         }
 
         .module-item.active {
-            background: #667eea;
+            background: var(--md-sys-color-primary);
             color: white;
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .module-number {
@@ -132,17 +178,20 @@
 
         .module-item.active .module-number {
             background: white;
-            color: #667eea;
+            color: #00897B;
         }
 
         .chat-container {
             flex: 1;
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
             display: flex;
             flex-direction: column;
             height: calc(100vh - 180px);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.2s;
+            animation-fill-mode: both;
         }
 
         .chat-header {
@@ -186,12 +235,26 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            scroll-behavior: smooth;
         }
 
         .message {
             display: flex;
             gap: 10px;
             max-width: 80%;
+            animation: message-slide-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
+        }
+
+        @keyframes message-slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         .message.user {
@@ -203,13 +266,21 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: #667eea;
+            background: var(--md-sys-color-primary);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
             flex-shrink: 0;
+            box-shadow: var(--md-sys-elevation-2);
+            animation: avatar-pop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes avatar-pop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
         }
 
         .message.user .message-avatar {
@@ -219,13 +290,20 @@
         .message-content {
             background: #f9fafb;
             padding: 12px 16px;
-            border-radius: 12px;
+            border-radius: 16px;
             flex: 1;
+            box-shadow: var(--md-sys-elevation-1);
+            transition: all var(--md-sys-motion-duration-medium2);
+        }
+
+        .message-content:hover {
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .message.user .message-content {
-            background: #667eea;
+            background: var(--md-sys-color-primary);
             color: white;
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .message-text {
@@ -263,23 +341,51 @@
 
         .message-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 4px rgba(0, 137, 123, 0.1);
+            transform: scale(1.01);
         }
 
         .send-button {
             padding: 12px 24px;
-            background: #667eea;
+            background: var(--md-sys-color-primary);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            transition: all 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .send-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .send-button:active::before {
+            width: 200px;
+            height: 200px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .send-button:hover {
-            background: #5568d3;
+            background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .send-button:disabled {
@@ -329,6 +435,9 @@
             text-align: center;
             padding: 60px 20px;
             color: #666;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.3s;
+            animation-fill-mode: both;
         }
 
         .empty-state-icon {
@@ -362,10 +471,18 @@
         .source-tag {
             display: inline-block;
             background: rgba(0,0,0,0.05);
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
             margin-right: 5px;
             margin-top: 5px;
+            font-size: 11px;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            transition: all var(--md-sys-motion-duration-short2);
+        }
+
+        .source-tag:hover {
+            background: rgba(0,0,0,0.1);
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -374,7 +491,7 @@
         <div class="header-content">
             <h1>💬 Module Chat Assistant</h1>
             <div class="header-actions">
-                <button class="btn btn-primary" onclick="window.location.href='modules.html'">Module Management</button>
+                <button class="btn btn-primary" onclick="window.location.href='courses.html'">Course Management</button>
                 <button class="btn btn-secondary" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -382,7 +499,7 @@
 
     <div class="container">
         <div style="background: white; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <a href="lms-dashboard.html" style="color: #667eea; text-decoration: none;">🏠 Home</a>
+            <a href="dashboard.html" style="color: #00897B; text-decoration: none;">🏠 Home</a>
             <span style="color: #999;"> / </span>
             <span style="color: #333; font-weight: 500;">AI Assistant Chat</span>
         </div>
@@ -474,6 +591,92 @@
             `).join('');
         }
 
+        function getModuleExamples(title) {
+            const examples = {
+                'Production': [
+                    '"What is production in small business?"',
+                    '"How do I manage quality control?"',
+                    '"Tell me about production planning"'
+                ],
+                'Financing': [
+                    '"What are sources of business finance?"',
+                    '"How to prepare a budget?"',
+                    '"Tell me about financial management"'
+                ],
+                'Management': [
+                    '"What is business management?"',
+                    '"How to manage employees effectively?"',
+                    '"Tell me about leadership skills"'
+                ],
+                'Warehousing': [
+                    '"What is warehousing and inventory?"',
+                    '"How to manage stock levels?"',
+                    '"Tell me about storage systems"'
+                ],
+                'Opportunity': [
+                    '"What is entrepreneurship?"',
+                    '"How to identify opportunities?"',
+                    '"Tell me about market research"'
+                ],
+                'default': [
+                    '"What topics are covered in this module?"',
+                    '"Give me key concepts"',
+                    '"How can I apply this knowledge?"'
+                ]
+            };
+
+            // Find matching module (case-insensitive partial match)
+            for (let key in examples) {
+                if (title.toLowerCase().includes(key.toLowerCase())) {
+                    return examples[key];
+                }
+            }
+            return examples['default'];
+        }
+
+        function getWelcomeMessage(title, description) {
+            const examples = getModuleExamples(title);
+
+            return `
+                <div style="line-height: 1.8;">
+                    <div style="font-size: 1.2em; font-weight: bold; margin-bottom: 10px;">${title}</div>
+                    <div style="border-top: 2px solid #00897B; margin-bottom: 15px;"></div>
+
+                    <div style="margin-bottom: 15px;">
+                        ✅ <strong>Great! You've started learning!</strong>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        📚 <strong>What You'll Learn:</strong><br>
+                        <span style="padding-left: 20px; display: block; margin-top: 5px;">
+                            ${description || 'Learn key concepts and practical skills in ' + title}
+                        </span>
+                    </div>
+
+                    <div style="border-top: 2px solid #00897B; margin-bottom: 15px;"></div>
+
+                    <div style="margin-bottom: 15px;">
+                        💬 <strong>Ask Me Anything!</strong><br>
+                        <em style="padding-left: 20px; display: block; margin-top: 5px;">Examples:</em>
+                        <div style="padding-left: 20px; margin-top: 5px;">
+                            • ${examples[0]}<br>
+                            • ${examples[1]}<br>
+                            • ${examples[2]}
+                        </div>
+                    </div>
+
+                    <div style="border-top: 2px solid #00897B; margin-bottom: 15px;"></div>
+
+                    <div>
+                        🔄 <strong>Need Help?</strong><br>
+                        <span style="padding-left: 20px; display: block; margin-top: 5px;">
+                            Type: "menu" to see options
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
         function selectModule(moduleId, title, description) {
             currentModuleId = moduleId;
 
@@ -502,8 +705,7 @@
                         <div class="message-avatar">AI</div>
                         <div class="message-content">
                             <div class="message-text">
-                                Hello! I'm your AI assistant for <strong>${title}</strong>.
-                                Ask me anything about this module's content and I'll help you learn!
+                                ${getWelcomeMessage(title, description)}
                             </div>
                             <div class="message-time">${formatTime(new Date())}</div>
                         </div>
@@ -526,13 +728,13 @@
                 // Reset UI
                 const messagesContainer = document.getElementById('messagesContainer');
                 const title = document.getElementById('chatTitle').textContent;
+                const description = document.getElementById('chatSubtitle').textContent;
                 messagesContainer.innerHTML = `
                     <div class="message">
                         <div class="message-avatar">AI</div>
                         <div class="message-content">
                             <div class="message-text">
-                                Hello! I'm your AI assistant for <strong>${title}</strong>.
-                                Ask me anything about this module's content and I'll help you learn!
+                                ${getWelcomeMessage(title, description)}
                             </div>
                             <div class="message-time">${formatTime(new Date())}</div>
                         </div>
@@ -690,32 +892,48 @@
 
             // Convert markdown formatting to HTML (process in order)
 
-            // 1. Bold: **text** -> <strong>text</strong>
-            // Match any characters including spaces between **
-            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            // 1. Headings: ## Heading -> <h2>Heading</h2>
+            html = html.replace(/^### (.+)$/gm, '<h3 style="font-size: 1.17em; font-weight: 600; margin: 16px 0 8px 0; color: var(--md-sys-color-primary, #00897B);">$1</h3>');
+            html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 1.5em; font-weight: 600; margin: 20px 0 12px 0; color: var(--md-sys-color-primary, #00897B);">$1</h2>');
+            html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 2em; font-weight: 700; margin: 24px 0 16px 0; color: var(--md-sys-color-primary, #00897B);">$1</h1>');
 
-            // 2. Numbered lists: 1. item -> <ol><li>item</li></ol>
+            // 2. Bold: **text** -> <strong>text</strong>
+            // Use non-greedy match and support multiline
+            html = html.replace(/\*\*([^\*]+?)\*\*/g, '<strong style="font-weight: 600; color: #333;">$1</strong>');
+
+            // 3. Italic: _text_ -> <em>text</em>
+            html = html.replace(/_([^_]+?)_/g, '<em style="font-style: italic;">$1</em>');
+
+            // 4. Code blocks: ```code``` -> <code>code</code>
+            html = html.replace(/```([^`]+?)```/g, '<code style="background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em;">$1</code>');
+
+            // 5. Inline code: `code` -> <code>code</code>
+            html = html.replace(/`([^`]+?)`/g, '<code style="background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em;">$1</code>');
+
+            // 6. Numbered lists: 1. item -> <ol><li>item</li></ol>
             html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li-num data-num="$1">$2</li-num>');
 
-            // 3. Wrap consecutive numbered list items
+            // 7. Wrap consecutive numbered list items
             html = html.replace(/(<li-num[^>]*>.*?<\/li-num>\s*)+/g, (match) => {
-                return '<ol style="margin: 10px 0; padding-left: 20px; list-style-position: inside;">' +
-                       match.replace(/<li-num[^>]*>(.*?)<\/li-num>/g, '<li style="margin-bottom: 5px;">$1</li>') +
+                return '<ol style="margin: 12px 0; padding-left: 24px; list-style-type: decimal;">' +
+                       match.replace(/<li-num[^>]*>(.*?)<\/li-num>/g, '<li style="margin-bottom: 8px; padding-left: 4px;">$1</li>') +
                        '</ol>';
             });
 
-            // 4. Bullet lists: - item or * item -> <ul><li>item</li></ul>
-            // But NOT ** (which is bold marker)
-            html = html.replace(/^[\-]\s+(.+)$/gm, '<li-bullet>$1</li-bullet>');
+            // 8. Bullet lists: - item or • item -> <ul><li>item</li></ul>
+            html = html.replace(/^[\-\•]\s+(.+)$/gm, '<li-bullet>$1</li-bullet>');
 
-            // 5. Wrap consecutive bullet list items
+            // 9. Wrap consecutive bullet list items
             html = html.replace(/(<li-bullet>.*?<\/li-bullet>\s*)+/g, (match) => {
-                return '<ul style="margin: 10px 0; padding-left: 20px; list-style-position: inside;">' +
-                       match.replace(/<li-bullet>(.*?)<\/li-bullet>/g, '<li style="margin-bottom: 5px;">$1</li>') +
+                return '<ul style="margin: 12px 0; padding-left: 24px; list-style-type: disc;">' +
+                       match.replace(/<li-bullet>(.*?)<\/li-bullet>/g, '<li style="margin-bottom: 8px; padding-left: 4px;">$1</li>') +
                        '</ul>';
             });
 
-            // 6. Preserve line breaks (but not inside lists)
+            // 10. Links: [text](url) -> <a>text</a>
+            html = html.replace(/\[([^\]]+?)\]\(([^\)]+?)\)/g, '<a href="$2" style="color: var(--md-sys-color-primary, #00897B); text-decoration: underline;" target="_blank" rel="noopener">$1</a>');
+
+            // 11. Preserve line breaks (convert to <br>)
             html = html.replace(/\n/g, '<br>');
 
             return html;
@@ -732,6 +950,8 @@
             window.location.href = 'login.html';
         }
     </script>
-</body>
+
+    <!-- Moodle-style Sidebar Navigation -->
+    <script src="../js/sidebar-nav.js"></script></body>
 </html>
 <!-- Cache bust: 1760297322 -->

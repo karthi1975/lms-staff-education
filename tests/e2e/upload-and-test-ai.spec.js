@@ -25,7 +25,7 @@ test.describe('Upload Content and Test AI Assistant', () => {
     await page.fill('input[type="email"]', 'admin@school.edu');
     await page.fill('input[type="password"]', 'Admin123!');
     await page.click('button[type="submit"]');
-    await page.waitForURL('**/admin/lms-dashboard.html', { timeout: 10000 });
+    await page.waitForURL('**/admin/dashboard.html', { timeout: 10000 });
 
     // Get auth token from localStorage
     authToken = await page.evaluate(() => {
@@ -81,7 +81,7 @@ test.describe('Upload Content and Test AI Assistant', () => {
     console.log('Auth Token:', authToken.substring(0, 20) + '...');
 
     // Navigate to modules page
-    await page.goto(`${BASE_URL}/admin/lms-dashboard.html`);
+    await page.goto(`${BASE_URL}/admin/dashboard.html`);
     await page.waitForLoadState('networkidle');
 
     // Set auth token
@@ -162,7 +162,7 @@ test.describe('Upload Content and Test AI Assistant', () => {
     console.log('\n🤖 Testing AI Assistant...');
 
     // Navigate to chat page
-    await page.goto(`${BASE_URL}/admin/chat-v2.html`);
+    await page.goto(`${BASE_URL}/admin/chat.html`);
     await page.waitForLoadState('networkidle');
 
     // Set auth token

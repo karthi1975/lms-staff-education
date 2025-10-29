@@ -4,8 +4,11 @@ const multer = require('multer');
 const path = require('path');
 const contentService = require('../services/content.service');
 const portalContentService = require('../services/portal-content.service');
+const contentProcessorService = require('../services/content-processor.service');
 const verificationService = require('../services/verification.service');
 const enrollmentService = require('../services/enrollment.service');
+const contentClassificationService = require('../services/content-classification.service');
+const postgresService = require('../services/database/postgres.service');
 const authMiddleware = require('../middleware/auth.middleware');
 const logger = require('../utils/logger');
 
@@ -486,10 +489,8 @@ router.get('/courses/:courseId', authMiddleware.authenticateToken, async (req, r
 
     res.json({
       success: true,
-      data: {
-        course: courseResult.rows[0],
-        modules: modulesResult.rows
-      }
+      course: courseResult.rows[0],
+      modules: modulesResult.rows
     });
   } catch (error) {
     logger.error('Error fetching course:', error);
@@ -670,6 +671,62 @@ router.post('/portal/courses/:courseId/modules/:moduleId/upload',
     }
   }
 );
+
+/**
+ * @route POST /api/admin/modules/:moduleId/process-content
+ * @desc Trigger background processing of all content files for a module
+ * @access Admin
+ */
+router.post('/modules/:moduleId/process-content', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const adminUserId = req.user.id;
+
+    logger.info(`Triggering content processing for module ${moduleId}`);
+
+    // Start background processing (non-blocking)
+    await contentProcessorService.startBackgroundProcessing(parseInt(moduleId), adminUserId);
+
+    res.json({
+      success: true,
+      message: 'Content processing started in background',
+      moduleId: parseInt(moduleId)
+    });
+
+  } catch (error) {
+    logger.error(`Error starting content processing for module ${req.params.moduleId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/modules/:moduleId/processing-status
+ * @desc Get current processing status for a module
+ * @access Admin
+ */
+router.get('/modules/:moduleId/processing-status', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const status = contentProcessorService.getStatus(parseInt(moduleId));
+
+    if (!status) {
+      return res.json({
+        success: true,
+        status: null,
+        message: 'No processing in progress'
+      });
+    }
+
+    res.json({
+      success: true,
+      status: status
+    });
+
+  } catch (error) {
+    logger.error(`Error fetching processing status for module ${req.params.moduleId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 /**
  * @route GET /api/admin/modules/:moduleId/graph
@@ -1006,16 +1063,48 @@ router.get('/users/:userId/enrollment-history', authMiddleware.authenticateToken
  * @desc Upload quiz questions for a module from JSON file
  * @access Admin
  */
-router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, async (req, res) => {
+// Configure multer for quiz file uploads
+const quizUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/json' || file.originalname.endsWith('.json')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JSON files are allowed'));
+    }
+  }
+});
+
+router.post('/modules/:moduleId/quiz/upload',
+  authMiddleware.authenticateToken,
+  quizUpload.single('quizFile'),
+  async (req, res) => {
   try {
     const { moduleId } = req.params;
-    const { questions } = req.body;
     const adminUserId = req.user.id;
+
+    // Parse uploaded JSON file
+    let questions;
+    if (req.file) {
+      // File upload - parse JSON from buffer
+      const fileContent = req.file.buffer.toString('utf-8');
+      const quizData = JSON.parse(fileContent);
+      questions = quizData.questions; // Extract questions array from { "questions": [...] }
+    } else if (req.body.questions) {
+      // Direct JSON in body (for API calls)
+      questions = req.body.questions;
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Please upload a JSON file with quiz questions'
+      });
+    }
 
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Questions array is required and must not be empty'
+        error: 'Quiz file must contain a "questions" array with at least one question'
       });
     }
 
@@ -1156,6 +1245,289 @@ router.post('/modules/:moduleId/quiz/upload', authMiddleware.authenticateToken, 
 });
 
 /**
+ * @route POST /api/admin/courses/:courseId/modules/:moduleId/quiz
+ * @desc Upload quiz questions for a module
+ * @access Admin
+ */
+router.post('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const { questions } = req.body;
+
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Questions array is required and must not be empty'
+      });
+    }
+
+    // Validate each question (expecting {question, options: {A, B, C, D}, correct_answer: 'A'/'B'/'C'/'D'})
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.question || !q.options || !q.correct_answer) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: Missing required fields (question, options, correct_answer)`
+        });
+      }
+      if (!q.options.A || !q.options.B || !q.options.C || !q.options.D) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: Must have options A, B, C, and D`
+        });
+      }
+      if (!['A', 'B', 'C', 'D'].includes(q.correct_answer)) {
+        return res.status(400).json({
+          success: false,
+          error: `Question ${i + 1}: correct_answer must be A, B, C, or D`
+        });
+      }
+    }
+
+    const postgresService = require('../services/database/postgres.service');
+
+    // Verify module exists
+    const moduleResult = await postgresService.pool.query(
+      'SELECT id FROM modules WHERE id = $1',
+      [moduleId]
+    );
+
+    if (moduleResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Module not found'
+      });
+    }
+
+    // Check if quiz already exists for this module
+    let quizResult = await postgresService.pool.query(
+      'SELECT id FROM quizzes WHERE module_id = $1',
+      [moduleId]
+    );
+
+    let quizId;
+
+    if (quizResult.rows.length > 0) {
+      // Update existing quiz
+      quizId = quizResult.rows[0].id;
+
+      // Delete existing questions
+      await postgresService.pool.query(
+        'DELETE FROM quiz_questions WHERE quiz_id = $1',
+        [quizId]
+      );
+
+      logger.info(`Updated quiz ${quizId} for module ${moduleId}`);
+    } else {
+      // Create new quiz
+      quizResult = await postgresService.pool.query(`
+        INSERT INTO quizzes (
+          module_id,
+          title,
+          description,
+          pass_threshold,
+          max_attempts,
+          time_limit_minutes,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        RETURNING id
+      `, [
+        moduleId,
+        'Module Quiz',
+        'Quiz for this module',
+        70, // 70% pass threshold
+        2,  // max 2 attempts
+        30  // 30 minutes time limit
+      ]);
+
+      quizId = quizResult.rows[0].id;
+      logger.info(`Created new quiz ${quizId} for module ${moduleId}`);
+    }
+
+    // Insert questions
+    const insertedQuestions = [];
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+
+      // Convert {A, B, C, D} format to array [A, B, C, D] for database
+      const optionsArray = [q.options.A, q.options.B, q.options.C, q.options.D];
+      const correctIndex = ['A', 'B', 'C', 'D'].indexOf(q.correct_answer);
+
+      const questionResult = await postgresService.pool.query(`
+        INSERT INTO quiz_questions (
+          quiz_id,
+          question_number,
+          question_text,
+          question_type,
+          options,
+          correct_answer,
+          points,
+          explanation,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        RETURNING *
+      `, [
+        quizId,
+        i + 1,
+        q.question,
+        'multiple_choice',
+        JSON.stringify(optionsArray),
+        correctIndex,
+        1, // 1 point per question
+        q.explanation || null
+      ]);
+
+      insertedQuestions.push(questionResult.rows[0]);
+    }
+
+    logger.info(`Inserted ${insertedQuestions.length} questions for quiz ${quizId}`);
+
+    res.json({
+      success: true,
+      message: 'Quiz uploaded successfully',
+      quiz: {
+        id: quizId,
+        module_id: moduleId,
+        questionCount: insertedQuestions.length
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error uploading quiz:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/courses/:courseId/modules/:moduleId/quiz
+ * @desc Get quiz questions for a module
+ * @access Admin
+ */
+router.get('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    // Get quiz for this module
+    const quizResult = await postgresService.pool.query(
+      'SELECT * FROM quizzes WHERE module_id = $1',
+      [moduleId]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        quiz: null,
+        message: 'No quiz found for this module'
+      });
+    }
+
+    const quiz = quizResult.rows[0];
+
+    // Get quiz questions
+    const questionsResult = await postgresService.pool.query(
+      'SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY question_number',
+      [quiz.id]
+    );
+
+    // Convert questions to frontend format {question, options: {A, B, C, D}, correct_answer: 'A'}
+    const formattedQuestions = questionsResult.rows.map(q => {
+      // Handle options - might be JSONB (object) or string
+      const optionsArray = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
+      const correctAnswer = ['A', 'B', 'C', 'D'][q.correct_answer];
+
+      return {
+        id: q.id,
+        question: q.question_text,
+        options: {
+          A: optionsArray[0],
+          B: optionsArray[1],
+          C: optionsArray[2],
+          D: optionsArray[3]
+        },
+        correct_answer: correctAnswer,
+        explanation: q.explanation
+      };
+    });
+
+    res.json({
+      success: true,
+      quiz: formattedQuestions,
+      quizInfo: {
+        id: quiz.id,
+        title: quiz.title,
+        pass_threshold: quiz.pass_threshold,
+        max_attempts: quiz.max_attempts,
+        time_limit_minutes: quiz.time_limit_minutes
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error getting quiz:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route DELETE /api/admin/courses/:courseId/modules/:moduleId/quiz
+ * @desc Delete quiz for a module
+ * @access Admin
+ */
+router.delete('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    // Get quiz for this module
+    const quizResult = await postgresService.pool.query(
+      'SELECT id FROM quizzes WHERE module_id = $1',
+      [moduleId]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No quiz found for this module'
+      });
+    }
+
+    const quizId = quizResult.rows[0].id;
+
+    // Delete quiz questions (will cascade due to foreign key)
+    await postgresService.pool.query(
+      'DELETE FROM quiz_questions WHERE quiz_id = $1',
+      [quizId]
+    );
+
+    // Delete quiz
+    await postgresService.pool.query(
+      'DELETE FROM quizzes WHERE id = $1',
+      [quizId]
+    );
+
+    logger.info(`Deleted quiz ${quizId} for module ${moduleId}`);
+
+    res.json({
+      success: true,
+      message: 'Quiz deleted successfully'
+    });
+
+  } catch (error) {
+    logger.error('Error deleting quiz:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route DELETE /api/admin/courses/:courseId
  * @desc Delete a course and all its related data
  * @access Admin
@@ -1166,6 +1538,7 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
     const postgresService = require('../services/database/postgres.service');
     const neo4jService = require('../services/neo4j.service');
     const chromaService = require('../services/chroma.service');
+    const fs = require('fs').promises;
 
     // Get course details from the CORRECT table (courses, not moodle_courses)
     const courseResult = await postgresService.pool.query(
@@ -1186,6 +1559,51 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
     );
 
     const moduleIds = modulesResult.rows.map(row => row.id);
+
+    // Get all content files to delete from filesystem
+    let deletedFiles = 0;
+    if (moduleIds.length > 0) {
+      const contentResult = await postgresService.pool.query(
+        'SELECT file_path FROM module_content WHERE module_id = ANY($1)',
+        [moduleIds]
+      );
+
+      // Delete physical files - try multiple path variations
+      for (const row of contentResult.rows) {
+        const filePath = row.file_path;
+        let deleted = false;
+
+        // Try paths in order:
+        // 1. Original path as-is
+        // 2. If absolute, extract filename and try uploads/ directory
+        const pathsToTry = [filePath];
+
+        if (path.isAbsolute(filePath)) {
+          const filename = path.basename(filePath);
+          pathsToTry.push(`uploads/${filename}`);
+        }
+
+        for (const tryPath of pathsToTry) {
+          try {
+            await fs.unlink(tryPath);
+            deletedFiles++;
+            deleted = true;
+            logger.info(`Deleted file: ${tryPath}`);
+            break;
+          } catch (fileError) {
+            // Continue to next path variant
+          }
+        }
+
+        if (!deleted) {
+          logger.warn(`Could not delete file at any path: ${filePath}`);
+        }
+      }
+
+      if (deletedFiles > 0) {
+        logger.info(`Deleted ${deletedFiles} physical file(s) from uploads/`);
+      }
+    }
 
     // Delete from Neo4j (if module IDs exist)
     try {
@@ -1220,7 +1638,9 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
 
     res.json({
       success: true,
-      message: 'Course and all related data deleted successfully'
+      message: `Course and all related data deleted successfully (${deletedFiles} file(s) removed)`,
+      deletedFiles: deletedFiles,
+      deletedModules: moduleIds.length
     });
 
   } catch (error) {
@@ -1510,6 +1930,269 @@ router.delete('/users/:userId', authMiddleware.authenticateToken, async (req, re
   } catch (error) {
     logger.error('Error deleting WhatsApp user:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/admin/courses/:courseId/modules
+ * @desc Get modules for a course (alias for portal route for UI compatibility)
+ * @access Admin
+ */
+router.get('/courses/:courseId/modules', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    const modulesResult = await postgresService.pool.query(`
+      SELECT
+        m.id,
+        m.id as moodle_module_id,
+        m.course_id,
+        CONCAT('MOD-', m.id) as module_code,
+        m.title,
+        m.title as module_name,
+        m.description,
+        m.sequence_order,
+        m.sequence_order as module_number,
+        m.is_active,
+        m.created_at,
+        (SELECT COUNT(*) FROM module_content mc WHERE mc.module_id = m.id) as content_count,
+        (SELECT COUNT(*) FROM quiz_questions qq
+         INNER JOIN quizzes q ON qq.quiz_id = q.id
+         WHERE q.module_id = m.id) as quiz_questions,
+        NULL as duration
+      FROM modules m
+      WHERE m.course_id = $1
+      ORDER BY m.sequence_order
+    `, [courseId]);
+
+    res.json({
+      success: true,
+      modules: modulesResult.rows,
+      data: modulesResult.rows
+    });
+  } catch (error) {
+    logger.error('Error fetching course modules:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== USER PROGRESS & QUIZ COMPLETION TRACKING ====================
+
+/**
+ * @route GET /api/admin/users/:userId/progress-detailed
+ * @desc Get detailed user progress including quiz completion data
+ * @access Admin
+ */
+router.get('/users/:userId/progress-detailed', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Get user info
+    const userResult = await postgresService.pool.query(
+      'SELECT id, name, whatsapp_id, created_at FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Get detailed progress using the view we created
+    const progressResult = await postgresService.pool.query(`
+      SELECT
+        module_id,
+        module_title,
+        module_number,
+        course_id,
+        course_title,
+        status,
+        progress_percentage,
+        started_at,
+        completed_at,
+        time_spent_minutes,
+        last_activity_at,
+        quiz_taken,
+        quiz_passed,
+        quiz_score,
+        quiz_attempts_count,
+        completion_method,
+        final_quiz_percentage,
+        time_to_complete_minutes,
+        quiz_questions_available
+      FROM user_module_progress_summary
+      WHERE user_id = $1
+      ORDER BY module_number
+    `, [userId]);
+
+    // Get overall stats
+    const statsResult = await postgresService.pool.query(
+      'SELECT * FROM get_user_completion_stats($1)',
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.whatsapp_id,
+        enrolled_at: user.created_at
+      },
+      stats: statsResult.rows[0],
+      modules: progressResult.rows
+    });
+
+  } catch (error) {
+    logger.error('Error fetching detailed user progress:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/users/:userId/quiz-attempts/:moduleId
+ * @desc Get all quiz attempts for a user on a specific module
+ * @access Admin
+ */
+router.get('/users/:userId/quiz-attempts/:moduleId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId, moduleId } = req.params;
+
+    const attemptsResult = await postgresService.pool.query(`
+      SELECT
+        qa.id,
+        qa.attempt_number,
+        qa.score,
+        qa.total_questions,
+        qa.percentage,
+        qa.passed,
+        qa.time_taken_seconds,
+        qa.answers,
+        qa.attempted_at,
+        q.title as quiz_title,
+        q.pass_threshold
+      FROM quiz_attempts qa
+      LEFT JOIN quizzes q ON qa.quiz_id = q.id
+      WHERE qa.user_id = $1 AND qa.module_id = $2
+      ORDER BY qa.attempt_number DESC
+    `, [userId, moduleId]);
+
+    res.json({
+      success: true,
+      attempts: attemptsResult.rows
+    });
+
+  } catch (error) {
+    logger.error('Error fetching quiz attempts:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/completion-summary
+ * @desc Get completion summary for all users
+ * @access Admin
+ */
+router.get('/completion-summary', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    // Get summary for all users
+    const summaryResult = await postgresService.pool.query(`
+      SELECT
+        u.id as user_id,
+        u.name as full_name,
+        u.whatsapp_id as phone_number,
+        u.created_at as enrolled_at,
+        COUNT(DISTINCT m.id) as total_modules,
+        COUNT(DISTINCT CASE WHEN up.status = 'completed' THEN m.id END) as completed_modules,
+        COUNT(DISTINCT CASE WHEN up.status = 'in_progress' THEN m.id END) as in_progress_modules,
+        COUNT(DISTINCT CASE WHEN up.quiz_taken = TRUE THEN m.id END) as quizzes_taken,
+        COUNT(DISTINCT CASE WHEN up.quiz_passed = TRUE THEN m.id END) as quizzes_passed,
+        ROUND(AVG(CASE WHEN up.quiz_passed = TRUE THEN up.quiz_score END), 1) as avg_quiz_score,
+        ROUND(
+          (COUNT(DISTINCT CASE WHEN up.status = 'completed' THEN m.id END)::DECIMAL /
+           NULLIF(COUNT(DISTINCT m.id), 0) * 100), 1
+        ) as completion_percentage
+      FROM users u
+      CROSS JOIN modules m
+      LEFT JOIN user_progress up ON u.id = up.user_id AND m.id = up.module_id
+      WHERE u.is_active = TRUE
+      GROUP BY u.id, u.name, u.whatsapp_id, u.created_at
+      ORDER BY completion_percentage DESC NULLS LAST, u.created_at DESC
+    `);
+
+    res.json({
+      success: true,
+      users: summaryResult.rows
+    });
+
+  } catch (error) {
+    logger.error('Error fetching completion summary:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/module/:moduleId/completions
+ * @desc Get all users who completed a specific module
+ * @access Admin
+ */
+router.get('/module/:moduleId/completions', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+
+    const completionsResult = await postgresService.pool.query(`
+      SELECT
+        mc.id,
+        u.id as user_id,
+        u.name as full_name,
+        u.whatsapp_id as phone_number,
+        mc.completed_at,
+        mc.completion_method,
+        mc.quiz_score,
+        mc.quiz_percentage,
+        mc.quiz_attempt_number,
+        mc.quiz_passed,
+        mc.time_to_complete_minutes,
+        mc.total_attempts
+      FROM module_completions mc
+      JOIN users u ON mc.user_id = u.id
+      WHERE mc.module_id = $1
+      ORDER BY mc.completed_at DESC
+    `, [moduleId]);
+
+    // Get module info
+    const moduleResult = await postgresService.pool.query(
+      'SELECT id, title, sequence_order FROM modules WHERE id = $1',
+      [moduleId]
+    );
+
+    res.json({
+      success: true,
+      module: moduleResult.rows[0],
+      completions: completionsResult.rows,
+      total_completions: completionsResult.rows.length
+    });
+
+  } catch (error) {
+    logger.error('Error fetching module completions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 

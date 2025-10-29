@@ -154,17 +154,34 @@ class TwilioWhatsAppService {
       const toNumber = `whatsapp:${cleanNumber}`;
       const fromNumber = this.whatsappNumber;
 
+      // Log what we're about to send
+      logger.info(`📤 Sending Twilio WhatsApp message:`);
+      logger.info(`   From: ${fromNumber}`);
+      logger.info(`   To: ${toNumber}`);
+      logger.info(`   Body length: ${text.length} chars`);
+      logger.info(`   Body preview: ${text.substring(0, 100)}...`);
+
       const message = await this.client.messages.create({
         body: text,
         from: fromNumber,
         to: toNumber
       });
 
-      logger.info(`Twilio message sent to ${to}: ${message.sid}`);
+      // Log full response
+      logger.info(`✅ Twilio API Response:`);
+      logger.info(`   SID: ${message.sid}`);
+      logger.info(`   Status: ${message.status}`);
+      logger.info(`   Direction: ${message.direction}`);
+      logger.info(`   Price: ${message.price}`);
+      logger.info(`   Error code: ${message.errorCode || 'none'}`);
+      logger.info(`   Error message: ${message.errorMessage || 'none'}`);
+
       return {
         success: true,
         messageSid: message.sid,
-        status: message.status
+        status: message.status,
+        errorCode: message.errorCode,
+        errorMessage: message.errorMessage
       };
     } catch (error) {
       logger.error('Error sending Twilio message:', error);

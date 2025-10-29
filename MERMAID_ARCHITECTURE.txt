@@ -1,0 +1,182 @@
+# Teachers Training System - Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "External Channels"
+        WA[WhatsApp Business API]
+        ADMIN[Admin Web Portal]
+        TWILIO[Twilio/WhatsApp]
+    end
+
+    subgraph "API Layer"
+        SERVER[Express.js Server]
+
+        subgraph "Routes"
+            AUTH_R[Auth Routes]
+            ADMIN_R[Admin Routes]
+            USER_R[User Routes]
+            WA_R[WhatsApp Routes]
+            COURSE_R[Course Routes]
+            QUIZ_R[Quiz Routes]
+            CLASS_R[Classification Routes]
+            UPLOAD_R[Upload Routes]
+            FILEPROC_R[File Processing Routes]
+        end
+    end
+
+    subgraph "Service Layer"
+        ORCH[Orchestrator Service]
+
+        subgraph "Core Services"
+            AUTH_S[Auth Service<br/>JWT + bcrypt]
+            SESSION_S[Session Management<br/>24hr TTL]
+            WA_S[WhatsApp Service]
+            COACH_S[Coaching Service<br/>Nudges & Reflections]
+        end
+
+        subgraph "AI & RAG Pipeline"
+            RAG_S[RAG Service]
+            VERTEX_S[Vertex AI Service<br/>Embeddings + LLM]
+            DOC_S[Document Processor<br/>PDF/DOCX/OCR]
+            CLASSIFY_S[Classification Service<br/>AI-based]
+        end
+
+        subgraph "Content & Learning"
+            CONTENT_S[Content Service]
+            QUIZ_S[Quiz Service<br/>70% threshold, 2 attempts]
+            COURSE_S[Course Service]
+            MOODLE_S[Moodle Integration<br/>Placeholder]
+        end
+
+        subgraph "Data Services"
+            NEO4J_S[Neo4j Service<br/>Learning Paths]
+            CHROMA_S[ChromaDB Service<br/>Vector Search]
+            PG_S[PostgreSQL Service<br/>User/Course Data]
+        end
+    end
+
+    subgraph "Data Layer"
+        PG[(PostgreSQL<br/>Users, Sessions,<br/>Courses, Enrollments)]
+        NEO4J[(Neo4j<br/>Learning Graphs,<br/>Prerequisites)]
+        CHROMA[(ChromaDB<br/>Vector Embeddings,<br/>RAG Content)]
+    end
+
+    subgraph "External Services"
+        VERTEX[Google Vertex AI<br/>gemini-1.5-flash]
+        MOODLE[Moodle LMS<br/>Content Source]
+    end
+
+    subgraph "Storage"
+        UPLOADS[File Storage<br/>uploads/ directory<br/>PDFs, DOCX, Images]
+    end
+
+    %% External to API connections
+    WA --> WA_R
+    ADMIN --> AUTH_R
+    ADMIN --> ADMIN_R
+    ADMIN --> COURSE_R
+    TWILIO --> WA_R
+
+    %% Routes to Server
+    AUTH_R --> SERVER
+    ADMIN_R --> SERVER
+    USER_R --> SERVER
+    WA_R --> SERVER
+    COURSE_R --> SERVER
+    QUIZ_R --> SERVER
+    CLASS_R --> SERVER
+    UPLOAD_R --> SERVER
+    FILEPROC_R --> SERVER
+
+    %% Server to Services
+    SERVER --> ORCH
+    SERVER --> AUTH_S
+    SERVER --> WA_S
+    SERVER --> COURSE_S
+    SERVER --> QUIZ_S
+    SERVER --> DOC_S
+    SERVER --> CLASSIFY_S
+
+    %% Orchestrator connections
+    ORCH --> SESSION_S
+    ORCH --> RAG_S
+    ORCH --> COACH_S
+    ORCH --> WA_S
+
+    %% Service interconnections
+    WA_S --> ORCH
+    RAG_S --> CHROMA_S
+    RAG_S --> VERTEX_S
+    COACH_S --> SESSION_S
+    QUIZ_S --> PG_S
+    COURSE_S --> PG_S
+    COURSE_S --> NEO4J_S
+    CONTENT_S --> CHROMA_S
+    CONTENT_S --> DOC_S
+    DOC_S --> VERTEX_S
+    CLASSIFY_S --> VERTEX_S
+    AUTH_S --> PG_S
+    SESSION_S --> PG_S
+
+    %% Data service to database connections
+    PG_S --> PG
+    NEO4J_S --> NEO4J
+    CHROMA_S --> CHROMA
+
+    %% External service connections
+    VERTEX_S --> VERTEX
+    MOODLE_S --> MOODLE
+    DOC_S --> UPLOADS
+    UPLOAD_R --> UPLOADS
+
+    %% Styling
+    classDef external fill:#e1f5ff,stroke:#01579b
+    classDef service fill:#f3e5f5,stroke:#4a148c
+    classDef database fill:#fff3e0,stroke:#e65100
+    classDef api fill:#e8f5e9,stroke:#1b5e20
+
+    class WA,ADMIN,TWILIO,VERTEX,MOODLE external
+    class ORCH,AUTH_S,SESSION_S,WA_S,COACH_S,RAG_S,VERTEX_S,DOC_S,CONTENT_S,QUIZ_S,COURSE_S,MOODLE_S,NEO4J_S,CHROMA_S,PG_S,CLASSIFY_S service
+    class PG,NEO4J,CHROMA,UPLOADS database
+    class SERVER,AUTH_R,ADMIN_R,USER_R,WA_R,COURSE_R,QUIZ_R,CLASS_R,UPLOAD_R,FILEPROC_R api
+```
+
+## Architecture Overview
+
+### Multi-Channel Interface
+- **WhatsApp**: Primary channel for learner interactions via Twilio
+- **Admin Portal**: Web-based management interface for courses, content, and users
+- **RESTful APIs**: Backend services for both channels
+
+### Three-Database Strategy
+- **PostgreSQL**: Transactional data (users, courses, enrollments, sessions, progress)
+- **Neo4j**: Graph database for learning paths, prerequisites, and relationships
+- **ChromaDB**: Vector database for RAG-powered semantic search and embeddings
+
+### AI & RAG Pipeline
+- **Document Processing**: Handles PDF, DOCX, and OCR extraction
+- **AI Classification**: Auto-categorizes content using Vertex AI
+- **Vector Embeddings**: Converts content to embeddings for semantic search
+- **RAG Service**: Retrieves relevant context for AI-powered responses
+
+### Key Services
+- **Orchestrator**: Coordinates message flow between WhatsApp, sessions, RAG, and coaching
+- **Authentication**: JWT-based auth with bcrypt password hashing
+- **Session Management**: 24-hour TTL for conversation context
+- **Quiz Service**: Enforces 70% pass threshold, maximum 2 attempts
+- **Coaching Service**: Delivers time-based nudges and progress reflections
+
+### Recent Enhancements
+- Async file processing to prevent UI freezing
+- Bulk upload capabilities for course content
+- Limited OCR (5 pages) for classification
+- Course content management with metadata tracking
+
+### External Integrations
+- **Vertex AI**: Google's gemini-1.5-flash for LLM and embeddings
+- **Moodle LMS**: Placeholder for future course content import
+- **Twilio**: WhatsApp Business API integration
+
+---
+Generated: 2025-10-19
+Branch: feature/course-management-ui

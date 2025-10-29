@@ -7,6 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>User Management - Teachers Training</title>
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
     <style>
         * {
             margin: 0;
@@ -29,12 +30,13 @@
         header {
             background: white;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 12px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         h1 {
@@ -45,22 +47,48 @@
         .btn {
             padding: 10px 20px;
             border: none;
-            border-radius: 6px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
             text-decoration: none;
             display: inline-block;
+            box-shadow: var(--md-sys-elevation-1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            transition: width 400ms, height 400ms, opacity 400ms;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+            opacity: 1;
+            transition: 0s;
         }
 
         .btn-primary {
-            background: #667eea;
+            background: #00897B;
             color: white;
         }
 
         .btn-primary:hover {
-            background: #5a67d8;
+            background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
         }
 
         .btn-danger {
@@ -84,25 +112,52 @@
         .search-filter {
             background: white;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 12px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: var(--md-sys-elevation-1);
             display: flex;
             gap: 10px;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.1s;
+            animation-fill-mode: both;
         }
 
         .search-filter input {
             flex: 1;
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border: 2px solid var(--md-sys-color-outline);
+            border-radius: 28px;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .search-filter input:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 4px rgba(0, 137, 123, 0.1);
+            transform: scale(1.01);
+        }
+
+        .search-filter select {
+            padding: 12px 16px;
+            border: 2px solid var(--md-sys-color-outline);
+            border-radius: 20px;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .search-filter select:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 4px rgba(0, 137, 123, 0.1);
         }
 
         .users-table {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
             overflow: hidden;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.2s;
+            animation-fill-mode: both;
         }
 
         table {
@@ -127,15 +182,44 @@
             border-bottom: 1px solid #e5e7eb;
         }
 
+        tbody tr {
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
+        }
+
+        tbody tr:nth-child(1) { animation-delay: 0.3s; }
+        tbody tr:nth-child(2) { animation-delay: 0.35s; }
+        tbody tr:nth-child(3) { animation-delay: 0.4s; }
+        tbody tr:nth-child(4) { animation-delay: 0.45s; }
+        tbody tr:nth-child(5) { animation-delay: 0.5s; }
+        tbody tr:nth-child(6) { animation-delay: 0.55s; }
+        tbody tr:nth-child(7) { animation-delay: 0.6s; }
+        tbody tr:nth-child(8) { animation-delay: 0.65s; }
+
         tbody tr:hover {
             background: #f9fafb;
+            transform: translateX(6px) scale(1.005);
+            box-shadow: var(--md-sys-elevation-1);
+            cursor: pointer;
+        }
+
+        tbody tr:active {
+            transform: translateX(2px) scale(0.998);
         }
 
         .badge {
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 5px 12px;
+            border-radius: 16px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
+            display: inline-block;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            transition: transform var(--md-sys-motion-duration-short2);
+        }
+
+        .badge:hover {
+            transform: scale(1.05);
         }
 
         .badge-active {
@@ -159,6 +243,7 @@
             z-index: 1000;
             align-items: center;
             justify-content: center;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
         }
 
         .modal.active {
@@ -168,9 +253,11 @@
         .modal-content {
             background: white;
             padding: 30px;
-            border-radius: 8px;
+            border-radius: 28px;
             max-width: 500px;
             width: 90%;
+            box-shadow: var(--md-sys-elevation-5);
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
         .modal-header {
@@ -181,19 +268,57 @@
 
         .form-group {
             margin-bottom: 15px;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
         }
+
+        .form-group:nth-child(1) { animation-delay: 0.1s; }
+        .form-group:nth-child(2) { animation-delay: 0.15s; }
+        .form-group:nth-child(3) { animation-delay: 0.2s; }
+        .form-group:nth-child(4) { animation-delay: 0.25s; }
 
         .form-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+            transition: color var(--md-sys-motion-duration-short2);
         }
 
-        .form-group input {
+        .form-group input,
+        .form-group select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border: 2px solid var(--md-sys-color-outline);
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            background: white;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 4px rgba(0, 137, 123, 0.1);
+            transform: scale(1.01);
+            animation: input-focus-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes input-focus-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 4px rgba(0, 137, 123, 0.1);
+            }
+            50% {
+                box-shadow: 0 0 0 6px rgba(0, 137, 123, 0.05);
+            }
+        }
+
+        .form-group input:hover,
+        .form-group select:hover {
+            border-color: var(--md-sys-color-primary);
+            box-shadow: var(--md-sys-elevation-1);
         }
 
         .modal-actions {
@@ -205,20 +330,42 @@
 
         .alert {
             padding: 12px;
-            border-radius: 6px;
+            border-radius: 12px;
             margin-bottom: 20px;
             white-space: pre-wrap;
             font-family: monospace;
+            animation: alert-slide-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-2);
+        }
+
+        @keyframes alert-slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         .alert-success {
             background: #d1fae5;
             color: #065f46;
+            border-left: 4px solid #10b981;
         }
 
         .alert-error {
             background: #fee2e2;
             color: #991b1b;
+            border-left: 4px solid #ef4444;
+            animation: alert-shake 0.5s ease-in-out;
+        }
+
+        @keyframes alert-shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
 
         .stats-row {
@@ -231,14 +378,26 @@
         .stat-card {
             background: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            box-shadow: var(--md-sys-elevation-1);
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-fill-mode: both;
+        }
+
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.15s; }
+        .stat-card:nth-child(3) { animation-delay: 0.2s; }
+
+        .stat-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: var(--md-sys-elevation-3);
         }
 
         .stat-value {
             font-size: 32px;
             font-weight: 600;
-            color: #667eea;
+            color: #00897B;
         }
 
         .stat-label {
@@ -259,13 +418,13 @@
         }
 
         .breadcrumb a {
-            color: #667eea;
+            color: #00897B;
             text-decoration: none;
             transition: color 0.2s;
         }
 
         .breadcrumb a:hover {
-            color: #5a67d8;
+            color: #00695C;
             text-decoration: underline;
         }
 
@@ -278,6 +437,50 @@
             font-weight: 500;
         }
 
+        /* PIN Modal Animations */
+        #pinModal .modal-content {
+            animation: pin-modal-entrance 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes pin-modal-entrance {
+            0% {
+                transform: scale(0.5) rotate(-5deg);
+                opacity: 0;
+            }
+            60% {
+                transform: scale(1.05) rotate(2deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        #pinValue {
+            animation: pin-value-pop 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.3s both;
+        }
+
+        @keyframes pin-value-pop {
+            0% {
+                transform: scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            70% {
+                transform: scale(1.2) rotate(10deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        #pinUserName, #pinUserPhone {
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) ease-in-out;
+        }
+
+        #pinUserName { animation-delay: 0.2s; animation-fill-mode: both; }
+        #pinUserPhone { animation-delay: 0.3s; animation-fill-mode: both; }
+
         .user-type-tab {
             flex: 1;
             padding: 12px 20px;
@@ -288,16 +491,34 @@
             font-size: 14px;
             font-weight: 500;
             color: #6b7280;
-            transition: all 0.2s;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            position: relative;
+        }
+
+        .user-type-tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 3px;
+            background: var(--md-sys-color-primary);
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            transform: translateX(-50%);
         }
 
         .user-type-tab:hover {
-            color: #667eea;
+            color: var(--md-sys-color-primary);
+            background: rgba(0, 137, 123, 0.05);
         }
 
         .user-type-tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+            color: var(--md-sys-color-primary);
+            border-bottom-color: transparent;
+        }
+
+        .user-type-tab.active::after {
+            width: 100%;
         }
 
         .user-form {
@@ -320,7 +541,7 @@
     <div class="container">
         <!-- Breadcrumb -->
         <nav class="breadcrumb">
-            <a href="/admin/lms-dashboard.html">🏠 Home</a>
+            <a href="/admin/dashboard.html">🏠 Home</a>
             <span class="breadcrumb-separator">›</span>
             <span class="breadcrumb-current">User Management</span>
         </nav>
@@ -329,7 +550,7 @@
             <h1>👥 User Management</h1>
             <div style="display: flex; gap: 10px;">
                 <button class="btn btn-primary" onclick="openAddUserModal()">➕ Add User</button>
-                <a href="lms-dashboard.html" class="btn btn-secondary">← Back to Dashboard</a>
+                <a href="dashboard.html" class="btn btn-secondary">← Back to Dashboard</a>
             </div>
         </header>
 
@@ -368,7 +589,7 @@
                     <tr>
                         <th>Name</th>
                         <th>WhatsApp / Email</th>
-                        <th>Module / Role</th>
+                        <th>Role</th>
                         <th>Progress</th>
                         <th>Last Active</th>
                         <th>Status</th>
@@ -610,10 +831,10 @@
                     ? `<span style="color: #6b7280; font-size: 12px;">${user.email || 'N/A'}</span>`
                     : (user.whatsapp_id || 'N/A');
 
-                // Module/Role field: show role for admin users, module for WhatsApp users
+                // Role field: show "Admin" or "WhatsApp User"
                 const moduleField = isAdminUser
-                    ? `<span class="badge" style="background: #dbeafe; color: #1e40af;">${user.role || 'N/A'}</span>`
-                    : `Module ${user.current_module_id || 1}`;
+                    ? `<span class="badge" style="background: #dbeafe; color: #1e40af;">Admin</span>`
+                    : `<span class="badge" style="background: #dcfce7; color: #166534;">WhatsApp User</span>`;
 
                 // Progress field: show dash for admin users
                 const progressField = isAdminUser ? '-' : `${progress}%`;
@@ -949,21 +1170,65 @@
         }
 
         function copyPinToClipboard() {
-            if (window.currentPin) {
-                navigator.clipboard.writeText(window.currentPin).then(() => {
-                    const btn = event.target;
-                    const originalText = btn.textContent;
-                    btn.textContent = '✅ Copied!';
-                    btn.style.background = '#10b981';
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.style.background = '#667eea';
-                    }, 2000);
+            if (!window.currentPin) return;
+
+            const pin = window.currentPin;
+            let success = false;
+
+            // Try modern clipboard API first (works on HTTPS)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(pin).then(() => {
+                    showCopySuccess();
                 }).catch(err => {
-                    console.error('Failed to copy:', err);
-                    alert('PIN: ' + window.currentPin);
+                    console.log('Clipboard API failed, using fallback');
+                    fallbackCopyToClipboard(pin);
                 });
+            } else {
+                // Fallback for HTTP connections
+                fallbackCopyToClipboard(pin);
             }
+        }
+
+        function fallbackCopyToClipboard(text) {
+            // Create temporary textarea
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+
+            // Select and copy
+            textarea.select();
+            textarea.setSelectionRange(0, 99999); // For mobile devices
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                } else {
+                    showCopyError();
+                }
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+                showCopyError();
+            }
+
+            document.body.removeChild(textarea);
+        }
+
+        function showCopySuccess() {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✅ Copied!';
+            btn.style.background = '#10b981';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '#00897B';
+            }, 2000);
+        }
+
+        function showCopyError() {
+            alert('Unable to copy. PIN: ' + window.currentPin + '\n\nPlease copy manually.');
         }
 
         // Close modals on outside click
@@ -988,5 +1253,7 @@
         // Cache buster - Updated 2025-10-16 22:30 - PIN enrollment with no-cache headers
         console.log('User Management v6 - PIN modal persistent + anti-cache headers - Build: 20251016-2230');
     </script>
-</body>
+
+    <!-- Moodle-style Sidebar Navigation -->
+    <script src="../js/sidebar-nav.js"></script></body>
 </html>

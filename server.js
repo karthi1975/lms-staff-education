@@ -10,7 +10,7 @@ const pdfParse = require('pdf-parse');
 require('dotenv').config();
 
 // Existing Services
-const orchestratorService = require('./services/orchestrator.service');
+const orchestratorService = require('./services/orchestrator'); // SOLID-refactored orchestrator
 const whatsappService = require('./services/whatsapp-adapter.service'); // Use adapter for both Meta and Twilio
 const whatsappHandler = require('./services/whatsapp-handler.service');
 const chromaService = require('./services/chroma.service');
@@ -23,6 +23,11 @@ const logger = require('./utils/logger');
 // New Services - PostgreSQL and Auth (non-breaking additions)
 const postgresService = require('./services/database/postgres.service');
 const chatHistoryService = require('./services/chat-history.service');
+const contentModerationService = require('./services/content-moderation.service');
+
+// Security Services - Prompt Injection Prevention
+const promptInjectionGuard = require('./services/prompt-injection-guard.service');
+const responseValidator = require('./services/response-validator.service');
 
 // New Routes (will be added below)
 const authRoutes = require('./routes/auth.routes');
@@ -31,6 +36,11 @@ const adminRoutes = require('./routes/admin.routes');
 const userRoutes = require('./routes/user.routes');
 const certificateRoutes = require('./routes/certificate.routes');
 const twilioWebhookRoutes = require('./routes/twilio-webhook.routes');
+const classificationRoutes = require('./routes/classification.routes');
+const fileProcessingRoutes = require('./routes/file-processing.routes');
+const simpleUploadRoutes = require('./routes/simple-upload.routes');
+const fileListRoutes = require('./routes/file-list.routes');
+const coachingRoutes = require('./routes/coaching.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -85,6 +95,21 @@ app.use('/api', certificateRoutes);
 
 // Add Twilio webhook routes
 app.use('/', twilioWebhookRoutes);
+
+// Add AI classification routes
+app.use('/api/admin/classify', classificationRoutes);
+
+// Add file processing routes (background processing with status tracking)
+app.use('/api/admin', fileProcessingRoutes);
+
+// Add simple upload routes (module-independent upload → RAG+Graph DB)
+app.use('/api/admin', simpleUploadRoutes);
+
+// Add file list routes (view uploaded files with processing status)
+app.use('/api/admin', fileListRoutes);
+
+// Add coaching routes (nudging, reflection, coaching analytics)
+app.use('/api/coaching', coachingRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
@@ -524,6 +549,55 @@ app.post('/api/chat', async (req, res) => {
       });
     }
 
+    // Check message for harmful content BEFORE processing
+    const moderationCheck = await contentModerationService.checkMessage(message, {
+      user_id: user_id,
+      phone: req.body.phone, // If provided from WhatsApp
+      language: language // Pass language for Swahili/multilingual support
+    });
+
+    if (!moderationCheck.allowed) {
+      logger.warn(`Message blocked by content moderation: ${moderationCheck.reason}`);
+      return res.status(200).json({
+        success: true,
+        response: moderationCheck.blockedMessage,
+        moderation: {
+          blocked: true,
+          reason: moderationCheck.reason,
+          severity: moderationCheck.severity
+        }
+      });
+    }
+
+    // LAYER 2: Prompt Injection Detection (Security Enhancement)
+    const injectionCheck = promptInjectionGuard.detectInjection(message);
+
+    if (injectionCheck.detected) {
+      logger.warn(`🚨 Prompt injection attempt detected from user ${user_id}: ${injectionCheck.pattern}`);
+
+      // Log to database
+      await promptInjectionGuard.logInjectionAttempt(
+        user_id,
+        req.body.phone,
+        message,
+        injectionCheck
+      );
+
+      return res.status(200).json({
+        success: true,
+        response: injectionCheck.message,
+        moderation: {
+          blocked: true,
+          reason: 'prompt_injection',
+          severity: injectionCheck.severity,
+          pattern: injectionCheck.pattern
+        }
+      });
+    }
+
+    // LAYER 3: Sanitize input (defense in depth)
+    const sanitizedMessage = promptInjectionGuard.sanitizeInput(message);
+
     // Get or create chat session for context memory
     let session = null;
     let conversationHistory = '';
@@ -538,15 +612,25 @@ app.post('/api/chat', async (req, res) => {
     let context = [];
     let contextDocuments = [];
     let graphContext = null;
+    let crossModuleSearch = false;  // Track if we searched across all modules
 
     // If useContext is true, search for relevant documents
     if (useContext) {
-      // 1. Search for relevant content in ChromaDB (Vector/RAG)
-      const searchResults = await chromaService.searchSimilar(message, {
+      // 1. Search for relevant content in ChromaDB (Vector/RAG) - first try with module filter
+      // Use sanitizedMessage to prevent injection in vector search
+      let searchResults = await chromaService.searchSimilar(sanitizedMessage, {
         module_id: module_id || undefined,
-        module: module || undefined,  // Fallback for backward compatibility
         nResults: 3
       });
+
+      // 1.5: If no results in current module, search across ALL content (like WhatsApp webhook)
+      if ((!searchResults || searchResults.length === 0) && module_id) {
+        logger.info(`No results in module ${module_id}, searching across all content...`);
+        searchResults = await chromaService.searchSimilar(sanitizedMessage, {
+          nResults: 3  // No module filter - search everything
+        });
+        crossModuleSearch = true;
+      }
 
       if (searchResults && searchResults.length > 0) {
         contextDocuments = searchResults.map(doc => {
@@ -631,10 +715,10 @@ app.post('/api/chat', async (req, res) => {
       : context || 'No specific context available.';
 
     // Generate response using Vertex AI with language support
-    let response;
+    let aiResponseRaw;
     try {
-      response = await vertexAIService.generateEducationalResponse(
-        message,
+      aiResponseRaw = await vertexAIService.generateEducationalResponse(
+        sanitizedMessage,  // Use sanitized message
         fullContext,
         language
       );
@@ -643,11 +727,28 @@ app.post('/api/chat', async (req, res) => {
 
       // Fallback response when Vertex AI is not available
       if (contextDocuments.length > 0) {
-        response = `Based on the uploaded content, here's what I found:\n\n${context.substring(0, 500)}...\n\n(Note: Full AI responses require Google Cloud setup. Please upload content first or configure Vertex AI credentials.)`;
+        aiResponseRaw = `Based on the uploaded content, here's what I found:\n\n${context.substring(0, 500)}...\n\n(Note: Full AI responses require Google Cloud setup. Please upload content first or configure Vertex AI credentials.)`;
       } else {
-        response = `Hello! I can help answer questions about "${module || 'your course'}" once you upload some content files (PDF, DOCX, or TXT).\n\nTo get started:\n1. Click "Upload Content" button\n2. Select a file about your course topic\n3. After upload, ask me questions!\n\n(Note: Full AI chat requires content to be uploaded first and Google Cloud Vertex AI credentials to be configured.)`;
+        aiResponseRaw = `Hello! I can help answer questions about "${module || 'your course'}" once you upload some content files (PDF, DOCX, or TXT).\n\nTo get started:\n1. Click "Upload Content" button\n2. Select a file about your course topic\n3. After upload, ask me questions!\n\n(Note: Full AI chat requires content to be uploaded first and Google Cloud Vertex AI credentials to be configured.)`;
       }
     }
+
+    // LAYER 4: Validate AI response before sending to user (Security Enhancement)
+    const validationResult = responseValidator.validateResponse(aiResponseRaw, {
+      module_id,
+      user_id
+    });
+
+    if (validationResult.blocked) {
+      logger.error(`🚫 AI response blocked by validator: ${validationResult.reason}`);
+      // Use safe fallback response instead
+      aiResponseRaw = validationResult.safeResponse;
+    } else if (validationResult.warnings && validationResult.warnings.length > 0) {
+      logger.warn('AI response has warnings:', validationResult.warnings);
+    }
+
+    // Use validated response
+    let response = aiResponseRaw;
 
     // Add source citations to response if we have sources
     if (contextDocuments.length > 0) {
@@ -663,17 +764,22 @@ app.post('/api/chat', async (req, res) => {
       if (uniqueSources.length > 0) {
         response += `\n\n📚 Sources:\n${uniqueSources.map(source => `📄 ${source}`).join('\n')}`;
       }
+
+      // Add note if we used cross-module search
+      if (crossModuleSearch) {
+        response += `\n\n💡 Note: I found this information from other modules since it wasn't in the current module.`;
+      }
     }
 
     // Save messages to chat history
     if (session) {
       try {
-        // Save user message
+        // Save user message (use sanitized version for safety)
         await chatHistoryService.saveMessage(
           session.id,
           user_id,
           'user',
-          message,
+          sanitizedMessage,
           module_id,
           [],
           { language }
@@ -744,9 +850,14 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Admin dashboard
+// Admin dashboard - redirect to login
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+  res.redirect('/admin/login.html');
+});
+
+// Handle /admin/ with trailing slash
+app.get('/admin/', (req, res) => {
+  res.redirect('/admin/login.html');
 });
 
 // Index page (new clean admin)
@@ -762,22 +873,35 @@ app.get('/index', (req, res) => {
 async function startServer() {
   try {
     logger.info('Initializing services...');
-    
+
     // Initialize PostgreSQL connection (non-blocking for existing functionality)
     postgresService.initialize().then(() => {
       logger.info('✅ PostgreSQL connected successfully');
     }).catch(err => {
       logger.warn('⚠️  PostgreSQL connection failed - auth features disabled:', err.message);
     });
-    
+
     // Initialize orchestrator (which initializes other services)
     await orchestratorService.initialize();
 
-    // Initialize course orchestrator (loads quiz questions) - DISABLED
-    // Temporarily disabled - will re-enable after refactoring
-    // const courseOrchestrator = require('./services/course-orchestrator.service');
-    // await courseOrchestrator.initialize();
-    
+    // Initialize course orchestrator (loads quiz questions and M3 formatting)
+    const courseOrchestrator = require('./services/course-orchestrator.service');
+    await courseOrchestrator.initialize();
+    logger.info('✅ Course orchestrator initialized with M3 formatting');
+
+    // Start coaching scheduler AFTER server starts (non-blocking, delayed start)
+    // This prevents blocking server initialization
+    const coachingScheduler = require('./services/coaching/scheduler.service');
+    setTimeout(() => {
+      try {
+        coachingScheduler.start();
+        logger.info('✅ Coaching scheduler started (delayed)');
+      } catch (error) {
+        logger.error('⚠️ Failed to start coaching scheduler:', error);
+        logger.error('   Nudging disabled, but server continues');
+      }
+    }, 5000); // Wait 5 seconds after server start
+
     app.listen(PORT, () => {
       logger.info(`🚀 Teachers Training Server running on port ${PORT}`);
       logger.info(`📚 Admin Dashboard: http://localhost:${PORT}/admin`);
@@ -794,14 +918,20 @@ async function startServer() {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Shutting down gracefully...');
-  
+
   try {
+    // Stop coaching scheduler
+    const coachingScheduler = require('./services/coaching/scheduler.service');
+    coachingScheduler.stop();
+
+    // Close database connections
     await neo4jService.close();
+
     logger.info('All connections closed');
   } catch (error) {
     logger.error('Error during shutdown:', error);
   }
-  
+
   process.exit(0);
 });
 

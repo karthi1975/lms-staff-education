@@ -85,28 +85,115 @@ class WhatsAppService {
   // Send text message
   async sendMessage(to, text) {
     try {
-      const response = await axios.post(
-        this.apiUrl,
-        {
-          messaging_product: 'whatsapp',
-          to,
-          type: 'text',
-          text: { body: text }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json'
+      // CORNER CASE FIX: WhatsApp has 4096 character limit
+      const MAX_LENGTH = 4096;
+
+      // If message fits within limit, send directly
+      if (text.length <= MAX_LENGTH) {
+        const response = await axios.post(
+          this.apiUrl,
+          {
+            messaging_product: 'whatsapp',
+            to,
+            type: 'text',
+            text: { body: text }
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json'
+            }
           }
+        );
+
+        logger.info(`Message sent to ${to}`);
+        return response.data;
+      }
+
+      // CORNER CASE FIX: Split long messages into multiple parts
+      logger.warn(`Message exceeds ${MAX_LENGTH} chars (${text.length}), splitting...`);
+      const parts = this.splitMessage(text, MAX_LENGTH - 50); // Leave buffer for part numbers
+
+      for (let i = 0; i < parts.length; i++) {
+        const partText = `(${i + 1}/${parts.length})\n\n${parts[i]}`;
+
+        await axios.post(
+          this.apiUrl,
+          {
+            messaging_product: 'whatsapp',
+            to,
+            type: 'text',
+            text: { body: partText }
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        logger.info(`Message part ${i + 1}/${parts.length} sent to ${to}`);
+
+        // CORNER CASE FIX: Rate limit between parts
+        if (i < parts.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
         }
-      );
-      
-      logger.info(`Message sent to ${to}`);
-      return response.data;
+      }
+
+      return { status: 'success', parts: parts.length };
     } catch (error) {
       logger.error('Error sending WhatsApp message:', error.response?.data || error.message);
       throw error;
     }
+  }
+
+  /**
+   * Split long message into parts that respect line breaks
+   * CORNER CASE FIX: Prevents message truncation
+   */
+  splitMessage(text, maxLength) {
+    const parts = [];
+    let current = '';
+
+    const lines = text.split('\n');
+    for (const line of lines) {
+      // If adding this line would exceed max length
+      if ((current + line + '\n').length > maxLength) {
+        // If we have accumulated text, save it as a part
+        if (current.trim()) {
+          parts.push(current.trim());
+          current = '';
+        }
+
+        // If single line is too long, split by words
+        if (line.length > maxLength) {
+          const words = line.split(' ');
+          for (const word of words) {
+            if ((current + word + ' ').length > maxLength) {
+              if (current.trim()) {
+                parts.push(current.trim());
+                current = '';
+              }
+              current = word + ' ';
+            } else {
+              current += word + ' ';
+            }
+          }
+        } else {
+          current = line + '\n';
+        }
+      } else {
+        current += line + '\n';
+      }
+    }
+
+    // Add remaining text as final part
+    if (current.trim()) {
+      parts.push(current.trim());
+    }
+
+    return parts.length > 0 ? parts : [text];
   }
 
   // Send interactive list message

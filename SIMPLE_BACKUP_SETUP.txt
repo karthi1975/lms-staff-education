@@ -1,0 +1,134 @@
+╔══════════════════════════════════════════════════════════════╗
+║           SIMPLE AUTOMATED BACKUP SETUP                      ║
+║                   3 Easy Steps                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+STEP 1: Login to GCloud
+────────────────────────────────────────────────────────────────
+gcloud auth login
+
+
+STEP 2: SSH into GCP and Create Backup Script
+────────────────────────────────────────────────────────────────
+gcloud compute ssh --zone "us-east5-a" "teachers-training" --project "lms-tanzania-consultant"
+
+Then run these commands:
+
+cat > backup.sh << 'EOF'
+#!/bin/bash
+BACKUP_DIR="/home/karthi/backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+mkdir -p $BACKUP_DIR
+
+echo "🔄 Backup started: $DATE"
+
+# Backup PostgreSQL
+docker exec teachers_training_postgres_1 pg_dump -U teachers_user teachers_training > ${BACKUP_DIR}/postgres_${DATE}.sql
+
+# Backup application
+tar -czf ${BACKUP_DIR}/app_${DATE}.tar.gz --exclude='node_modules' -C /home/karthi teachers_training
+
+# Delete backups older than 7 days
+find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
+find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
+
+echo "✅ Backup complete"
+ls -lh $BACKUP_DIR | tail -3
+EOF
+
+chmod +x backup.sh
+
+
+STEP 3: Setup Daily Auto-Backup (2 AM)
+────────────────────────────────────────────────────────────────
+crontab -e
+
+Add this line:
+0 2 * * * /home/karthi/backup.sh >> /home/karthi/backup.log 2>&1
+
+Save and exit (ESC, :wq, ENTER)
+
+
+TEST IT NOW:
+────────────────────────────────────────────────────────────────
+./backup.sh
+
+
+CHECK BACKUPS:
+────────────────────────────────────────────────────────────────
+ls -lh /home/karthi/backups/
+
+
+RESTORE FROM BACKUP (if needed):
+────────────────────────────────────────────────────────────────
+# Find backup file
+ls /home/karthi/backups/
+
+# Restore PostgreSQL
+docker exec -i teachers_training_postgres_1 psql -U teachers_user teachers_training < /home/karthi/backups/postgres_YYYYMMDD_HHMMSS.sql
+
+# Restore application
+tar -xzf /home/karthi/backups/app_YYYYMMDD_HHMMSS.tar.gz -C /home/karthi/
+
+
+
+WHAT GETS BACKED UP:
+────────────────────────────────────────────────────────────────
+✅ PostgreSQL database (all user data, progress, courses)
+✅ Application files (code, configs, uploads)
+✅ Keeps last 7 days of backups automatically
+
+
+BACKUP SCHEDULE:
+────────────────────────────────────────────────────────────────
+• Daily at 2:00 AM UTC
+• Automatic cleanup (keeps 7 days)
+• Location: /home/karthi/backups/
+
+
+Backup Created:
+  - PostgreSQL Database: 154 KB (all user data, courses, progress)
+  - Application Files: 725 MB (code, configs, uploads)
+  - Total: 726 MB
+
+  Location: /home/karthi/backups/
+
+  ---
+  ✅ What's Configured
+
+  | Feature           | Status                             |
+  |-------------------|------------------------------------|
+  | Daily auto-backup | ✅ Runs every day at 2:00 AM UTC    |
+  | Retention         | ✅ Keeps last 7 days automatically  |
+  | Database backup   | ✅ PostgreSQL fully backed up       |
+  | App backup        | ✅ All files backed up              |
+  | Auto-cleanup      | ✅ Old backups deleted after 7 days |
+
+  ---
+  📋 Quick Commands
+
+  Check your backups:
+  gcloud compute ssh --zone "us-east5-a" "teachers-training" --project
+  "lms-tanzania-consultant" -- 'ls -lh /home/karthi/backups/'
+
+  Run manual backup anytime:
+  gcloud compute ssh --zone "us-east5-a" "teachers-training" --project
+  "lms-tanzania-consultant" -- '/home/karthi/backup.sh'
+
+  Check backup log:
+  gcloud compute ssh --zone "us-east5-a" "teachers-training" --project
+  "lms-tanzania-consultant" -- 'tail /home/karthi/backup.log'
+
+  ---
+  🔄 Restore if Needed
+
+  # SSH into GCP
+  gcloud compute ssh --zone "us-east5-a" "teachers-training" --project
+  "lms-tanzania-consultant"
+
+  # List backups
+  ls -lh /home/karthi/backups/
+
+  # Restore database
+  docker exec -i teachers_training_postgres_1 psql -U teachers_user teachers_training <
+  /home/karthi/backups/postgres_YYYYMMDD_HHMMSS.sql

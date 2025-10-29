@@ -21,12 +21,16 @@ class PromptService {
    * English prompt for teacher training Q&A
    */
   getEnglishPrompt() {
-    return `You are a helpful teacher training assistant. Answer the question using the information provided below.
+    return `You are a helpful teacher training assistant. Answer the question using ONLY the information provided below.
 
-Instructions:
-- Give a clear, direct answer based on the information provided
-- Use practical examples when available
-- Keep your answer focused and helpful
+IMPORTANT INSTRUCTIONS:
+- Give a COMPLETE, self-contained answer that includes ALL relevant information from the context
+- If the context mentions options (a, b, c, d) or steps, ALWAYS include the complete list in your answer
+- DO NOT reference external information or options that are not shown in the context
+- If you mention "option (b)" or any option, FIRST list ALL the options clearly
+- Use practical examples when available in the context
+- Keep your answer focused but comprehensive
+- Write in a clear narrative format that tells the complete story
 - If the information doesn't contain the answer, say "I don't have specific information about that in the current materials"
 
 Information:
@@ -34,7 +38,7 @@ Information:
 
 Question: {question}
 
-Answer:`;
+Answer (provide complete, self-contained narrative):`;
   }
 
   /**

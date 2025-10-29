@@ -5,11 +5,15 @@
 
 const UserService = require('../auth/user.service');
 const UserModel = require('../../models/user.model');
-const whatsappService = require('../whatsapp.service');
+const whatsappService = require('../whatsapp-adapter.service'); // FIXED: Use adapter to route to Twilio
 const ContentService = require('../rag/content.service');
 const logger = require('../../utils/logger');
 
 class NudgingService {
+  // Configuration
+  static INACTIVITY_THRESHOLD_HOURS = parseFloat(process.env.NUDGE_INACTIVITY_HOURS || '48');
+  static INACTIVITY_THRESHOLD_DAYS = NudgingService.INACTIVITY_THRESHOLD_HOURS / 24;
+
   // Nudge templates
   static NUDGE_TEMPLATES = {
     welcome_back: {
@@ -70,22 +74,31 @@ class NudgingService {
       logger.info('Starting nudge check process...');
       
       // Get users for different nudge types
+      const inactiveDays = NudgingService.INACTIVITY_THRESHOLD_DAYS;
+      logger.info(`Checking for users inactive for ${inactiveDays} days (${NudgingService.INACTIVITY_THRESHOLD_HOURS} hours)`);
+
       const nudgeTasks = [
-        this.nudgeInactiveUsers(3),      // 3 days inactive
-        this.nudgeQuizReminders(),       // Ready for quiz
-        this.nudgeQuizRetry(),          // Failed quiz recently
-        this.sendDailyTips()            // Daily learning tips
+        this.nudgeInactiveUsers(inactiveDays),  // Configurable inactivity threshold
+        this.nudgeQuizReminders(),              // Ready for quiz
+        this.nudgeQuizRetry(),                  // Failed quiz recently
+        this.sendDailyTips()                    // Daily learning tips
       ];
 
-      const results = await Promise.all(nudgeTasks);
-      
-      const totalNudges = results.reduce((sum, r) => sum + r.sent, 0);
+      // Use Promise.allSettled to continue even if some tasks fail
+      const results = await Promise.allSettled(nudgeTasks);
+
+      // Extract successful results and count nudges
+      const successfulResults = results
+        .filter(r => r.status === 'fulfilled')
+        .map(r => r.value);
+
+      const totalNudges = successfulResults.reduce((sum, r) => sum + (r?.sent || 0), 0);
       
       logger.info(`Nudge check complete. Sent ${totalNudges} nudges.`);
-      
+
       return {
         total_sent: totalNudges,
-        details: results
+        details: successfulResults
       };
     } catch (error) {
       logger.error('Check and send nudges error:', error);
@@ -101,13 +114,26 @@ class NudgingService {
       const users = await UserService.getUsersForNudging(inactiveDays);
       let sentCount = 0;
 
+      logger.info(`🔔 Processing ${users.length} inactive users for nudging...`);
+
       for (const user of users) {
         // Check last nudge time
-        if (this.shouldSendNudge(user)) {
+        const shouldSend = this.shouldSendNudge(user);
+        logger.info(`User ${user.id} (${user.name}): shouldSend=${shouldSend}, lastNudge=${user.metadata?.last_nudge_sent || 'never'}`);
+
+        if (shouldSend) {
           const nudgeType = inactiveDays > 7 ? 'inactive_gentle' : 'welcome_back';
+          logger.info(`Sending ${nudgeType} nudge to user ${user.id} (${user.name})...`);
           const sent = await this.sendNudge(user, nudgeType);
-          
-          if (sent) sentCount++;
+
+          if (sent) {
+            sentCount++;
+            logger.info(`✅ Nudge sent successfully to ${user.name}`);
+          } else {
+            logger.warn(`❌ Failed to send nudge to ${user.name}`);
+          }
+        } else {
+          logger.info(`⏭️ Skipping user ${user.name} due to cooldown`);
         }
       }
 
@@ -251,12 +277,16 @@ class NudgingService {
    */
   static async sendNudge(user, nudgeType, variables = {}) {
     try {
+      logger.info(`📤 sendNudge START: user=${user.id}, type=${nudgeType}, phone=${user.whatsapp_id}`);
+
       const template = this.NUDGE_TEMPLATES[nudgeType];
-      
+
       if (!template) {
         logger.error(`Unknown nudge type: ${nudgeType}`);
         return false;
       }
+
+      logger.info(`📝 Template found, constructing message...`);
 
       // Select random message from template
       const messageTemplate = template.messages[
@@ -279,15 +309,50 @@ class NudgingService {
         message += "\n\nReply 'CONTINUE' to resume your learning journey!";
       }
 
-      // Send via WhatsApp
-      const sent = await whatsappService.sendMessage(user.whatsapp_id, message);
-      
+      logger.info(`📲 Sending WhatsApp message to ${user.whatsapp_id}...`);
+      logger.info(`📝 Message preview: "${message.substring(0, 100)}..."`);
+
+      // Send via WhatsApp with proper timeout and error handling
+      let sent = false;
+      let sendError = null;
+
+      try {
+        const sendPromise = whatsappService.sendMessage(user.whatsapp_id, message)
+          .then(result => ({ success: true, result }))
+          .catch(error => ({ success: false, error }));
+
+        const timeoutPromise = new Promise((resolve) =>
+          setTimeout(() => resolve({ success: false, timeout: true }), 10000)
+        );
+
+        const result = await Promise.race([sendPromise, timeoutPromise]);
+
+        if (result.timeout) {
+          logger.warn(`⏱️ Timeout after 10s sending to user ${user.id} (${user.whatsapp_id})`);
+          sent = false;
+        } else if (result.success) {
+          logger.info(`✅ WhatsApp API returned success for user ${user.id}`);
+          sent = true;
+        } else {
+          logger.error(`❌ WhatsApp API error for user ${user.id}:`, result.error);
+          sendError = result.error;
+          sent = false;
+        }
+      } catch (unexpectedError) {
+        logger.error(`💥 Unexpected error sending to user ${user.id}:`, unexpectedError);
+        sent = false;
+        sendError = unexpectedError;
+      }
+
       if (sent) {
         // Record nudge
         await UserService.recordNudge(user.id, nudgeType, message);
+        logger.info(`✅ Nudge sent and recorded for user ${user.id}`);
+        return true;
+      } else {
+        logger.warn(`⚠️ Failed to send nudge to user ${user.id} (${user.whatsapp_id})${sendError ? ': ' + sendError.message : ''}`);
+        return false;
       }
-
-      return sent;
     } catch (error) {
       logger.error(`Send nudge error for user ${user.id}:`, error);
       return false;

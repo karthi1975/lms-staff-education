@@ -21,7 +21,7 @@ test.describe('Course Creation UI Flow', () => {
     await page.click('button[type="submit"]');
 
     // Wait for redirect to dashboard
-    await page.waitForURL('**/admin/lms-dashboard.html', { timeout: 10000 });
+    await page.waitForURL('**/admin/dashboard.html', { timeout: 10000 });
     console.log('✅ Login successful, redirected to dashboard');
 
     // 3. Wait for courses to load
@@ -154,7 +154,7 @@ test.describe('Course Creation UI Flow', () => {
     await page.fill('input[type="email"]', 'admin@school.edu');
     await page.fill('input[type="password"]', 'Admin123!');
     await page.click('button[type="submit"]');
-    await page.waitForURL('**/admin/lms-dashboard.html');
+    await page.waitForURL('**/admin/dashboard.html');
 
     // Wait for page load
     await page.waitForLoadState('networkidle');
