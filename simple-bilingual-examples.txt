@@ -1,0 +1,108 @@
+🌍 SIMPLE BILINGUAL TEST EXAMPLES
+Business Studies Orientation Course
+═══════════════════════════════════════════════════════════════
+
+📋 PREREQUISITE: User must be enrolled and verified
+   Phone: +255712345678 (default test user)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXAMPLE 1: English Query - "Tell me about entrepreneurship"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+gcloud compute ssh teachers-training --zone "us-east5-a" \
+  --project "lms-tanzania-consultant" --command "
+curl -X POST 'http://localhost:3000/webhook/twilio' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'From=whatsapp:+255712345678' \
+  -d 'To=whatsapp:+14155238886' \
+  -d 'Body=Tell me about entrepreneurship' \
+  -d 'MessageSid=SM_TEST_001'
+"
+
+Expected: Response in ENGLISH about entrepreneurship
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXAMPLE 2: Swahili Query - "Niambie kuhusu ujasiriamali"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+gcloud compute ssh teachers-training --zone "us-east5-a" \
+  --project "lms-tanzania-consultant" --command "
+curl -X POST 'http://localhost:3000/webhook/twilio' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'From=whatsapp:+255712345678' \
+  -d 'To=whatsapp:+14155238886' \
+  -d 'Body=Niambie kuhusu ujasiriamali' \
+  -d 'MessageSid=SM_TEST_002'
+"
+
+Expected: Response in SWAHILI about entrepreneurship
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXAMPLE 3: English - "What is business planning?"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+gcloud compute ssh teachers-training --zone "us-east5-a" \
+  --project "lms-tanzania-consultant" --command "
+curl -X POST 'http://localhost:3000/webhook/twilio' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'From=whatsapp:+255712345678' \
+  -d 'To=whatsapp:+14155238886' \
+  -d 'Body=What is business planning?' \
+  -d 'MessageSid=SM_TEST_003'
+"
+
+Expected: Response in ENGLISH about business planning
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXAMPLE 4: Swahili - "Nifundishe kuhusu biashara"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+gcloud compute ssh teachers-training --zone "us-east5-a" \
+  --project "lms-tanzania-consultant" --command "
+curl -X POST 'http://localhost:3000/webhook/twilio' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'From=whatsapp:+255712345678' \
+  -d 'To=whatsapp:+14155238886' \
+  -d 'Body=Nifundishe kuhusu biashara' \
+  -d 'MessageSid=SM_TEST_004'
+"
+
+Expected: Response in SWAHILI about business
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXAMPLE 5: Check Response in Logs
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+gcloud compute ssh teachers-training --zone "us-east5-a" \
+  --project "lms-tanzania-consultant" --command "
+docker logs teachers_training_app_1 --tail 20 | grep -A 3 'Body preview:'
+"
+
+This shows the actual message sent to WhatsApp
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 EVEN SIMPLER: Test via WhatsApp directly
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Send WhatsApp message to your Twilio number
+2. Type in English: "Tell me about entrepreneurship"
+3. Type in Swahili: "Niambie kuhusu ujasiriamali"
+4. Compare responses - should be in respective languages
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ WHAT TO LOOK FOR:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ English queries → English responses
+✓ Swahili queries → Swahili responses
+✓ Content from Business Studies course
+✓ Keywords like: entrepreneurship, ujasiriamali, business, biashara
+✓ Proper formatting with Material Design 3
+

@@ -5,7 +5,7 @@
 
 set -e
 
-GCP_IP="34.162.136.203"
+GCP_IP="34.162.168.124"
 GCP_USER="karthi"
 GCP_DIR="/home/karthi/teachers_training"
 
