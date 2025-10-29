@@ -397,18 +397,21 @@ class ContentModerationService {
     try {
       const query = `
         INSERT INTO content_moderation_log
-        (user_id, user_phone, message, moderation_reason, severity, blocked_by, category, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        (user_id, user_phone, message, blocked, reason, moderation_reason, severity, blocked_by, category, metadata, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
       `;
 
       await postgresService.pool.query(query, [
         event.user_id || null,
         event.user_phone || null,
         event.message,
+        event.blocked !== false,  // Default to true
+        event.reason || event.moderation_reason,  // Keep legacy 'reason' column populated
         event.moderation_reason,
         event.severity,
-        event.blocked_by,
-        event.category || event.moderation_reason
+        event.blocked_by || 'local_filter',  // Default to local_filter
+        event.category || event.moderation_reason,
+        event.metadata || {}
       ]);
 
     } catch (error) {
