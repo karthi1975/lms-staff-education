@@ -366,23 +366,35 @@ class NudgingService {
    */
   static shouldSendNudge(user, nudgeType = null) {
     const lastNudge = user.metadata?.last_nudge_sent;
-    
+
     if (!lastNudge) return true;
 
     const hoursSinceLastNudge = (Date.now() - new Date(lastNudge)) / (1000 * 60 * 60);
-    
+
+    // In testing mode (NUDGE_INACTIVITY_HOURS < 1), use short cooldowns
+    const isTestingMode = this.INACTIVITY_THRESHOLD_HOURS < 1;
+
     // Different cooldown periods for different nudge types
-    const cooldownHours = {
-      welcome_back: 72,
-      inactive_gentle: 120,
-      quiz_reminder: 48,
-      quiz_retry: 24,
+    const cooldownHours = isTestingMode ? {
+      welcome_back: 0.05,           // 3 minutes in testing
+      inactive_gentle: 0.1,          // 6 minutes in testing
+      quiz_reminder: 0.05,           // 3 minutes in testing
+      quiz_retry: 0.05,              // 3 minutes in testing
       milestone_celebration: 0,
-      daily_tip: 24
+      daily_tip: 0.05                // 3 minutes in testing
+    } : {
+      welcome_back: 72,              // 3 days in production
+      inactive_gentle: 120,          // 5 days in production
+      quiz_reminder: 48,             // 2 days in production
+      quiz_retry: 24,                // 1 day in production
+      milestone_celebration: 0,
+      daily_tip: 24                  // 1 day in production
     };
 
-    const cooldown = cooldownHours[nudgeType] || 48;
-    
+    const cooldown = cooldownHours[nudgeType] || (isTestingMode ? 0.05 : 48);
+
+    logger.info(`Cooldown check: type=${nudgeType}, hoursSince=${hoursSinceLastNudge.toFixed(2)}h, required=${cooldown}h, testMode=${isTestingMode}`);
+
     return hoursSinceLastNudge >= cooldown;
   }
 
