@@ -100,19 +100,20 @@ class WhatsAppM3FormatterService {
 
   /**
    * Format course selection with M3 styling
+   * @param {Array} courses - List of courses
+   * @param {string} language - 'english' or 'swahili'
    */
-  formatCourseSelection(courses) {
+  formatCourseSelection(courses, language = 'english') {
+    const translationService = require('./translation.service');
     const lines = [];
 
-    // Header card - centered
-    lines.push(this.symbols.divider.repeat(32));
-    lines.push(`${this.symbols.rocket} *Teachers Training Platform*`);
-    lines.push(`   _Your Learning Journey Starts Here_`);
-    lines.push(this.symbols.divider.repeat(32));
+    // Header card - no decorative lines
+    lines.push(`${this.symbols.rocket} *${translationService.t('platform_title', language)}*`);
+    lines.push(`   _${translationService.t('welcome_choose_course', language)}_`);
     lines.push('');
 
     // Title
-    lines.push(`${this.symbols.course} *Available Courses*`);
+    lines.push(`${this.symbols.course} *${translationService.t('available_courses', language)}*`);
     lines.push('');
 
     // Course list with improved M3 cards
@@ -133,36 +134,36 @@ class WhatsAppM3FormatterService {
 
       // Module count with bullet
       const moduleCount = course.modules ? course.modules.length : 0;
-      lines.push(`   ${this.symbols.bullet} ${moduleCount} modules`);
+      const modulesText = translationService.t('modules_text', language);
+      lines.push(`   ${this.symbols.bullet} ${moduleCount} ${modulesText}`);
 
-      // Separator line between courses
-      lines.push(`   ${this.symbols.horizontal.repeat(28)}`);
+      // Separator line between courses (functional, not decorative)
+      lines.push(`   ${'_'.repeat(28)}`);
       lines.push('');
     });
 
-    // Footer with instructions
-    lines.push(this.symbols.divider.repeat(32));
-    lines.push(`${this.symbols.arrow} *How to Select:*`);
-    lines.push(`   Reply with the *number* (1-${courses.length})`);
-    lines.push(this.symbols.divider.repeat(32));
+    // Footer with instructions - no decorative lines
+    lines.push(`${this.symbols.arrow} *${translationService.t('how_to_select', language)}*`);
+    lines.push(`   ${translationService.t('reply_with_number', language)} (1-${courses.length})`);
 
     return lines.join('\n');
   }
 
   /**
    * Format module selection with M3 styling
+   * @param {object} course - Course object with modules
+   * @param {string} language - 'english' or 'swahili'
    */
-  formatModuleSelection(course) {
+  formatModuleSelection(course, language = 'english') {
+    const translationService = require('./translation.service');
     const lines = [];
 
-    // Course header
-    lines.push(this.symbols.divider.repeat(32));
+    // Course header - no decorative lines
     lines.push(`${this.symbols.course} *${course.name}*`);
-    lines.push(this.symbols.divider.repeat(32));
     lines.push('');
 
     // Modules title
-    lines.push(`${this.symbols.module} *Course Modules*`);
+    lines.push(`${this.symbols.module} *${translationService.t('course_modules', language)}*`);
     lines.push('');
 
     // Module cards - clean design without boxes
@@ -181,21 +182,20 @@ class WhatsAppM3FormatterService {
         lines.push(`   ${desc}`);
       }
 
-      // Quiz indicator
+      // Quiz indicator (bilingual)
       if (module.has_quiz) {
-        lines.push(`   ${this.symbols.quiz} Quiz available`);
+        const quizText = translationService.t('quiz_available', language);
+        lines.push(`   ${this.symbols.quiz} ${quizText}`);
       }
 
-      // Separator line
-      lines.push(`   ${this.symbols.horizontal.repeat(28)}`);
+      // Separator line (functional, not decorative)
+      lines.push(`   ${'_'.repeat(28)}`);
       lines.push('');
     });
 
-    // Footer
-    lines.push(this.symbols.divider.repeat(32));
-    lines.push(`${this.symbols.arrow} *Select a Module:*`);
-    lines.push(`   Reply with *number* (1-${course.modules.length})`);
-    lines.push(this.symbols.divider.repeat(32));
+    // Footer - no decorative lines
+    lines.push(`${this.symbols.arrow} *${translationService.t('select_module', language)}*`);
+    lines.push(`   ${translationService.t('reply_with_number', language)} (1-${course.modules.length})`);
 
     return lines.join('\n');
   }

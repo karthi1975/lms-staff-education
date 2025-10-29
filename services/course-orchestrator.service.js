@@ -13,6 +13,7 @@ const contentModerationService = require('./content-moderation.service');
 const promptInjectionGuard = require('./prompt-injection-guard.service');
 const responseValidator = require('./response-validator.service');
 const m3Formatter = require('./whatsapp-m3-formatter.service');
+const translationService = require('./translation.service');
 const logger = require('../utils/logger');
 const path = require('path');
 
@@ -238,33 +239,38 @@ class CourseOrchestratorService {
   async handleIdleState(userId, message, context) {
     const lowerMsg = message.toLowerCase().trim();
 
-    // Handle greetings and start triggers
-    if (lowerMsg.match(/^(hi|hello|hey|start|teach me|learn|help)/)) {
+    // Detect language from greeting
+    const language = await this.getUserLanguage(userId, message, context);
+
+    // Handle greetings and start triggers (English + Swahili)
+    if (lowerMsg.match(/^(hi|hello|hey|start|teach me|learn|help|habari|jambo|karibu|nifundishe|msaada)/)) {
       // Show course selection
       await this.updateConversationState(userId, {
         conversation_state: 'course_selection'
       });
 
-      return this.showCourseSelection();
+      return this.showCourseSelection(language);
     }
 
+    // Return welcome message in detected language
     return {
-      text: "👋 Welcome! Type 'teach me' to start learning, or 'help' for options."
+      text: translationService.t('welcome_message', language)
     };
   }
 
   /**
    * Show course selection with interactive buttons/list (if supported)
+   * @param {string} language - 'english' or 'swahili'
    */
-  showCourseSelection() {
+  showCourseSelection(language = 'english') {
     // If WhatsApp adapter supports interactive UI, use buttons or list
     if (whatsappService.supportsInteractive()) {
       // Use buttons for 1-3 courses, list for 4+ courses
       if (this.courses.length <= 3) {
         return {
           type: 'button',
-          header: '📚 Teachers Training Platform',
-          body: 'Welcome! Choose your course to get started:',
+          header: translationService.t('platform_title', language),
+          body: translationService.t('welcome_choose_course', language),
           buttons: this.courses.map((course, index) => ({
             id: `course_${course.id}`,
             title: `${index + 1}. ${course.name.substring(0, 15)}` // Max 20 chars
@@ -274,11 +280,11 @@ class CourseOrchestratorService {
         // Use interactive list for 4+ courses
         return {
           type: 'list',
-          header: '📚 Available Courses',
-          body: 'Select a course to begin your learning journey:',
-          buttonText: 'View Courses',
+          header: translationService.t('available_courses', language),
+          body: translationService.t('select_course_journey', language),
+          buttonText: translationService.t('view_courses', language),
           sections: [{
-            title: 'All Courses',
+            title: translationService.t('all_courses', language),
             rows: this.courses.map((course, index) => ({
               id: `course_${course.id}`,
               title: `${index + 1}. ${course.name.substring(0, 20)}`, // Max 24 chars
@@ -290,7 +296,7 @@ class CourseOrchestratorService {
     }
 
     // Fallback: Use M3 text formatter for Twilio or non-interactive mode
-    const formattedMessage = m3Formatter.formatCourseSelection(this.courses);
+    const formattedMessage = m3Formatter.formatCourseSelection(this.courses, language);
     return {
       type: 'text',
       text: formattedMessage
@@ -301,59 +307,70 @@ class CourseOrchestratorService {
    * Handle course selection
    */
   async handleCourseSelection(userId, message, context) {
+    // Get user language
+    const language = await this.getUserLanguage(userId, message, context);
+
     // Parse course selection (could be list response or text)
     const courseIndex = this.parseCourseFromMessage(message);
 
     if (courseIndex === null || courseIndex < 1 || courseIndex > this.courses.length) {
+      const courseList = this.courses.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
       return {
-        text: "Please select a course by number:\n" +
-              this.courses.map((c, i) => `${i + 1}. ${c.name}`).join('\n')
+        text: `${translationService.t('please_select_course', language)}\n\n${courseList}`
       };
     }
 
     // Get course by index (1-based)
     const course = this.courses[courseIndex - 1];
     if (!course) {
-      return { text: "Invalid course selection. Please try again." };
+      return { text: translationService.t('invalid_course', language) };
     }
 
-    // Update context
+    // Update context (preserve language)
+    const contextData = this.parseContextData(context);
+    contextData.course_name = course.name;
+
     await this.updateConversationState(userId, {
-        current_course_id: course.id,
+      current_course_id: course.id,
       conversation_state: 'module_selection',
-      context_data: JSON.stringify({ course_name: course.name })
+      context_data: JSON.stringify(contextData)
     });
 
-    return this.showModuleSelection(course);
+    return this.showModuleSelection(course, language);
   }
 
   /**
    * Show module selection with interactive list (if supported)
+   * @param {object} course - Course object with modules
+   * @param {string} language - 'english' or 'swahili'
    */
-  showModuleSelection(course) {
+  showModuleSelection(course, language = 'english') {
     // If WhatsApp adapter supports interactive UI, use list
     if (whatsappService.supportsInteractive() && course.modules && course.modules.length > 0) {
       // Use interactive list for modules (max 10)
       const modulesToShow = course.modules.slice(0, 10); // Limit to 10 for Meta API
+      const moduleCountText = `${course.modules.length} ${translationService.t('available_text', language)}`;
 
       return {
         type: 'list',
         header: `📚 ${course.name}`,
-        body: `Course Modules (${course.modules.length} available):`,
-        buttonText: 'View Modules',
+        body: `${translationService.t('course_modules', language)} (${moduleCountText}):`,
+        buttonText: translationService.t('view_modules', language),
         sections: [{
-          title: 'Available Modules',
+          title: translationService.t('available_modules', language),
           rows: modulesToShow.map((module, index) => ({
             id: `module_${module.id}`,
             title: `${index + 1}. ${module.name.substring(0, 20)}`, // Max 24 chars
-            description: module.has_quiz ? '📝 Quiz available' : '📖 Learning module' // Max 72 chars
+            description: module.has_quiz
+              ? translationService.t('quiz_available', language)
+              : translationService.t('learning_module', language)
           }))
         }]
       };
     }
 
     // Fallback: Use M3 text formatter for Twilio or non-interactive mode
-    const formattedMessage = m3Formatter.formatModuleSelection(course);
+    const formattedMessage = m3Formatter.formatModuleSelection(course, language);
     return {
       type: 'text',
       text: formattedMessage
@@ -364,13 +381,16 @@ class CourseOrchestratorService {
    * Handle module selection
    */
   async handleModuleSelection(userId, message, context) {
+    // Get user language
+    const language = await this.getUserLanguage(userId, message, context);
+
     const moduleSelection = this.parseModuleFromMessage(message);
 
     if (!moduleSelection) {
       const course = this.courses.find(c => c.id === context.current_course_id);
+      const moduleList = course.modules.map((m, i) => `${i + 1}. ${m.name}`).join('\n');
       return {
-        text: "Please select a module by number:\n" +
-              course.modules.map((m, i) => `${i + 1}. ${m.name}`).join('\n')
+        text: `${translationService.t('please_select_module', language)}\n\n${moduleList}`
       };
     }
 
@@ -387,31 +407,34 @@ class CourseOrchestratorService {
     }
 
     if (!module) {
-      return { text: `Invalid module selection. Please choose a number between 1 and ${course.modules.length}.` };
+      return {
+        text: translationService.t('invalid_module', language, { count: course.modules.length })
+      };
     }
 
-    // Update context
+    // Update context (preserve language)
+    const contextData = this.parseContextData(context);
+    contextData.course_name = course.name;
+    contextData.module_name = module.name;
+
     await this.updateConversationState(userId, {
       current_module_id: module.id,
       conversation_state: 'learning',
-      context_data: JSON.stringify({
-        course_name: course.name,
-        module_name: module.name
-      })
+      context_data: JSON.stringify(contextData)
     });
 
     // Create/update user progress
     await this.initializeModuleProgress(userId, module.id);
 
-    let responseText = `🎓 *${module.name}*\n`;
-    responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    responseText += `✅ Great! You've started learning!\n\n`;
-    responseText += `📚 *What You'll Learn:*\n`;
-    responseText += `   Learn key concepts and practical skills\n`;
-    responseText += `   in ${module.name}\n\n`;
-    responseText += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    responseText += `💬 *Ask Me Anything!*\n`;
-    responseText += `   Examples:\n`;
+    // Build bilingual response with proper alignment
+    let responseText = `🎓 *${module.name}*\n\n`;
+    responseText += `${translationService.t('started_learning', language)}\n\n`;
+    responseText += `${translationService.t('what_you_learn', language)}\n`;
+    responseText += `   ${translationService.t('learn_concepts', language)}\n`;
+    responseText += `   ${translationService.t('in_module', language)} ${module.name}\n\n`;
+    responseText += `${'_'.repeat(32)}\n\n`;
+    responseText += `${translationService.t('ask_me_anything', language)}\n`;
+    responseText += `   ${translationService.t('examples', language)}\n`;
 
     // Show course-specific examples based on course type
     const isTeacherTraining = course.name.toLowerCase().includes('orientation') ||
@@ -419,27 +442,27 @@ class CourseOrchestratorService {
                                module.name.toLowerCase().includes('teacher');
 
     if (isTeacherTraining) {
-      // Teacher Training examples
-      responseText += `   • "How to create engaging lesson plans?"\n`;
-      responseText += `   • "What are effective classroom management techniques?"\n`;
-      responseText += `   • "How to assess student learning in Business Studies?"\n`;
+      // Teacher Training examples (bilingual)
+      responseText += `   • ${translationService.t('example_lesson_plans', language)}\n`;
+      responseText += `   • ${translationService.t('example_classroom_mgmt', language)}\n`;
+      responseText += `   • ${translationService.t('example_assessment', language)}\n`;
     } else {
-      // Business Studies examples
-      responseText += `   • "What is entrepreneurship?"\n`;
-      responseText += `   • "How to identify opportunities?"\n`;
-      responseText += `   • "Tell me about market research"\n`;
+      // Business Studies examples (bilingual)
+      responseText += `   • ${translationService.t('example_entrepreneurship', language)}\n`;
+      responseText += `   • ${translationService.t('example_opportunities', language)}\n`;
+      responseText += `   • ${translationService.t('example_market_research', language)}\n`;
     }
 
-    responseText += `\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+    responseText += `\n${'_'.repeat(32)}\n\n`;
 
     // Only show quiz option if quiz is available
     if (module.has_quiz) {
-      responseText += `📊 *Ready to Test Your Knowledge?*\n`;
-      responseText += `   Type: *"quiz"* or *"start quiz"*\n\n`;
+      responseText += `${translationService.t('ready_test_knowledge', language)}\n`;
+      responseText += `   ${translationService.t('type_quiz', language)}\n\n`;
     }
 
-    responseText += `🔄 *Need Help?*\n`;
-    responseText += `   Type: *"menu"* to see options`;
+    responseText += `${translationService.t('need_help', language)}\n`;
+    responseText += `   ${translationService.t('type_menu', language)}`;
 
     return {
       text: responseText
@@ -677,12 +700,15 @@ class CourseOrchestratorService {
         finalResponse = `📚 _(Content from all available courses)_\n\n${finalResponse}`;
       }
 
-      // Add quiz prompt only if module has a quiz
+      // Get user language from contextData (already declared at top of method)
+      const language = contextData.language || 'english';
+
+      // Add quiz prompt only if module has a quiz (bilingual)
       const hasQuiz = await this.checkModuleHasQuiz(moduleId);
       if (hasQuiz) {
-        finalResponse += `\n\n💡 _Ask another question or type *"quiz"* to take the quiz!_`;
+        finalResponse += `\n\n${translationService.t('ask_another_quiz', language)}`;
       } else {
-        finalResponse += `\n\n💡 _Ask another question to continue learning!_`;
+        finalResponse += `\n\n${translationService.t('ask_another_continue', language)}`;
       }
 
       return {
@@ -691,15 +717,16 @@ class CourseOrchestratorService {
     } catch (error) {
       logger.error('Error processing content query:', error);
       const contextData = this.parseContextData(context);
+      const language = contextData.language || 'english';
       const moduleName = contextData.module_name || 'this module';
 
       return {
         text: `📚 *${moduleName}*\n\n` +
-              `I encountered an error while searching for content about your question.\n\n` +
-              `Please try:\n` +
-              `• Rephrasing your question\n` +
-              `• Asking about specific topics in ${moduleName}\n` +
-              `• Type *'menu'* to explore other modules`
+              `${translationService.t('error_searching', language)}\n\n` +
+              `${translationService.t('please_try', language)}\n` +
+              `${translationService.t('rephrase_question', language)}\n` +
+              `${translationService.t('ask_specific_topics', language, { module: moduleName })}\n` +
+              `${translationService.t('type_menu_explore', language)}`
       };
     }
   }
@@ -1349,6 +1376,43 @@ class CourseOrchestratorService {
     } catch (error) {
       logger.error('Error checking quiz existence:', error);
       return false;
+    }
+  }
+
+  /**
+   * Get or detect user's language preference
+   * Priority: 1) Stored preference, 2) Message detection, 3) Default to English
+   * Stores in context_data for persistence across session
+   *
+   * @param {number} userId - User ID
+   * @param {string} message - Current user message
+   * @param {object} context - Conversation context row
+   * @returns {string} 'english' or 'swahili'
+   */
+  async getUserLanguage(userId, message, context) {
+    try {
+      // 1. Check context_data for stored preference
+      const contextData = this.parseContextData(context);
+      if (contextData.language) {
+        logger.debug(`Using stored language for user ${userId}: ${contextData.language}`);
+        return contextData.language;
+      }
+
+      // 2. Auto-detect from message using translation service
+      const detectedLanguage = translationService.detectLanguageFromMessage(message);
+
+      // 3. Store for future use
+      contextData.language = detectedLanguage;
+      await this.updateConversationState(userId, {
+        context_data: JSON.stringify(contextData)
+      });
+
+      logger.info(`Language detected for user ${userId}: ${detectedLanguage}`);
+      return detectedLanguage;
+
+    } catch (error) {
+      logger.error('Error getting user language:', error);
+      return 'english'; // Default fallback
     }
   }
 }
