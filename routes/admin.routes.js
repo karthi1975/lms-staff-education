@@ -250,6 +250,20 @@ router.get('/user-progress/:userId', authMiddleware.authenticateToken, async (re
     const { userId } = req.params;
     const postgresService = require('../services/database/postgres.service');
 
+    // CORNER CASE FIX: Check if user exists before querying progress
+    const userCheck = await postgresService.pool.query(
+      'SELECT id, name, whatsapp_id FROM users WHERE id = $1',
+      [parseInt(userId)]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found. The user may have been deleted.',
+        errorCode: 'USER_NOT_FOUND'
+      });
+    }
+
     const result = await postgresService.pool.query(`
       SELECT
         up.id,

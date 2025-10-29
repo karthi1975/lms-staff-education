@@ -164,6 +164,12 @@ class WhatsAppHandlerService {
       // Get or create session
       const session = await this.getOrCreateSession(from);
 
+      // CORNER CASE FIX: Handle deleted user during session creation (race condition)
+      if (!session) {
+        logger.warn(`Session creation returned null for ${from} - user deleted mid-request`);
+        return; // Message already sent to user in getOrCreateSession
+      }
+
       // Use Course Orchestrator for new flow
       const courseOrchestrator = require('./course-orchestrator.service');
 
@@ -297,10 +303,18 @@ class WhatsAppHandlerService {
       [normalizedPhone, phoneNumber]
     );
 
+    // CORNER CASE FIX: User deleted mid-session (race condition)
     if (result.rows.length === 0) {
-      // User should have been enrolled - this shouldn't happen if enrollment flow is working
-      logger.error(`Session requested for unenrolled user: ${normalizedPhone}`);
-      throw new Error('User not enrolled. This should have been caught by enrollment check.');
+      logger.warn(`Session requested for deleted user: ${normalizedPhone} (possible race condition)`);
+
+      // Send friendly message to user
+      await whatsappService.sendMessage(phoneNumber,
+        '⚠️ Your account is not active.\n\n' +
+        'This may have happened if your account was recently modified.\n\n' +
+        'Please contact your administrator for assistance.'
+      );
+
+      return null;  // Graceful exit - caller must handle null
     }
 
     const user = result.rows[0];
