@@ -964,6 +964,42 @@
         </div>
     </div>
 
+    <!-- Add Module Modal -->
+    <div id="addModuleModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>➕ Add New Module</h2>
+                <button class="modal-close" onclick="closeAddModuleModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="moduleTitle">Module Title *</label>
+                    <input type="text" id="moduleTitle" placeholder="e.g., Introduction to Business" required style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+                </div>
+
+                <div class="form-group">
+                    <label for="moduleDescription">Description</label>
+                    <textarea id="moduleDescription" placeholder="Brief description of this module..." rows="4" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="moduleSequence">Sequence Order *</label>
+                    <input type="number" id="moduleSequence" value="1" min="1" required style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;">
+                    <small style="color: #6b7280; display: block; margin-top: 4px;">
+                        Order in which this module appears in the course (e.g., 1 for first module)
+                    </small>
+                </div>
+
+                <div id="addModuleError" style="display: none; margin-top: 16px; padding: 12px; background: #fee2e2; border-left: 4px solid #dc2626; border-radius: 8px; color: #991b1b;"></div>
+                <div id="addModuleSuccess" style="display: none; margin-top: 16px; padding: 12px; background: #d1fae5; border-left: 4px solid #10b981; border-radius: 8px; color: #065f46;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddModuleModal()">Cancel</button>
+                <button id="submitModuleBtn" class="btn btn-primary" onclick="submitModule()">Create Module</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = window.location.hostname === 'localhost'
             ? 'http://localhost:3000/api/admin'
@@ -1501,7 +1537,76 @@
         }
 
         function addModule() {
-            alert('Modules are managed directly in this course detail page. Use the course management interface to add content.');
+            // Open the Add Module modal
+            document.getElementById('addModuleModal').style.display = 'flex';
+            document.getElementById('moduleTitle').value = '';
+            document.getElementById('moduleDescription').value = '';
+            document.getElementById('moduleSequence').value = '1';
+            document.getElementById('addModuleError').style.display = 'none';
+            document.getElementById('addModuleSuccess').style.display = 'none';
+        }
+
+        function closeAddModuleModal() {
+            document.getElementById('addModuleModal').style.display = 'none';
+        }
+
+        async function submitModule() {
+            const title = document.getElementById('moduleTitle').value.trim();
+            const description = document.getElementById('moduleDescription').value.trim();
+            const sequence = parseInt(document.getElementById('moduleSequence').value);
+
+            // Validation
+            if (!title) {
+                document.getElementById('addModuleError').textContent = 'Please enter a module title';
+                document.getElementById('addModuleError').style.display = 'block';
+                return;
+            }
+
+            // Hide previous messages
+            document.getElementById('addModuleError').style.display = 'none';
+            document.getElementById('addModuleSuccess').style.display = 'none';
+
+            // Disable button
+            const submitBtn = document.getElementById('submitModuleBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/portal/courses/${courseId}/modules`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        module_name: title,
+                        description: description || '',
+                        sequence_order: sequence
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    document.getElementById('addModuleSuccess').textContent = `Module "${title}" created successfully!`;
+                    document.getElementById('addModuleSuccess').style.display = 'block';
+
+                    // Wait 1 second then close modal and refresh
+                    setTimeout(() => {
+                        closeAddModuleModal();
+                        loadModules(); // Refresh the modules list
+                    }, 1000);
+                } else {
+                    throw new Error(data.error || 'Failed to create module');
+                }
+            } catch (error) {
+                console.error('Error creating module:', error);
+                document.getElementById('addModuleError').textContent = `Error: ${error.message}`;
+                document.getElementById('addModuleError').style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Module';
+            }
         }
 
         function viewModule(moduleId) {
