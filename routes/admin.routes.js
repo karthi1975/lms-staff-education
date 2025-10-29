@@ -1274,7 +1274,7 @@ router.get('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authentic
 
     // Get quiz questions
     const questionsResult = await postgresService.pool.query(
-      'SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY question_number',
+      'SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY id',
       [quiz.id]
     );
 
@@ -1282,11 +1282,11 @@ router.get('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authentic
     const formattedQuestions = questionsResult.rows.map(q => {
       // Handle options - might be JSONB (object) or string
       const optionsArray = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
-      const correctAnswer = ['A', 'B', 'C', 'D'][q.correct_answer];
+      const correctAnswer = ['A', 'B', 'C', 'D'][parseInt(q.correct_answer)];
 
       return {
         id: q.id,
-        question: q.question_text,
+        question: q.question, // Fixed: use 'question' column, not 'question_text'
         options: {
           A: optionsArray[0],
           B: optionsArray[1],
