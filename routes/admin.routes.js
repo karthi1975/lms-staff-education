@@ -1196,23 +1196,21 @@ router.post('/modules/:moduleId/quiz/upload',
         INSERT INTO quiz_questions (
           module_id,
           quiz_id,
-          question_text,
-          question_type,
+          question,
           options,
           correct_answer,
           explanation,
-          points
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          difficulty
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
       `, [
         moduleId,
         quizId,
         q.question,
-        'multichoice',
         JSON.stringify(q.options),
         q.correctAnswer.toString(),
         q.explanation || null,
-        1.0
+        'medium'
       ]);
 
       insertedQuestions.push({
