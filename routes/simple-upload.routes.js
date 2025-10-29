@@ -37,14 +37,22 @@ const upload = multer({
     files: 100 // Max 100 files at once
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /pdf|docx?|txt/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    const allowedExtensions = /\.(pdf|docx?|txt)$/i;
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      'text/plain' // .txt
+    ];
 
-    if (extname && mimetype) {
+    const extname = allowedExtensions.test(file.originalname.toLowerCase());
+    const mimetype = allowedMimeTypes.includes(file.mimetype);
+
+    if (extname || mimetype) {
+      // Accept if either extension OR mimetype matches (permissive)
       return cb(null, true);
     } else {
-      cb(new Error('Only PDF, DOCX, and TXT files are allowed'));
+      cb(new Error(`File type not allowed: ${file.originalname}. Only PDF, DOCX, DOC, and TXT files are supported.`));
     }
   }
 });
