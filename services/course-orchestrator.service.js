@@ -662,8 +662,13 @@ class CourseOrchestratorService {
         finalResponse = `📚 _(Content from all available courses)_\n\n${finalResponse}`;
       }
 
-      // Add quiz prompt
-      finalResponse += `\n\n💡 _Ask another question or type *"quiz"* to take the quiz!_`;
+      // Add quiz prompt only if module has a quiz
+      const hasQuiz = await this.checkModuleHasQuiz(moduleId);
+      if (hasQuiz) {
+        finalResponse += `\n\n💡 _Ask another question or type *"quiz"* to take the quiz!_`;
+      } else {
+        finalResponse += `\n\n💡 _Ask another question to continue learning!_`;
+      }
 
       return {
         text: finalResponse
@@ -1312,6 +1317,23 @@ class CourseOrchestratorService {
     } catch (error) {
       logger.error('Error resetting user module:', error);
       return null;
+    }
+  }
+
+  /**
+   * Check if module has a quiz
+   * Used to conditionally show quiz-related UI/messaging
+   */
+  async checkModuleHasQuiz(moduleId) {
+    try {
+      const result = await postgresService.query(
+        'SELECT id FROM quizzes WHERE module_id = $1 AND is_active = true',
+        [moduleId]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error('Error checking quiz existence:', error);
+      return false;
     }
   }
 }
