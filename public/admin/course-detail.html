@@ -1288,21 +1288,46 @@
         function setupDragAndDrop() {
             const dropzone = document.getElementById('dropzone');
 
+            // Prevent default drag/drop behavior on the entire document
+            // This prevents the browser from opening files in a new tab
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                document.body.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+
+            // Handle dragover on dropzone
             dropzone.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 dropzone.classList.add('dragover');
             });
 
-            dropzone.addEventListener('dragleave', () => {
+            // Handle dragleave on dropzone
+            dropzone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 dropzone.classList.remove('dragover');
             });
 
+            // Handle drop on dropzone
             dropzone.addEventListener('drop', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 dropzone.classList.remove('dragover');
 
                 const files = e.dataTransfer.files;
-                handleFiles(files);
+                if (files.length > 0) {
+                    handleFiles(files);
+                }
+            });
+
+            // Also handle dragenter to show visual feedback
+            dropzone.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('dragover');
             });
         }
 
@@ -1326,10 +1351,11 @@
                 formData.append('files', files[i]);
             }
 
+            const dropzone = document.getElementById('dropzone');
+            const originalHTML = dropzone.innerHTML;
+
             try {
                 // Show uploading state
-                const dropzone = document.getElementById('dropzone');
-                const originalHTML = dropzone.innerHTML;
                 dropzone.innerHTML = `
                     <div class="loading">
                         <div class="spinner"></div>
@@ -1354,6 +1380,9 @@
                 // Restore dropzone
                 dropzone.innerHTML = originalHTML;
 
+                // Re-setup drag and drop after innerHTML change
+                setupDragAndDrop();
+
                 // Show success message
                 alert(`✅ ${data.total_files} file(s) uploaded successfully!\n\nClick "Process Files" to start OCR and indexing.`);
 
@@ -1368,8 +1397,10 @@
                 alert('Upload failed: ' + error.message);
 
                 // Restore dropzone
-                const dropzone = document.getElementById('dropzone');
                 dropzone.innerHTML = originalHTML;
+
+                // Re-setup drag and drop after innerHTML change
+                setupDragAndDrop();
             }
         }
 
