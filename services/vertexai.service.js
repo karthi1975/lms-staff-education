@@ -4,6 +4,7 @@ const axios = require('axios');
 const logger = require('../utils/logger');
 const promptService = require('./prompt.service');
 const contentModerationService = require('./content-moderation.service');
+const promptInjectionProtection = require('./prompt-injection-protection.service');
 
 const execAsync = promisify(exec);
 
@@ -364,12 +365,13 @@ class VertexAIService {
     }
   }
 
-  async generateEducationalResponse(query, context, language = 'swahili') {
+  async generateEducationalResponse(query, context, language = 'swahili', userId = 'anonymous') {
     // Use prompt service to format the prompt in the specified language
     const formattedPrompt = promptService.formatPrompt(query, context, language);
 
-    // Simpler system prompt to avoid confusion
-    const systemPrompt = "You are a helpful educational assistant. Provide clear, concise answers based on the information given.";
+    // Fortified system prompt with anti-injection directives
+    const basePrompt = "You are a helpful educational assistant for teacher training. Provide clear, concise answers based on the information given.";
+    const systemPrompt = promptInjectionProtection.fortifySystemPrompt(basePrompt);
 
     const messages = [
       {
@@ -382,13 +384,38 @@ class VertexAIService {
       }
     ];
 
-    return await this.generateCompletion(messages, {
+    // Generate response with protection options
+    const response = await this.generateCompletion(messages, {
       temperature: 0.5,  // Lower temperature for more focused responses
       maxTokens: 500,    // Shorter responses to prevent rambling
       frequencyPenalty: 0.5,  // Strong penalty against repetition
       presencePenalty: 0.3,   // Encourage diverse vocabulary
-      language: language  // Pass language for fallback
+      language: language,  // Pass language for fallback
+      user_id: userId,  // For tracking
+      phone: userId  // For moderation logging
     });
+
+    // Validate output for prompt leakage
+    const validation = promptInjectionProtection.validateOutput(response, systemPrompt);
+
+    if (!validation.safe) {
+      logger.warn('AI output validation failed:', validation.reason);
+
+      if (validation.fallback) {
+        return validation.fallback;
+      }
+
+      if (validation.truncated) {
+        return validation.truncated;
+      }
+
+      // Return safe fallback
+      return language === 'swahili'
+        ? 'Samahani, sikuweza kujibu swali lako. Tafadhali uliza swali lingine.'
+        : 'I apologize, I couldn\'t answer that question. Please try asking differently.';
+    }
+
+    return response;
   }
 
   async generateQuizQuestions(content, moduleId) {

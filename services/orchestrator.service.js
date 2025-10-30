@@ -3,6 +3,7 @@ const whatsappService = require('./whatsapp-adapter.service');
 const chromaService = require('./chroma.service');
 const neo4jService = require('./neo4j.service');
 const vertexAIService = require('./vertexai.service');
+const promptInjectionProtection = require('./prompt-injection-protection.service');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 
@@ -164,7 +165,21 @@ class OrchestratorService {
   }
 
   async handleUserInput(userId, input, userProgress, session) {
-    const lowerInput = input.toLowerCase().trim();
+    // SECURITY: Validate input for injection attempts
+    const validation = promptInjectionProtection.validateInput(input, session.phoneNumber || userId);
+
+    if (!validation.safe) {
+      logger.warn(`Rejected unsafe input from ${userId}: ${validation.reason}`);
+
+      return {
+        type: 'text',
+        content: validation.message
+      };
+    }
+
+    // Use sanitized input for processing
+    const sanitizedInput = validation.sanitized;
+    const lowerInput = sanitizedInput.toLowerCase().trim();
 
     // Handle greetings (first time users)
     if (lowerInput.match(/^(hello|hi|hey|start|hola|habari)/)) {
@@ -201,11 +216,11 @@ class OrchestratorService {
     
     // Check if user is in quiz mode
     if (session.quizState) {
-      return this.handleQuizAnswer(userId, input, session);
+      return this.handleQuizAnswer(userId, sanitizedInput, session);
     }
-    
-    // Process as content query with RAG
-    return this.processContentQuery(userId, input, session.currentModule);
+
+    // Process as content query with RAG (use sanitized input)
+    return this.processContentQuery(userId, sanitizedInput, session.currentModule);
   }
 
   async processContentQuery(userId, query, currentModule, language = 'english') {
@@ -226,7 +241,7 @@ class OrchestratorService {
 
       // Generate response using Vertex AI with specified language (default: english)
       logger.debug(`Generating response with Vertex AI in ${language}...`);
-      const response = await vertexAIService.generateEducationalResponse(query, context, language);
+      const response = await vertexAIService.generateEducationalResponse(query, context, language, userId);
       logger.info(`Generated response length: ${response.length} characters`);
 
       // Track interaction

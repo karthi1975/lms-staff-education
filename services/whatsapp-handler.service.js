@@ -9,6 +9,7 @@ const quizService = require('./quiz.service');
 const postgresService = require('./database/postgres.service');
 const moodleSyncService = require('./moodle-sync.service');
 const verificationService = require('./verification.service');
+const promptInjectionProtection = require('./prompt-injection-protection.service');
 const logger = require('../utils/logger');
 
 class WhatsAppHandlerService {
@@ -94,6 +95,18 @@ class WhatsAppHandlerService {
 
       // Normalize phone number
       const normalizedPhone = this.normalizePhoneNumber(from);
+
+      // SECURITY: Validate input for injection attempts BEFORE any processing
+      // This protects against attacks from both enrolled and unenrolled users
+      const validation = promptInjectionProtection.validateInput(messageBody, normalizedPhone);
+
+      if (!validation.safe) {
+        logger.warn(`🚨 SECURITY: Rejected unsafe input from ${normalizedPhone}: ${validation.reason}`);
+
+        // Send generic rejection message
+        await whatsappService.sendMessage(from, validation.message);
+        return;
+      }
 
       // Check enrollment status via enrollment service (NEW PIN SYSTEM)
       const enrollmentService = require('./enrollment.service');
