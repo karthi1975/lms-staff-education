@@ -1002,58 +1002,75 @@ class CourseOrchestratorService {
    * Handle quiz answer
    */
   async handleQuizState(userId, message, context) {
-    const lowerMsg = message.toLowerCase().trim();
+    try {
+      const lowerMsg = message.toLowerCase().trim();
 
-    // Check for greeting/restart - allow user to exit quiz
-    if (lowerMsg.match(/^(hi|hello|hey|start|teach me|begin|restart|menu)$/)) {
-      logger.info(`Greeting/menu detected during quiz from user ${userId}, resetting to course selection`);
-      await this.updateConversationState(userId, {
-        conversation_state: 'course_selection',
-        current_course_id: null,
-        current_module_id: null,
-        current_question_index: null,
-        quiz_answers: null
-      });
-      return this.showCourseSelection();
-    }
+      // Check for greeting/restart - allow user to exit quiz
+      if (lowerMsg.match(/^(hi|hello|hey|start|teach me|begin|restart|menu)$/)) {
+        logger.info(`Greeting/menu detected during quiz from user ${userId}, resetting to course selection`);
+        await this.updateConversationState(userId, {
+          conversation_state: 'course_selection',
+          current_course_id: null,
+          current_module_id: null,
+          current_question_index: null,
+          quiz_answers: null
+        });
+        return this.showCourseSelection();
+      }
 
-    // Extract answer from button reply or text
-    let answer = message.trim().toUpperCase();
+      // Extract answer from button reply or text
+      let answer = message.trim().toUpperCase();
 
-    // If it's from a button, extract the letter
-    if (message.startsWith('answer_')) {
-      answer = message.replace('answer_', '').toUpperCase();
-    } else if (message.includes(')')) {
-      // Extract letter from "A) Option text"
-      answer = message.split(')')[0].trim().toUpperCase();
-    }
+      // If it's from a button, extract the letter
+      if (message.startsWith('answer_')) {
+        answer = message.replace('answer_', '').toUpperCase();
+      } else if (message.includes(')')) {
+        // Extract letter from "A) Option text"
+        answer = message.split(')')[0].trim().toUpperCase();
+      }
 
-    // Validate answer format
-    if (!answer.match(/^[A-D]$/)) {
-      return {
-        text: "Please reply with A, B, C, or D only, or type 'menu' to exit the quiz."
-      };
-    }
+      // Validate answer format
+      if (!answer.match(/^[A-D]$/)) {
+        return {
+          text: "Please reply with A, B, C, or D only, or type 'menu' to exit the quiz."
+        };
+      }
 
     const contextData = this.parseContextData(context);
     const quizQuestionIds = contextData.quiz_questions || [];
     const currentIndex = context.current_question_index || 0;
 
-    // Get all questions from database
+    // EDGE CASE 1: Validate quiz_questions exist in context
+    if (!quizQuestionIds || quizQuestionIds.length === 0) {
+      logger.error(`handleQuizState: No quiz_questions in context for user ${userId}`);
+      return {
+        text: "⚠️ Quiz session error. Please restart the quiz by typing 'quiz'."
+      };
+    }
+
+    // Get all questions from database (FIXED: use correct column names)
     const questionsResult = await postgresService.query(`
-      SELECT id, question_text, question_type, options, correct_answer, explanation
+      SELECT id, question, options, correct_answer
       FROM quiz_questions
       WHERE id = ANY($1::int[])
       ORDER BY ARRAY_POSITION($1::int[], id)
     `, [quizQuestionIds]);
 
+    // EDGE CASE 2: Validate questions were found
+    if (questionsResult.rows.length === 0) {
+      logger.error(`handleQuizState: No questions found for IDs ${quizQuestionIds}`);
+      return {
+        text: "⚠️ Quiz questions not found. Please restart the quiz by typing 'quiz'."
+      };
+    }
+
     const quizQuestions = questionsResult.rows.map(q => ({
       id: q.id,
-      questionText: q.question_text,
-      questionType: q.question_type,
+      questionText: q.question,  // FIXED: was question_text
+      questionType: 'multiple_choice',  // FIXED: column doesn't exist, use default
       options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
       correctAnswer: q.correct_answer,
-      explanation: q.explanation
+      explanation: null  // FIXED: column doesn't exist
     }));
 
     const currentQuestion = quizQuestions[currentIndex];
@@ -1124,12 +1141,30 @@ class CourseOrchestratorService {
       quizQuestions.length
     );
 
-    // Return formatted question with button config
-    return {
-      type: nextQFormatted.type,
-      text: `✓ Answer recorded: ${answer}\n\n`,
-      question: nextQFormatted
-    };
+      // Return formatted question with button config
+      return {
+        type: nextQFormatted.type,
+        text: `✓ Answer recorded: ${answer}\n\n`,
+        question: nextQFormatted
+      };
+
+    } catch (error) {
+      logger.error('Critical error in handleQuizState:', error);
+      logger.error('Error stack:', error.stack);
+      logger.error('User:', userId, 'Context:', JSON.stringify(context));
+
+      // Reset quiz state on critical error
+      await this.updateConversationState(userId, {
+        conversation_state: 'learning',
+        current_question_index: null,
+        current_quiz_id: null,
+        quiz_answers: null
+      });
+
+      return {
+        text: "⚠️ Sorry, an error occurred while processing your answer.\n\nThe quiz has been reset. Type 'quiz' to start again or 'menu' to return to course selection."
+      };
+    }
   }
 
   /**
