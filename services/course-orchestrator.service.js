@@ -1181,20 +1181,19 @@ class CourseOrchestratorService {
     // Get quiz and module info
     const contextData = this.parseContextData(context);
     const moduleId = context.current_module_id;
-    const quizId = contextData.quiz_id;
 
-    // Save to local database first (before Moodle sync)
+    // Save to local database first (FIXED: removed quiz_id column - doesn't exist in table)
     const attemptResult = await postgresService.query(`
       INSERT INTO quiz_attempts (
-        user_id, module_id, quiz_id, attempt_number,
+        user_id, module_id, attempt_number,
         score, total_questions, passed, answers
       )
-      VALUES ($1, $2, $3,
+      VALUES ($1, $2,
         (SELECT COALESCE(MAX(attempt_number), 0) + 1 FROM quiz_attempts WHERE user_id = $1 AND module_id = $2),
-        $4, $5, $6, $7
+        $3, $4, $5, $6
       )
       RETURNING id
-    `, [userId, moduleId, quizId || null, score, total, passed, JSON.stringify(answers)]);
+    `, [userId, moduleId, score, total, passed, JSON.stringify(answers)]);
 
     const attemptId = attemptResult.rows[0].id;
 
@@ -1232,7 +1231,7 @@ class CourseOrchestratorService {
           WHERE user_id = $1 AND module_id = $2
         `, [userId, moduleId]);
 
-        logger.info(`✅ Module ${moduleId} marked as completed for user ${userId} (WhatsApp: ${whatsappPhone})`);
+        logger.info(`✅ Module ${moduleId} marked as completed for user ${userId}`);
       } catch (progressError) {
         logger.error(`Failed to update module completion for user ${userId}, module ${moduleId}:`, progressError);
         // Continue - don't fail quiz completion due to progress tracking error
