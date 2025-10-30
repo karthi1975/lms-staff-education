@@ -765,7 +765,24 @@ class CourseOrchestratorService {
   async startQuiz(userId, context) {
     try {
       const contextData = this.parseContextData(context);
+
+      // EDGE CASE 1: Validate module_id exists
       const moduleId = context.current_module_id;
+      if (!moduleId) {
+        logger.error(`startQuiz: User ${userId} has no current_module_id`);
+        return {
+          text: "⚠️ Please select a module first. Type 'menu' to see available modules."
+        };
+      }
+
+      // EDGE CASE 2: Ensure moduleId is a valid integer
+      const moduleIdInt = parseInt(moduleId, 10);
+      if (isNaN(moduleIdInt)) {
+        logger.error(`startQuiz: Invalid module_id ${moduleId} for user ${userId}`);
+        return {
+          text: "⚠️ System error: Invalid module. Please contact administrator."
+        };
+      }
 
       // Get quiz from database
       const quizResult = await postgresService.query(`
@@ -773,15 +790,25 @@ class CourseOrchestratorService {
         FROM quizzes
         WHERE module_id = $1 AND is_active = true
         LIMIT 1
-      `, [moduleId]);
+      `, [moduleIdInt]);
 
+      // EDGE CASE 3: No quiz available for this module
       if (quizResult.rows.length === 0) {
+        logger.info(`No quiz found for module ${moduleIdInt}`);
         return {
-          text: "Quiz not available for this module yet. Continue learning and check back later!"
+          text: "📚 Quiz not available for this module yet.\n\nContinue learning and check back later!\n\nType 'menu' to explore other modules."
         };
       }
 
       const quiz = quizResult.rows[0];
+
+      // EDGE CASE 4: Validate quiz_id
+      if (!quiz.quiz_id) {
+        logger.error(`Quiz query returned null quiz_id for module ${moduleIdInt}`);
+        return {
+          text: "⚠️ Quiz configuration error. Please contact administrator."
+        };
+      }
 
       // Get quiz questions from database
       const questionsResult = await postgresService.query(`
@@ -792,68 +819,100 @@ class CourseOrchestratorService {
         ORDER BY id
       `, [quiz.quiz_id]);
 
-      let questions = questionsResult.rows.map(q => ({
-        id: q.id,
-        questionText: q.question,
-        questionType: 'multiple_choice',
-        options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
-        questionNumber: q.question_number
-      }));
-
-      if (questions.length === 0) {
+      // EDGE CASE 5: Quiz exists but has no questions
+      if (questionsResult.rows.length === 0) {
+        logger.warn(`Quiz ${quiz.quiz_id} for module ${moduleIdInt} has no questions`);
         return {
-          text: "No questions found for this quiz yet. Please contact admin."
+          text: "📚 Quiz questions are being prepared.\n\nPlease check back later or contact your administrator."
         };
       }
-    } catch (error) {
-      logger.error('Quiz loading error:', error);
+
+      // Map questions to proper format with error handling for each question
+      const questions = questionsResult.rows.map((q, index) => {
+        try {
+          return {
+            id: q.id,
+            questionText: q.question || `Question ${index + 1}`,
+            questionType: 'multiple_choice',
+            options: typeof q.options === 'string' ? JSON.parse(q.options) : (q.options || []),
+            questionNumber: q.question_number || index + 1
+          };
+        } catch (parseError) {
+          logger.error(`Error parsing question ${q.id}:`, parseError);
+          // Return a safe default to not crash the quiz
+          return {
+            id: q.id,
+            questionText: 'Question unavailable',
+            questionType: 'multiple_choice',
+            options: [],
+            questionNumber: index + 1
+          };
+        }
+      });
+
+      // EDGE CASE 6: Filter out invalid questions (no options)
+      const validQuestions = questions.filter(q => q.options && q.options.length >= 2);
+
+      if (validQuestions.length === 0) {
+        logger.error(`All questions for quiz ${quiz.quiz_id} are invalid (no options)`);
+        return {
+          text: "⚠️ Quiz configuration error: Questions are not properly formatted.\n\nPlease contact administrator."
+        };
+      }
+
+      // Shuffle and select 5 questions (or all if less than 5)
+      const numQuestions = Math.min(5, validQuestions.length);
+      const selectedQuestions = this.shuffleArray([...validQuestions]).slice(0, numQuestions);
+
+      // Update conversation context to quiz_active state
+      await this.updateConversationState(userId, {
+        conversation_state: 'quiz_active',
+        current_question_index: 0,
+        current_quiz_id: quiz.quiz_id,
+        quiz_answers: JSON.stringify([]),
+        quiz_started_at: new Date(),
+        context_data: JSON.stringify({
+          ...contextData,
+          quiz_id: quiz.quiz_id,
+          quiz_questions: selectedQuestions.map(q => q.id)
+        })
+      });
+
+      // ✅ Update progress when quiz starts (90% - ready for final assessment)
+      try {
+        await postgresService.query(`
+          UPDATE user_progress
+          SET progress_percentage = 90,
+              last_activity_at = NOW()
+          WHERE user_id = $1 AND module_id = $2
+        `, [userId, moduleIdInt]);
+
+        logger.info(`📝 Quiz started for user ${userId}, module ${moduleIdInt}: Progress set to 90%`);
+      } catch (progressError) {
+        logger.error(`Failed to update progress on quiz start:`, progressError);
+        // Non-critical error, continue with quiz
+      }
+
+      // Send first question
+      const firstQ = selectedQuestions[0];
+
+      logger.info(`✅ Quiz ${quiz.quiz_id} started successfully for user ${userId}, ${numQuestions} questions selected`);
+
       return {
-        text: "Quiz not available for this module yet. Continue learning and check back later!"
+        type: 'quiz_intro',
+        text: `📝 *Quiz Started!*\n\nYou'll answer ${numQuestions} questions. Pass threshold: 70%`,
+        question: firstQ,
+        questionNum: 1,
+        totalQuestions: numQuestions
+      };
+
+    } catch (error) {
+      logger.error('Critical error in startQuiz:', error);
+      logger.error('Error stack:', error.stack);
+      return {
+        text: "⚠️ Sorry, an error occurred while loading the quiz.\n\nPlease try again later or contact your administrator.\n\nType 'menu' to return to course selection."
       };
     }
-
-    // Shuffle and select 5 questions (or all if less than 5)
-    const numQuestions = Math.min(5, questions.length);
-    const selectedQuestions = this.shuffleArray([...questions]).slice(0, numQuestions);
-
-    // Update context
-    await this.updateConversationState(userId, {
-      conversation_state: 'quiz_active',
-      current_question_index: 0,
-      current_quiz_id: quiz.quiz_id,
-      quiz_answers: JSON.stringify([]),
-      quiz_started_at: new Date(),
-      context_data: JSON.stringify({
-        ...contextData,
-        quiz_id: quiz.quiz_id,
-        quiz_questions: selectedQuestions.map(q => q.id)
-      })
-    });
-
-    // ✅ Update progress when quiz starts (90% - ready for final assessment)
-    try {
-      await postgresService.query(`
-        UPDATE user_progress
-        SET progress_percentage = 90,
-            last_activity_at = NOW()
-        WHERE user_id = $1 AND module_id = $2
-      `, [userId, context.current_module_id]);
-
-      logger.info(`📝 Quiz started for user ${userId}, module ${context.current_module_id}: Progress set to 90%`);
-    } catch (progressError) {
-      logger.error(`Failed to update progress on quiz start:`, progressError);
-    }
-
-    // Send first question
-    const firstQ = selectedQuestions[0];
-
-    return {
-      type: 'quiz_intro',
-      text: `📝 *Quiz Started!*\n\nYou'll answer ${numQuestions} questions. Pass threshold: 70%`,
-      question: firstQ,
-      questionNum: 1,
-      totalQuestions: numQuestions
-    };
   }
 
   /**
