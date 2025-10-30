@@ -1,6 +1,16 @@
 -- Migration 010: Multi-Region RBAC System
 -- Created: 2025-10-30
+-- Updated: 2025-10-30 (Simplified course-region relationship)
 -- Purpose: Implement role-based access control with regional restrictions
+--
+-- CONFIRMED REQUIREMENTS:
+-- 1. Use existing PostgreSQL database
+-- 2. CSV upload limit: 5,000 users
+-- 3. WhatsApp rate limit: 60 notifications/minute
+-- 4. Auto-assign existing users to Tanzania (changeable by Super Admin)
+-- 5. Super Admin manually assigns courses to regions
+-- 6. Only Super Admin creates new admins
+-- 7. One course = One region (or "All Regions") - NO multi-region courses
 
 -- ============================================
 -- 1. ROLES TABLE
@@ -59,25 +69,11 @@ CREATE INDEX IF NOT EXISTS idx_admin_regions_user ON admin_regions(user_id);
 CREATE INDEX IF NOT EXISTS idx_admin_regions_region ON admin_regions(region_id);
 
 -- ============================================
--- 4. COURSE-REGION RESTRICTIONS
+-- 4. COURSE CHATBOT PROMPTS
 -- ============================================
-CREATE TABLE IF NOT EXISTS course_regions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  course_id INTEGER NOT NULL,
-  region_id INTEGER NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  created_by INTEGER,
-  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
-  FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-  UNIQUE(course_id, region_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_course_regions_course ON course_regions(course_id);
-CREATE INDEX IF NOT EXISTS idx_course_regions_region ON course_regions(region_id);
-
--- ============================================
--- 5. COURSE CHATBOT PROMPTS
+-- NOTE: Course-region assignment is now handled by courses.region_id column
+-- One course = One region (or "All Regions")
+-- No multi-region courses allowed per requirement #7
 -- ============================================
 CREATE TABLE IF NOT EXISTS course_chatbot_prompts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -184,17 +180,25 @@ CREATE INDEX IF NOT EXISTS idx_users_region ON users(primary_region_id);
 -- ============================================
 -- 10. MODIFY COURSES TABLE
 -- ============================================
+-- Add region_id (one course = one region, or "All Regions")
+ALTER TABLE courses ADD COLUMN region_id INTEGER;
+
 -- Add use_custom_prompt
 ALTER TABLE courses ADD COLUMN use_custom_prompt BOOLEAN DEFAULT 0;
 
--- Add is_regional
+-- Add is_regional (kept for backward compatibility, but region_id is primary)
 ALTER TABLE courses ADD COLUMN is_regional BOOLEAN DEFAULT 1;
 
 -- Add created_by
 ALTER TABLE courses ADD COLUMN created_by INTEGER;
 
+CREATE INDEX IF NOT EXISTS idx_courses_region ON courses(region_id);
 CREATE INDEX IF NOT EXISTS idx_courses_is_regional ON courses(is_regional);
 CREATE INDEX IF NOT EXISTS idx_courses_created_by ON courses(created_by);
+
+-- Auto-assign existing courses to "All Regions" (region_id = 5)
+-- This will be done manually by Super Admin after migration, so commenting out
+-- UPDATE courses SET region_id = 5 WHERE region_id IS NULL;
 
 -- ============================================
 -- 11. WHATSAPP NOTIFICATIONS LOG
@@ -243,21 +247,22 @@ FROM users u
 LEFT JOIN roles r ON u.role_id = r.id
 LEFT JOIN regions reg ON u.primary_region_id = reg.id;
 
--- View: Courses with regions
+-- View: Courses with regions (simplified - one course = one region)
 CREATE VIEW IF NOT EXISTS v_courses_with_regions AS
 SELECT
   c.id AS course_id,
   c.title,
   c.code,
+  c.region_id,
   c.is_regional,
   c.use_custom_prompt,
-  GROUP_CONCAT(reg.code, ', ') AS region_codes,
-  GROUP_CONCAT(reg.name, ', ') AS region_names,
-  COUNT(DISTINCT cr.region_id) AS region_count
+  c.created_by,
+  reg.code AS region_code,
+  reg.name AS region_name,
+  creator.name AS created_by_name
 FROM courses c
-LEFT JOIN course_regions cr ON c.id = cr.course_id
-LEFT JOIN regions reg ON cr.region_id = reg.id
-GROUP BY c.id;
+LEFT JOIN regions reg ON c.region_id = reg.id
+LEFT JOIN users creator ON c.created_by = creator.id;
 
 -- View: Active enrollments with details
 CREATE VIEW IF NOT EXISTS v_active_enrollments AS
@@ -291,10 +296,30 @@ WHERE email = 'admin@school.edu'
   OR id = (SELECT MIN(id) FROM users WHERE email LIKE '%admin%');
 
 -- ============================================
+-- 14. AUTO-ASSIGN EXISTING USERS TO TANZANIA
+-- ============================================
+-- Per requirement #4: Auto-assign existing users to Tanzania
+-- Super Admin can change later if needed
+UPDATE users
+SET role_id = 3, -- user/learner role
+    primary_region_id = 1 -- Tanzania (TZ)
+WHERE role_id IS NULL
+  OR primary_region_id IS NULL;
+
+-- ============================================
+-- 15. REGION MANAGEMENT (Super Admin Only)
+-- ============================================
+-- Super Admin can add new regions via:
+-- INSERT INTO regions (code, name, description) VALUES ('UG', 'Uganda', 'Republic of Uganda');
+-- This allows expansion beyond initial 5 regions
+
+-- ============================================
 -- MIGRATION COMPLETE
 -- ============================================
--- Tables created: 8 new tables
+-- Tables created: 7 new tables (removed course_regions junction table)
 -- Tables modified: users, courses
 -- Views created: 3
--- Indexes created: 20+
+-- Indexes created: 18+
 -- Default data seeded: 3 roles, 5 regions
+-- Users auto-assigned: Tanzania (changeable by Super Admin)
+-- Courses: Manual assignment by Super Admin required
