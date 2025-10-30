@@ -17,10 +17,10 @@
 -- ============================================
 CREATE TABLE IF NOT EXISTS roles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name VARCHAR(50) UNIQUE NOT NULL, -- 'super_admin', 'admin', 'user'
+  name VARCHAR(50) UNIQUE NOT NULL, -- 'super_admin', 'admin', 'whatsapp_user'
   display_name VARCHAR(100) NOT NULL,
   description TEXT,
-  level INTEGER NOT NULL, -- 1=super_admin, 2=admin, 3=user
+  level INTEGER NOT NULL, -- 1=super_admin, 2=admin, 3=whatsapp_user
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS roles (
 INSERT OR IGNORE INTO roles (name, display_name, description, level) VALUES
   ('super_admin', 'Super Administrator', 'Full system access across all regions', 1),
   ('admin', 'Regional Administrator', 'Manage courses and users within assigned regions', 2),
-  ('user', 'Learner', 'Access enrolled courses', 3);
+  ('whatsapp_user', 'WhatsApp User', 'Access enrolled courses via WhatsApp', 3);
 
 -- ============================================
 -- 2. REGIONS TABLE
@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS csv_upload_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   uploaded_by INTEGER NOT NULL,
   course_id INTEGER NOT NULL,
+  target_region_id INTEGER NOT NULL, -- Region assigned to uploaded users
   filename VARCHAR(255) NOT NULL,
   total_rows INTEGER NOT NULL,
   successful_enrollments INTEGER DEFAULT 0,
@@ -147,7 +148,8 @@ CREATE TABLE IF NOT EXISTS csv_upload_logs (
   error_details TEXT, -- JSON array of errors
   uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+  FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_region_id) REFERENCES regions(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_csv_logs_uploaded_by ON csv_upload_logs(uploaded_by);
@@ -298,10 +300,10 @@ WHERE email = 'admin@school.edu'
 -- ============================================
 -- 14. AUTO-ASSIGN EXISTING USERS TO TANZANIA
 -- ============================================
--- Per requirement #4: Auto-assign existing users to Tanzania
+-- Per requirement #4: Auto-assign existing WhatsApp users to Tanzania
 -- Super Admin can change later if needed
 UPDATE users
-SET role_id = 3, -- user/learner role
+SET role_id = 3, -- whatsapp_user role
     primary_region_id = 1 -- Tanzania (TZ)
 WHERE role_id IS NULL
   OR primary_region_id IS NULL;
