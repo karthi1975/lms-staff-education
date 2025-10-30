@@ -757,16 +757,17 @@ class CourseOrchestratorService {
 
       // Get quiz questions from database
       const questionsResult = await postgresService.query(`
-        SELECT id, question_text, question_type, options, question_number
+        SELECT id, question, options,
+               ROW_NUMBER() OVER (ORDER BY id) as question_number
         FROM quiz_questions
         WHERE quiz_id = $1
-        ORDER BY question_number
+        ORDER BY id
       `, [quiz.quiz_id]);
 
       let questions = questionsResult.rows.map(q => ({
         id: q.id,
-        questionText: q.question_text,
-        questionType: q.question_type,
+        questionText: q.question,
+        questionType: 'multiple_choice',
         options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
         questionNumber: q.question_number
       }));
