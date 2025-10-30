@@ -735,44 +735,51 @@ class CourseOrchestratorService {
    * Start quiz
    */
   async startQuiz(userId, context) {
-    const contextData = this.parseContextData(context);
-    const moduleId = context.current_module_id;
+    try {
+      const contextData = this.parseContextData(context);
+      const moduleId = context.current_module_id;
 
-    // Get quiz from database
-    const quizResult = await postgresService.query(`
-      SELECT id as quiz_id, title as quiz_name
-      FROM quizzes
-      WHERE module_id = $1 AND is_active = true
-      LIMIT 1
-    `, [moduleId]);
+      // Get quiz from database
+      const quizResult = await postgresService.query(`
+        SELECT id as quiz_id, title as quiz_name
+        FROM quizzes
+        WHERE module_id = $1 AND is_active = true
+        LIMIT 1
+      `, [moduleId]);
 
-    if (quizResult.rows.length === 0) {
+      if (quizResult.rows.length === 0) {
+        return {
+          text: "Quiz not available for this module yet. Continue learning and check back later!"
+        };
+      }
+
+      const quiz = quizResult.rows[0];
+
+      // Get quiz questions from database
+      const questionsResult = await postgresService.query(`
+        SELECT id, question_text, question_type, options, question_number
+        FROM quiz_questions
+        WHERE quiz_id = $1
+        ORDER BY question_number
+      `, [quiz.quiz_id]);
+
+      let questions = questionsResult.rows.map(q => ({
+        id: q.id,
+        questionText: q.question_text,
+        questionType: q.question_type,
+        options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
+        questionNumber: q.question_number
+      }));
+
+      if (questions.length === 0) {
+        return {
+          text: "No questions found for this quiz yet. Please contact admin."
+        };
+      }
+    } catch (error) {
+      logger.error('Quiz loading error:', error);
       return {
         text: "Quiz not available for this module yet. Continue learning and check back later!"
-      };
-    }
-
-    const quiz = quizResult.rows[0];
-
-    // Get quiz questions from database
-    const questionsResult = await postgresService.query(`
-      SELECT id, question_text, question_type, options, question_number
-      FROM quiz_questions
-      WHERE quiz_id = $1
-      ORDER BY question_number
-    `, [quiz.quiz_id]);
-
-    let questions = questionsResult.rows.map(q => ({
-      id: q.id,
-      questionText: q.question_text,
-      questionType: q.question_type,
-      options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
-      questionNumber: q.question_number
-    }));
-
-    if (questions.length === 0) {
-      return {
-        text: "No questions found for this quiz yet. Please contact admin."
       };
     }
 
