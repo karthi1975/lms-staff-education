@@ -147,7 +147,7 @@ class TranslationService {
         sw: "Jinsi ya kutathmini ujifunzaji wa wanafunzi katika Masomo ya Biashara?"
       },
 
-      // BUSINESS STUDIES EXAMPLES
+      // BUSINESS STUDIES EXAMPLES (Generic)
       example_entrepreneurship: {
         en: "What is entrepreneurship?",
         sw: "Ujasiriamali ni nini?"
@@ -159,6 +159,76 @@ class TranslationService {
       example_market_research: {
         en: "Tell me about market research",
         sw: "Niambie kuhusu utafiti wa soko"
+      },
+
+      // MODULE-SPECIFIC EXAMPLES - Production
+      example_production_1: {
+        en: "What is production in small business?",
+        sw: "Uzalishaji katika biashara ndogo ni nini?"
+      },
+      example_production_2: {
+        en: "How do I manage quality control?",
+        sw: "Jinsi ya kusimamia ubora wa bidhaa?"
+      },
+      example_production_3: {
+        en: "Tell me about production planning",
+        sw: "Niambie kuhusu mipango ya uzalishaji"
+      },
+
+      // MODULE-SPECIFIC EXAMPLES - Financing
+      example_financing_1: {
+        en: "How to get funding for small business?",
+        sw: "Jinsi ya kupata fedha kwa biashara ndogo?"
+      },
+      example_financing_2: {
+        en: "What are financing options available?",
+        sw: "Ni chaguo gani za ufadhili zinazopatikana?"
+      },
+      example_financing_3: {
+        en: "Tell me about microfinance",
+        sw: "Niambie kuhusu mikopo midogo"
+      },
+
+      // MODULE-SPECIFIC EXAMPLES - Business Management
+      example_management_1: {
+        en: "How to manage a small business?",
+        sw: "Jinsi ya kusimamia biashara ndogo?"
+      },
+      example_management_2: {
+        en: "What are key management skills?",
+        sw: "Ni ujuzi gani muhimu wa usimamizi?"
+      },
+      example_management_3: {
+        en: "Tell me about business planning",
+        sw: "Niambie kuhusu mipango ya biashara"
+      },
+
+      // MODULE-SPECIFIC EXAMPLES - Warehousing
+      example_warehousing_1: {
+        en: "How to manage inventory effectively?",
+        sw: "Jinsi ya kusimamia hisa kwa ufanisi?"
+      },
+      example_warehousing_2: {
+        en: "What is stock control?",
+        sw: "Udhibiti wa hisa ni nini?"
+      },
+      example_warehousing_3: {
+        en: "Tell me about warehousing best practices",
+        sw: "Niambie kuhusu mazoea bora ya uhifadhi"
+      },
+
+      // MODULE-SPECIFIC EXAMPLES - Business Opportunities
+      example_business_opp_1: {
+        en: "How to identify business opportunities?",
+        sw: "Jinsi ya kutambua fursa za kibiashara?"
+      },
+      example_business_opp_2: {
+        en: "What makes a good business idea?",
+        sw: "Ni nini kinachofanya wazo la biashara kuwa zuri?"
+      },
+      example_business_opp_3: {
+        en: "Tell me about market analysis",
+        sw: "Niambie kuhusu uchanganuzi wa soko"
       },
 
       // QUIZ SECTION

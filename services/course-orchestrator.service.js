@@ -436,18 +436,46 @@ class CourseOrchestratorService {
     responseText += `${translationService.t('ask_me_anything', language)}\n`;
     responseText += `   ${translationService.t('examples', language)}\n`;
 
-    // Show course-specific examples based on course type
-    const isTeacherTraining = course.name.toLowerCase().includes('orientation') ||
-                               course.name.toLowerCase().includes('teacher') ||
-                               module.name.toLowerCase().includes('teacher');
+    // Show module-specific examples
+    const moduleName = module.name.toLowerCase();
+    const courseName = course.name.toLowerCase();
+
+    const isTeacherTraining = courseName.includes('orientation') ||
+                               courseName.includes('teacher') ||
+                               moduleName.includes('teacher');
 
     if (isTeacherTraining) {
       // Teacher Training examples (bilingual)
       responseText += `   • ${translationService.t('example_lesson_plans', language)}\n`;
       responseText += `   • ${translationService.t('example_classroom_mgmt', language)}\n`;
       responseText += `   • ${translationService.t('example_assessment', language)}\n`;
+    } else if (moduleName.includes('production')) {
+      // Production module examples
+      responseText += `   • ${translationService.t('example_production_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_production_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_production_3', language)}\n`;
+    } else if (moduleName.includes('financing')) {
+      // Financing module examples
+      responseText += `   • ${translationService.t('example_financing_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_financing_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_financing_3', language)}\n`;
+    } else if (moduleName.includes('management')) {
+      // Business Management module examples
+      responseText += `   • ${translationService.t('example_management_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_management_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_management_3', language)}\n`;
+    } else if (moduleName.includes('warehousing') || moduleName.includes('inventor')) {
+      // Warehousing and inventory module examples
+      responseText += `   • ${translationService.t('example_warehousing_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_warehousing_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_warehousing_3', language)}\n`;
+    } else if (moduleName.includes('opportunit')) {
+      // Business Opportunity module examples
+      responseText += `   • ${translationService.t('example_business_opp_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_business_opp_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_business_opp_3', language)}\n`;
     } else {
-      // Business Studies examples (bilingual)
+      // Generic Business Studies examples (fallback)
       responseText += `   • ${translationService.t('example_entrepreneurship', language)}\n`;
       responseText += `   • ${translationService.t('example_opportunities', language)}\n`;
       responseText += `   • ${translationService.t('example_market_research', language)}\n`;
