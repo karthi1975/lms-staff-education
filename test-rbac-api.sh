@@ -64,7 +64,7 @@ print_section "1. Authentication Tests"
 echo "Test 1.1: Admin login..."
 # Create JSON payload file to avoid shell escaping issues
 cat > /tmp/rbac_login.json <<JSONPAYLOAD
-{"email":"$TEST_EMAIL","password":"$TEST_PASSWORD"}
+{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}
 JSONPAYLOAD
 
 LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/api/admin/login" \
