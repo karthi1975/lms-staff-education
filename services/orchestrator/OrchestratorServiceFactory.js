@@ -75,6 +75,7 @@ class OrchestratorServiceFactory {
       new commandHandlers.ProgressCommandHandler(handlerDependencies),
       new commandHandlers.ModuleCommandHandler(handlerDependencies),
       new commandHandlers.QuizCommandHandler(handlerDependencies),
+      new commandHandlers.ModeCommandHandler(handlerDependencies), // Coaching mode commands
       new commandHandlers.ContentQueryHandler(handlerDependencies) // Must be last!
     ];
 

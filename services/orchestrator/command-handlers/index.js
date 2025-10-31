@@ -15,5 +15,6 @@ module.exports = {
   ProgressCommandHandler: require('./ProgressCommandHandler'),
   ModuleCommandHandler: require('./ModuleCommandHandler'),
   QuizCommandHandler: require('./QuizCommandHandler'),
+  ModeCommandHandler: require('./ModeCommandHandler'),
   ContentQueryHandler: require('./ContentQueryHandler')
 };
