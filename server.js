@@ -42,6 +42,15 @@ const simpleUploadRoutes = require('./routes/simple-upload.routes');
 const fileListRoutes = require('./routes/file-list.routes');
 const coachingRoutes = require('./routes/coaching.routes');
 
+// Multi-Region RBAC Routes
+const regionRoutes = require('./routes/region.routes');
+const courseRBACRoutes = require('./routes/course-rbac.routes');
+const enrollmentRoutes = require('./routes/enrollment.routes');
+const csvUploadRoutes = require('./routes/csv-upload.routes');
+const chatbotPromptRoutes = require('./routes/chatbot-prompt.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const statisticsRoutes = require('./routes/statistics.routes');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -110,6 +119,15 @@ app.use('/api/admin', fileListRoutes);
 
 // Add coaching routes (nudging, reflection, coaching analytics)
 app.use('/api/coaching', coachingRoutes);
+
+// Add Multi-Region RBAC routes
+app.use('/api/regions', regionRoutes);
+app.use('/api/courses', courseRBACRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/csv-upload', csvUploadRoutes);
+app.use('/api/chatbot-prompts', chatbotPromptRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/statistics', statisticsRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
