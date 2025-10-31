@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mode Analytics - Teachers Training</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background: #004D40;
+            color: white;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: #00352A;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #95a5a6;
+        }
+
+        .nav-menu {
+            padding: 20px 0;
+        }
+
+        .nav-section {
+            margin-bottom: 25px;
+        }
+
+        .nav-section-title {
+            padding: 0 20px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #95a5a6;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: var(--md-sys-color-secondary);
+            transition: width var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            padding-left: 23px;
+        }
+
+        .nav-item:hover::before {
+            width: 3px;
+        }
+
+        .nav-item.active {
+            background: rgba(38, 166, 154, 0.2);
+            padding-left: 23px;
+        }
+
+        .nav-item.active::before {
+            width: 3px;
+        }
+
+        .nav-item-icon {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        .nav-item-text {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .breadcrumb-item.active {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .top-bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #f8f9fa;
+            border-radius: 25px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .content-wrapper {
+            padding: 30px;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--md-sys-color-on-background);
+            margin-bottom: 5px;
+            animation: md3-slide-down var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .page-subtitle {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+            animation: md3-fade-in var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Filters Section */
+        .filters-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            margin-bottom: 30px;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #004D40;
+            box-shadow: 0 0 0 3px rgba(0, 77, 64, 0.1);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #004D40;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #00695C;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 77, 64, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #2c3e50;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        /* Stats Overview */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            border-left: 4px solid;
+            transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .stat-card:nth-child(1) {
+            border-color: #004D40;
+            animation-delay: 0.1s;
+        }
+
+        .stat-card:nth-child(2) {
+            border-color: #1976D2;
+            animation-delay: 0.2s;
+        }
+
+        .stat-card:nth-child(3) {
+            border-color: #FFA000;
+            animation-delay: 0.3s;
+        }
+
+        .stat-card:nth-child(4) {
+            border-color: #7B1FA2;
+            animation-delay: 0.4s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--md-sys-elevation-3);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .stat-icon {
+            font-size: 32px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #7f8c8d;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .stat-comparison {
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+
+        .stat-comparison .increase {
+            color: #27ae60;
+        }
+
+        .stat-comparison .decrease {
+            color: #e74c3c;
+        }
+
+        /* Chart Containers */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .chart-card:nth-child(1) { animation-delay: 0.5s; }
+        .chart-card:nth-child(2) { animation-delay: 0.6s; }
+        .chart-card:nth-child(3) { animation-delay: 0.7s; }
+        .chart-card:nth-child(4) { animation-delay: 0.8s; }
+
+        .chart-header {
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .chart-subtitle {
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Comparison Table */
+        .comparison-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            margin-bottom: 30px;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            animation-delay: 0.9s;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .mode-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .mode-badge.regular {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .mode-badge.socratic {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        /* Loading State */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: #7f8c8d;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #004D40;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: #7f8c8d;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .stats-overview {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Teachers Training</h2>
+            <p>Admin Portal</p>
+        </div>
+
+        <nav class="nav-menu">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="dashboard.html" class="nav-item">
+                    <span class="nav-item-icon">📊</span>
+                    <span class="nav-item-text">Dashboard</span>
+                </a>
+                <a href="courses.html" class="nav-item">
+                    <span class="nav-item-icon">📚</span>
+                    <span class="nav-item-text">Courses</span>
+                </a>
+                <a href="user-management.html" class="nav-item">
+                    <span class="nav-item-icon">👥</span>
+                    <span class="nav-item-text">Users</span>
+                </a>
+                <a href="chat.html" class="nav-item">
+                    <span class="nav-item-icon">💬</span>
+                    <span class="nav-item-text">AI Assistant</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Configuration</div>
+                <a href="bot-config.html" class="nav-item">
+                    <span class="nav-item-icon">🤖</span>
+                    <span class="nav-item-text">Bot Configuration</span>
+                </a>
+                <a href="mode-analytics.html" class="nav-item active">
+                    <span class="nav-item-icon">📈</span>
+                    <span class="nav-item-text">Mode Analytics</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">System</div>
+                <a href="moodle-settings.html" class="nav-item">
+                    <span class="nav-item-icon">⚙️</span>
+                    <span class="nav-item-text">Moodle Settings</span>
+                </a>
+                <a href="quiz.html" class="nav-item">
+                    <span class="nav-item-icon">📝</span>
+                    <span class="nav-item-text">Quiz Management</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="breadcrumb">
+                <span class="breadcrumb-item">Analytics</span>
+                <span>›</span>
+                <span class="breadcrumb-item active">Mode Analytics</span>
+            </div>
+
+            <div class="top-bar-actions">
+                <div class="user-profile">
+                    <div class="user-avatar">A</div>
+                    <span class="user-name" id="userName">Admin</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Wrapper -->
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">📈 Mode Analytics</h1>
+                    <p class="page-subtitle">Compare Regular Mode vs Socratic Mode effectiveness</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="exportData()">
+                        📥 Export
+                    </button>
+                    <button class="btn btn-primary" onclick="refreshAnalytics()">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="filters-section">
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label for="courseFilter">Course</label>
+                        <select id="courseFilter">
+                            <option value="">Loading courses...</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate">
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="endDate">End Date</label>
+                        <input type="date" id="endDate">
+                    </div>
+
+                    <div class="filter-group">
+                        <button class="btn btn-primary" onclick="loadAnalytics()" style="width: 100%;">
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="loading-container" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading analytics data...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📊</div>
+                <h3 class="empty-state-title">No Data Available</h3>
+                <p class="empty-state-text">Select a course and date range to view analytics</p>
+            </div>
+
+            <!-- Analytics Content -->
+            <div id="analyticsContent" style="display: none;">
+                <!-- Stats Overview -->
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-icon">📚</span>
+                            <span class="stat-label">Total Sessions</span>
+                        </div>
+                        <div class="stat-value" id="totalSessions">0</div>
+                        <div class="stat-comparison" id="sessionComparison">-</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-icon">👥</span>
+                            <span class="stat-label">Active Users</span>
+                        </div>
+                        <div class="stat-value" id="activeUsers">0</div>
+                        <div class="stat-comparison" id="userComparison">-</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-icon">✅</span>
+                            <span class="stat-label">Completion Rate</span>
+                        </div>
+                        <div class="stat-value" id="completionRate">0%</div>
+                        <div class="stat-comparison" id="completionComparison">-</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-icon">⭐</span>
+                            <span class="stat-label">Avg. Satisfaction</span>
+                        </div>
+                        <div class="stat-value" id="avgSatisfaction">0.0</div>
+                        <div class="stat-comparison" id="satisfactionComparison">-</div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <!-- Mode Distribution Chart -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Mode Distribution</h3>
+                            <p class="chart-subtitle">User preference breakdown</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="modeDistributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Session Duration Comparison -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Avg. Session Duration</h3>
+                            <p class="chart-subtitle">Time spent per mode</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="sessionDurationChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Quiz Score Comparison -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Quiz Performance</h3>
+                            <p class="chart-subtitle">Average scores by mode</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="quizScoreChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Completion Rate Comparison -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Completion Rates</h3>
+                            <p class="chart-subtitle">Session completion by mode</p>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="completionRateChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Table -->
+                <div class="comparison-section">
+                    <h3 class="section-title">Detailed Comparison</h3>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Regular Mode</th>
+                                <th>Socratic Mode</th>
+                                <th>Difference</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparisonTableBody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Authentication check
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        let currentAnalytics = null;
+        let charts = {};
+
+        // Load courses and set default dates on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadCourses();
+            setDefaultDates();
+        });
+
+        // Load courses from API
+        async function loadCourses() {
+            try {
+                const response = await fetch('/api/admin/courses', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load courses');
+
+                const data = await response.json();
+                const courseSelect = document.getElementById('courseFilter');
+
+                courseSelect.innerHTML = '<option value="">All Courses</option>';
+
+                data.courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.code} - ${course.title}`;
+                    courseSelect.appendChild(option);
+                });
+
+                // Select first course by default
+                if (data.courses.length > 0) {
+                    courseSelect.value = data.courses[0].id;
+                    await loadAnalytics();
+                }
+            } catch (error) {
+                console.error('Error loading courses:', error);
+            }
+        }
+
+        // Set default dates (last 30 days)
+        function setDefaultDates() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+
+            document.getElementById('endDate').valueAsDate = endDate;
+            document.getElementById('startDate').valueAsDate = startDate;
+        }
+
+        // Load analytics data
+        async function loadAnalytics() {
+            const courseId = document.getElementById('courseFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!courseId) {
+                showEmptyState();
+                return;
+            }
+
+            showLoadingState();
+
+            try {
+                const url = `/api/coaching-mode/admin/analytics/${courseId}?startDate=${startDate}&endDate=${endDate}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load analytics');
+
+                const data = await response.json();
+                currentAnalytics = data.data.analytics;
+
+                displayAnalytics(currentAnalytics);
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                showEmptyState();
+            }
+        }
+
+        // Display analytics
+        function displayAnalytics(analytics) {
+            // Update stats
+            document.getElementById('totalSessions').textContent = analytics.total_sessions || 0;
+            document.getElementById('activeUsers').textContent = analytics.unique_users || 0;
+            document.getElementById('completionRate').textContent = `${(analytics.completion_rate || 0).toFixed(1)}%`;
+            document.getElementById('avgSatisfaction').textContent = (analytics.avg_satisfaction || 0).toFixed(1);
+
+            // Update comparisons
+            const regularSessions = analytics.regular_mode_sessions || 0;
+            const socraticSessions = analytics.socratic_mode_sessions || 0;
+            document.getElementById('sessionComparison').innerHTML =
+                `Regular: ${regularSessions} | Socratic: ${socraticSessions}`;
+
+            const regularUsers = analytics.regular_mode_users || 0;
+            const socraticUsers = analytics.socratic_mode_users || 0;
+            document.getElementById('userComparison').innerHTML =
+                `Regular: ${regularUsers} | Socratic: ${socraticUsers}`;
+
+            const regularCompletion = analytics.regular_mode_completion_rate || 0;
+            const socraticCompletion = analytics.socratic_mode_completion_rate || 0;
+            document.getElementById('completionComparison').innerHTML =
+                `Regular: ${regularCompletion.toFixed(1)}% | Socratic: ${socraticCompletion.toFixed(1)}%`;
+
+            const regularSat = analytics.regular_mode_avg_satisfaction || 0;
+            const socraticSat = analytics.socratic_mode_avg_satisfaction || 0;
+            document.getElementById('satisfactionComparison').innerHTML =
+                `Regular: ${regularSat.toFixed(1)} | Socratic: ${socraticSat.toFixed(1)}`;
+
+            // Create charts
+            createCharts(analytics);
+
+            // Populate comparison table
+            populateComparisonTable(analytics);
+
+            // Show content
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('analyticsContent').style.display = 'block';
+        }
+
+        // Create charts
+        function createCharts(analytics) {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => chart.destroy());
+
+            // Mode Distribution Chart (Pie)
+            const modeDistCtx = document.getElementById('modeDistributionChart').getContext('2d');
+            charts.modeDistribution = new Chart(modeDistCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Regular Mode', 'Socratic Mode'],
+                    datasets: [{
+                        data: [
+                            analytics.regular_mode_sessions || 0,
+                            analytics.socratic_mode_sessions || 0
+                        ],
+                        backgroundColor: ['#004D40', '#1976D2'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Session Duration Chart (Bar)
+            const durationCtx = document.getElementById('sessionDurationChart').getContext('2d');
+            charts.sessionDuration = new Chart(durationCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Regular Mode', 'Socratic Mode'],
+                    datasets: [{
+                        label: 'Avg Duration (minutes)',
+                        data: [
+                            (analytics.regular_mode_avg_duration || 0) / 60,
+                            (analytics.socratic_mode_avg_duration || 0) / 60
+                        ],
+                        backgroundColor: ['#004D40', '#1976D2'],
+                        borderWidth: 0,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Minutes'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Quiz Score Chart (Bar)
+            const quizScoreCtx = document.getElementById('quizScoreChart').getContext('2d');
+            charts.quizScore = new Chart(quizScoreCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Regular Mode', 'Socratic Mode'],
+                    datasets: [{
+                        label: 'Avg Quiz Score',
+                        data: [
+                            analytics.regular_mode_avg_quiz_score || 0,
+                            analytics.socratic_mode_avg_quiz_score || 0
+                        ],
+                        backgroundColor: ['#004D40', '#1976D2'],
+                        borderWidth: 0,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Score'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Completion Rate Chart (Bar)
+            const completionCtx = document.getElementById('completionRateChart').getContext('2d');
+            charts.completionRate = new Chart(completionCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Regular Mode', 'Socratic Mode'],
+                    datasets: [{
+                        label: 'Completion Rate (%)',
+                        data: [
+                            analytics.regular_mode_completion_rate || 0,
+                            analytics.socratic_mode_completion_rate || 0
+                        ],
+                        backgroundColor: ['#004D40', '#1976D2'],
+                        borderWidth: 0,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Percentage'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Populate comparison table
+        function populateComparisonTable(analytics) {
+            const tbody = document.getElementById('comparisonTableBody');
+
+            const metrics = [
+                {
+                    name: 'Total Sessions',
+                    regular: analytics.regular_mode_sessions || 0,
+                    socratic: analytics.socratic_mode_sessions || 0
+                },
+                {
+                    name: 'Unique Users',
+                    regular: analytics.regular_mode_users || 0,
+                    socratic: analytics.socratic_mode_users || 0
+                },
+                {
+                    name: 'Avg Duration (min)',
+                    regular: ((analytics.regular_mode_avg_duration || 0) / 60).toFixed(1),
+                    socratic: ((analytics.socratic_mode_avg_duration || 0) / 60).toFixed(1)
+                },
+                {
+                    name: 'Completion Rate (%)',
+                    regular: (analytics.regular_mode_completion_rate || 0).toFixed(1),
+                    socratic: (analytics.socratic_mode_completion_rate || 0).toFixed(1)
+                },
+                {
+                    name: 'Avg Quiz Score',
+                    regular: (analytics.regular_mode_avg_quiz_score || 0).toFixed(1),
+                    socratic: (analytics.socratic_mode_avg_quiz_score || 0).toFixed(1)
+                },
+                {
+                    name: 'Avg Satisfaction',
+                    regular: (analytics.regular_mode_avg_satisfaction || 0).toFixed(1),
+                    socratic: (analytics.socratic_mode_avg_satisfaction || 0).toFixed(1)
+                },
+                {
+                    name: 'Total Questions Asked',
+                    regular: analytics.regular_mode_questions || 0,
+                    socratic: analytics.socratic_mode_questions || 0
+                }
+            ];
+
+            tbody.innerHTML = metrics.map(metric => {
+                const diff = parseFloat(metric.socratic) - parseFloat(metric.regular);
+                const diffClass = diff > 0 ? 'increase' : diff < 0 ? 'decrease' : '';
+                const diffSymbol = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
+
+                return `
+                    <tr>
+                        <td><strong>${metric.name}</strong></td>
+                        <td><span class="mode-badge regular">${metric.regular}</span></td>
+                        <td><span class="mode-badge socratic">${metric.socratic}</span></td>
+                        <td><span class="${diffClass}">${diffSymbol} ${Math.abs(diff).toFixed(1)}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Show loading state
+        function showLoadingState() {
+            document.getElementById('loadingState').style.display = 'flex';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('analyticsContent').style.display = 'none';
+        }
+
+        // Show empty state
+        function showEmptyState() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('analyticsContent').style.display = 'none';
+        }
+
+        // Refresh analytics
+        function refreshAnalytics() {
+            loadAnalytics();
+        }
+
+        // Export data
+        function exportData() {
+            if (!currentAnalytics) {
+                alert('No data to export');
+                return;
+            }
+
+            const csvContent = generateCSV(currentAnalytics);
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mode-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Generate CSV
+        function generateCSV(analytics) {
+            const headers = 'Metric,Regular Mode,Socratic Mode,Difference\n';
+            const rows = [
+                ['Total Sessions', analytics.regular_mode_sessions, analytics.socratic_mode_sessions],
+                ['Unique Users', analytics.regular_mode_users, analytics.socratic_mode_users],
+                ['Avg Duration (min)', (analytics.regular_mode_avg_duration / 60).toFixed(1), (analytics.socratic_mode_avg_duration / 60).toFixed(1)],
+                ['Completion Rate (%)', analytics.regular_mode_completion_rate.toFixed(1), analytics.socratic_mode_completion_rate.toFixed(1)],
+                ['Avg Quiz Score', analytics.regular_mode_avg_quiz_score.toFixed(1), analytics.socratic_mode_avg_quiz_score.toFixed(1)],
+                ['Avg Satisfaction', analytics.regular_mode_avg_satisfaction.toFixed(1), analytics.socratic_mode_avg_satisfaction.toFixed(1)]
+            ].map(row => {
+                const diff = parseFloat(row[2]) - parseFloat(row[1]);
+                return `${row[0]},${row[1]},${row[2]},${diff.toFixed(1)}`;
+            }).join('\n');
+
+            return headers + rows;
+        }
+    </script>
+</body>
+</html>

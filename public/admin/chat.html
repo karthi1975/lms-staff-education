@@ -213,6 +213,86 @@
             color: #666;
         }
 
+        /* Mode Selector Styles */
+        .mode-selector-bar {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mode-toggle-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .mode-toggle-btn {
+            padding: 10px 20px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-toggle-btn:hover {
+            border-color: #004D40;
+            background: #f0f9f7;
+        }
+
+        .mode-toggle-btn.active {
+            background: #004D40;
+            color: white;
+            border-color: #004D40;
+        }
+
+        .mode-toggle-btn.active.socratic {
+            background: #1976D2;
+            border-color: #1976D2;
+        }
+
+        .mode-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: white;
+            border-radius: 20px;
+            border: 2px solid #e0e0e0;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .mode-indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #004D40;
+        }
+
+        .mode-indicator-dot.socratic {
+            background: #1976D2;
+        }
+
+        .mode-help {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-style: italic;
+            padding: 10px 20px;
+            background: #fffbea;
+            border-left: 3px solid #FFA000;
+            margin: 0 20px 15px 20px;
+            border-radius: 4px;
+        }
+
         .btn-clear {
             padding: 8px 16px;
             background: #ef4444;
@@ -520,6 +600,29 @@
                 <button class="btn-clear" onclick="clearChat()" style="display: none;" id="clearChatBtn">🗑️ Clear Chat</button>
             </div>
 
+            <!-- Mode Selector Bar -->
+            <div class="mode-selector-bar" id="modeSelectorBar" style="display: none;">
+                <div class="mode-toggle-group">
+                    <button class="mode-toggle-btn active" id="regularModeBtn" onclick="switchMode('regular')">
+                        <span>🎯</span>
+                        <span>Regular Mode</span>
+                    </button>
+                    <button class="mode-toggle-btn" id="socraticModeBtn" onclick="switchMode('socratic')">
+                        <span>💡</span>
+                        <span>Socratic Mode</span>
+                    </button>
+                </div>
+                <div class="mode-indicator">
+                    <div class="mode-indicator-dot" id="modeIndicatorDot"></div>
+                    <span id="modeIndicatorText">Regular Mode Active</span>
+                </div>
+            </div>
+
+            <!-- Mode Help Text -->
+            <div class="mode-help" id="modeHelp" style="display: none;">
+                <span id="modeHelpText">Regular Mode provides direct answers and explanations.</span>
+            </div>
+
             <div class="messages-container" id="messagesContainer">
                 <div class="empty-state">
                     <div class="empty-state-icon">💬</div>
@@ -546,6 +649,11 @@
         let currentModuleId = null;
         let authToken = localStorage.getItem('adminToken');
         let messageHistory = {};
+
+        // Mode management
+        let currentMode = 'regular';
+        let currentUserId = null; // Will be set from user profile
+        let currentCourseId = null;
 
         // Check authentication
         if (!authToken) {
@@ -677,7 +785,7 @@
             `;
         }
 
-        function selectModule(moduleId, title, description) {
+        async function selectModule(moduleId, title, description) {
             currentModuleId = moduleId;
 
             // Update active state
@@ -694,6 +802,15 @@
             document.getElementById('messageInput').disabled = false;
             document.getElementById('sendButton').disabled = false;
             document.getElementById('clearChatBtn').style.display = 'block';
+
+            // Show mode selector bar
+            document.getElementById('modeSelectorBar').style.display = 'flex';
+            document.getElementById('modeHelp').style.display = 'block';
+
+            // Load user's mode preference if available
+            if (currentCourseId) {
+                await loadUserModePreference();
+            }
 
             // Load or restore messages
             const messagesContainer = document.getElementById('messagesContainer');
@@ -741,6 +858,99 @@
                     </div>
                 `;
                 messageHistory[currentModuleId] = messagesContainer.innerHTML;
+            }
+        }
+
+        // Mode Management Functions
+        async function loadUserModePreference() {
+            // For admin chat, we'll use a demo user ID (1) or get from user profile
+            // In production, this should come from logged-in user's session
+            if (!currentUserId) {
+                currentUserId = 1; // Demo user
+            }
+
+            if (!currentCourseId) {
+                currentCourseId = 7; // Demo course
+            }
+
+            try {
+                const response = await fetch(`/api/coaching-mode/preference/${currentUserId}/${currentCourseId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    currentMode = data.data.selected_mode || 'regular';
+                    updateModeUI();
+                }
+            } catch (error) {
+                console.log('Using default mode (regular)');
+                currentMode = 'regular';
+                updateModeUI();
+            }
+        }
+
+        async function switchMode(newMode) {
+            if (newMode === currentMode) return;
+
+            // Show loading state
+            const regularBtn = document.getElementById('regularModeBtn');
+            const socraticBtn = document.getElementById('socraticModeBtn');
+            regularBtn.disabled = true;
+            socraticBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/coaching-mode/switch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: currentUserId || 1,
+                        courseId: currentCourseId || 7,
+                        mode: newMode
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentMode = newMode;
+                    updateModeUI();
+
+                    // Add system message
+                    const modeName = newMode === 'regular' ? 'Regular Mode' : 'Socratic Mode';
+                    const modeIcon = newMode === 'regular' ? '🎯' : '💡';
+                    addMessage(`${modeIcon} Switched to ${modeName}`, 'system');
+                } else {
+                    const error = await response.json();
+                    alert(error.message || 'Failed to switch mode');
+                }
+            } catch (error) {
+                console.error('Error switching mode:', error);
+                alert('Failed to switch mode. Please try again.');
+            } finally {
+                regularBtn.disabled = false;
+                socraticBtn.disabled = false;
+            }
+        }
+
+        function updateModeUI() {
+            const regularBtn = document.getElementById('regularModeBtn');
+            const socraticBtn = document.getElementById('socraticModeBtn');
+            const indicatorDot = document.getElementById('modeIndicatorDot');
+            const indicatorText = document.getElementById('modeIndicatorText');
+            const helpText = document.getElementById('modeHelpText');
+
+            // Update button states
+            if (currentMode === 'regular') {
+                regularBtn.classList.add('active');
+                socraticBtn.classList.remove('active', 'socratic');
+                indicatorDot.classList.remove('socratic');
+                indicatorText.textContent = 'Regular Mode Active';
+                helpText.textContent = 'Regular Mode provides direct answers and explanations. Perfect for quick learning.';
+            } else {
+                socraticBtn.classList.add('active', 'socratic');
+                regularBtn.classList.remove('active');
+                indicatorDot.classList.add('socratic');
+                indicatorText.textContent = 'Socratic Mode Active';
+                helpText.textContent = 'Socratic Mode guides you through discovery with thoughtful questions. Great for deeper understanding.';
             }
         }
 
@@ -822,7 +1032,7 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}`;
 
-            const avatar = sender === 'user' ? 'You' : 'AI';
+            const avatar = sender === 'user' ? 'You' : sender === 'system' ? '🔔' : 'AI';
 
             let sourcesHtml = '';
             if (sources && sources.length > 0) {
@@ -836,14 +1046,24 @@
             // Convert markdown-style formatting to HTML
             const formattedText = formatMarkdown(text);
 
-            messageDiv.innerHTML = `
-                <div class="message-avatar">${avatar[0]}</div>
-                <div class="message-content">
-                    <div class="message-text">${formattedText}</div>
-                    ${sourcesHtml}
-                    <div class="message-time">${formatTime(new Date())}</div>
-                </div>
-            `;
+            // For system messages, use simplified layout
+            if (sender === 'system') {
+                messageDiv.innerHTML = `
+                    <div class="message-content" style="background: #f0f9f7; border-left: 3px solid #004D40; padding: 12px; text-align: center; width: 100%;">
+                        <div class="message-text">${formattedText}</div>
+                        <div class="message-time">${formatTime(new Date())}</div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">${avatar[0]}</div>
+                    <div class="message-content">
+                        <div class="message-text">${formattedText}</div>
+                        ${sourcesHtml}
+                        <div class="message-time">${formatTime(new Date())}</div>
+                    </div>
+                `;
+            }
 
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
