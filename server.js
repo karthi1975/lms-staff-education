@@ -51,6 +51,9 @@ const chatbotPromptRoutes = require('./routes/chatbot-prompt.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const statisticsRoutes = require('./routes/statistics.routes');
 
+// Coaching Mode Routes
+const coachingModeRoutes = require('./routes/coaching-mode.routes');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -128,6 +131,9 @@ app.use('/api/csv-upload', csvUploadRoutes);
 app.use('/api/chatbot-prompts', chatbotPromptRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/statistics', statisticsRoutes);
+
+// Add coaching mode routes
+app.use('/api/coaching-mode', coachingModeRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
