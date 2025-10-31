@@ -15,10 +15,7 @@ const promptTemplateService = require('../../coaching/prompt-template.service');
 
 class ModeCommandHandler extends BaseCommandHandler {
   constructor(dependencies) {
-    super();
-    this.config = dependencies.config;
-    this.logger = dependencies.logger;
-    this.neo4jService = dependencies.neo4jService;
+    super(dependencies);
     this.initialized = false;
   }
 
