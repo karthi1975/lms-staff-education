@@ -561,7 +561,6 @@ router.get(
           r.name AS region_name,
           COUNT(DISTINCT cre.id) AS total_enrollments,
           COUNT(DISTINCT CASE WHEN cre.status = 'completed' THEN cre.id END) AS completions,
-          AVG(cre.progress_percentage) AS avg_progress,
           ROUND(
             (COUNT(DISTINCT CASE WHEN cre.status = 'completed' THEN cre.id END)::decimal /
              NULLIF(COUNT(DISTINCT cre.id), 0) * 100), 2
