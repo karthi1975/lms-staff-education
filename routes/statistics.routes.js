@@ -577,7 +577,7 @@ router.get(
         params.push(assignedRegions);
       }
 
-      query += ` GROUP BY c.id, r.name ORDER BY total_enrollments DESC LIMIT $${params.length + 1}`;
+      query += ` GROUP BY c.id, c.title, c.code, r.name ORDER BY total_enrollments DESC LIMIT $${params.length + 1}`;
       params.push(parseInt(limit));
 
       const result = await postgresService.query(query, params);

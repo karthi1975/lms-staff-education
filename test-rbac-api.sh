@@ -8,7 +8,7 @@
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:3000}"
 TEST_EMAIL="${TEST_EMAIL:-admin@school.edu}"
-TEST_PASSWORD="${TEST_PASSWORD:-Admin123!}"
+TEST_PASSWORD="${TEST_PASSWORD:-AdminPass123}"
 
 # Colors for output
 GREEN='\033[0;32m'
