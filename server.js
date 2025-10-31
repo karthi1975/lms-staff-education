@@ -907,8 +907,9 @@ async function startServer() {
     await courseOrchestrator.initialize();
     logger.info('✅ Course orchestrator initialized with M3 formatting');
 
-    // Start coaching scheduler AFTER server starts (non-blocking, delayed start)
-    // This prevents blocking server initialization
+    // DISABLED: Coaching scheduler (prevents automated greeting/nudging messages)
+    // Uncomment below to re-enable automated nudging
+    /*
     const coachingScheduler = require('./services/coaching/scheduler.service');
     setTimeout(() => {
       try {
@@ -919,6 +920,8 @@ async function startServer() {
         logger.error('   Nudging disabled, but server continues');
       }
     }, 5000); // Wait 5 seconds after server start
+    */
+    logger.info('ℹ️  Coaching scheduler disabled (no automated messages)');
 
     app.listen(PORT, () => {
       logger.info(`🚀 Teachers Training Server running on port ${PORT}`);
@@ -938,9 +941,9 @@ process.on('SIGINT', async () => {
   logger.info('Shutting down gracefully...');
 
   try {
-    // Stop coaching scheduler
-    const coachingScheduler = require('./services/coaching/scheduler.service');
-    coachingScheduler.stop();
+    // Stop coaching scheduler (disabled - see startup code)
+    // const coachingScheduler = require('./services/coaching/scheduler.service');
+    // coachingScheduler.stop();
 
     // Close database connections
     await neo4jService.close();
