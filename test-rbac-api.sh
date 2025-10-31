@@ -62,11 +62,17 @@ echo ""
 print_section "1. Authentication Tests"
 
 echo "Test 1.1: Admin login..."
-LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/api/login" \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}")
+# Create JSON payload file to avoid shell escaping issues
+cat > /tmp/rbac_login.json <<JSONPAYLOAD
+{"email":"$TEST_EMAIL","password":"$TEST_PASSWORD"}
+JSONPAYLOAD
 
-TOKEN=$(get_json_value "$LOGIN_RESPONSE" "token")
+LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/api/admin/login" \
+  -H "Content-Type: application/json" \
+  -d @/tmp/rbac_login.json)
+
+# Extract accessToken from tokens object
+TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
 
 if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
     print_result 0 "Admin authentication successful"
