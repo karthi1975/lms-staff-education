@@ -414,10 +414,69 @@ const validateRequiredFields = (fields) => {
   };
 };
 
+/**
+ * Check if user has one of the specified roles
+ * @param {Array<string>} allowedRoles - Array of allowed role names (e.g., ['admin', 'super_admin'])
+ */
+const checkRole = (allowedRoles = []) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+      }
+
+      // Get user's role
+      const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+      const adminRole = await rbacService.getAdminUserRole(req.user.id);
+
+      // Check if user has any of the allowed roles
+      let hasRole = false;
+
+      if (allowedRoles.includes('super_admin') && isSuperAdmin) {
+        hasRole = true;
+      }
+
+      if (allowedRoles.includes('admin') && adminRole) {
+        hasRole = true;
+      }
+
+      if (allowedRoles.includes('regional_admin') && adminRole && !isSuperAdmin) {
+        hasRole = true;
+      }
+
+      if (!hasRole) {
+        return res.status(403).json({
+          success: false,
+          error: `Access denied. Required roles: ${allowedRoles.join(', ')}`
+        });
+      }
+
+      // Attach role info to request
+      req.userRole = {
+        isSuperAdmin: isSuperAdmin,
+        isRegionalAdmin: adminRole && !isSuperAdmin,
+        roleId: isSuperAdmin ? rbacService.ROLES.SUPER_ADMIN : rbacService.ROLES.REGIONAL_ADMIN
+      };
+
+      next();
+    } catch (error) {
+      console.error('Error in checkRole middleware:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Error checking permissions'
+      });
+    }
+  };
+};
+
 module.exports = {
   // Role requirements
   requireSuperAdmin,
   requireRegionalAdmin,
+  checkRole,
 
   // Access validation
   validateCourseAccess,
