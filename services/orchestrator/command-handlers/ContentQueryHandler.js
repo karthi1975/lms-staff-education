@@ -14,12 +14,7 @@ const coachingModeService = require('../../coaching/coaching-mode.service');
  */
 class ContentQueryHandler extends BaseCommandHandler {
   constructor(dependencies) {
-    super();
-    this.config = dependencies.config;
-    this.logger = dependencies.logger;
-    this.chromaService = dependencies.chromaService;
-    this.vertexAIService = dependencies.vertexAIService;
-    this.neo4jService = dependencies.neo4jService;
+    super(dependencies);
     this.initialized = false;
   }
 
