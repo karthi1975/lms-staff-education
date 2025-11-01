@@ -628,10 +628,15 @@
                 <div class="search-box">
                     <input type="text" id="searchInput" placeholder="Search admin users..." onkeyup="filterUsers()">
                 </div>
-                <div class="filter-tabs">
-                    <button class="filter-tab active" onclick="filterByRole('all')">All</button>
-                    <button class="filter-tab" onclick="filterByRole('super_admin')">Super Admins</button>
-                    <button class="filter-tab" onclick="filterByRole('admin')">Regional Admins</button>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" onclick="filterByRole('all')">All</button>
+                        <button class="filter-tab" onclick="filterByRole('super_admin')">Super Admins</button>
+                        <button class="filter-tab" onclick="filterByRole('admin')">Regional Admins</button>
+                    </div>
+                    <button class="btn btn-primary" id="createAdminBtn" onclick="showCreateModal()" style="display: none;">
+                        ➕ Create Admin User
+                    </button>
                 </div>
             </div>
 
@@ -658,6 +663,57 @@
                     <tbody id="usersTableBody">
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Admin User Modal -->
+    <div id="createAdminModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Create New Admin User</h2>
+            </div>
+            <div class="modal-body">
+                <form id="createAdminForm">
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="adminEmail" required placeholder="admin@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Name *</label>
+                        <input type="text" class="form-control" id="adminName" required placeholder="Full Name">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Password *</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="password" class="form-control" id="adminPassword" required placeholder="Enter password" style="flex: 1;">
+                            <button type="button" class="btn btn-secondary" onclick="togglePasswordVisibility()">👁️</button>
+                            <button type="button" class="btn btn-secondary" onclick="generatePassword()">🔑 Generate</button>
+                        </div>
+                        <small style="color: #7f8c8d; font-size: 12px; margin-top: 4px; display: block;">Minimum 8 characters, include letters and numbers</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Role *</label>
+                        <select class="form-control" id="adminRole" onchange="handleRoleChange()" required>
+                            <option value="">Select Role</option>
+                            <option value="super_admin">Super Administrator</option>
+                            <option value="admin">Regional Administrator</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="regionSelection" style="display: none;">
+                        <label class="form-label">Assign Regions *</label>
+                        <div id="regionCheckboxes" class="checkbox-group"></div>
+                        <small style="color: #7f8c8d; font-size: 12px; margin-top: 4px; display: block;">Select at least one region for Regional Administrator</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createAdminUser()">Create Admin User</button>
             </div>
         </div>
     </div>
@@ -734,6 +790,7 @@
                 if (data.success) {
                     adminUsers = data.data || [];
                     isSuperAdmin = data.userRole?.isSuperAdmin || false;
+                    updateCreateButton();
                     renderUsers();
                 } else {
                     showAlert('error', data.error || 'Failed to load admin users');
@@ -804,11 +861,18 @@
                         </div>
                     </td>
                     <td>
-                        ${isSuperAdmin ? `
-                            <button class="btn btn-primary btn-sm" onclick="manageRegions(${user.id})">
-                                🔐 Manage Access
-                            </button>
-                        ` : '-'}
+                        <div style="display: flex; gap: 8px;">
+                            ${isSuperAdmin ? `
+                                <button class="btn btn-primary btn-sm" onclick="manageRegions(${user.id})">
+                                    🔐 Manage Access
+                                </button>
+                                ${user.email !== 'admin@school.edu' ? `
+                                    <button class="btn btn-danger btn-sm" onclick="deleteAdminUser(${user.id}, '${user.name}', '${user.email}')">
+                                        🗑️ Delete
+                                    </button>
+                                ` : ''}
+                            ` : '-'}
+                        </div>
                     </td>
                 `;
 
@@ -1033,6 +1097,169 @@
             }, 5000);
         }
 
+        // Show/hide create button based on role
+        function updateCreateButton() {
+            const createBtn = document.getElementById('createAdminBtn');
+            if (createBtn && isSuperAdmin) {
+                createBtn.style.display = 'block';
+            }
+        }
+
+        // Show create modal
+        function showCreateModal() {
+            document.getElementById('createAdminForm').reset();
+            document.getElementById('regionSelection').style.display = 'none';
+            populateRegionCheckboxes();
+            document.getElementById('createAdminModal').classList.add('active');
+        }
+
+        // Close create modal
+        function closeCreateModal() {
+            document.getElementById('createAdminModal').classList.remove('active');
+        }
+
+        // Handle role change in create form
+        function handleRoleChange() {
+            const role = document.getElementById('adminRole').value;
+            const regionSelection = document.getElementById('regionSelection');
+
+            if (role === 'admin') {
+                regionSelection.style.display = 'block';
+            } else {
+                regionSelection.style.display = 'none';
+            }
+        }
+
+        // Populate region checkboxes
+        function populateRegionCheckboxes() {
+            const container = document.getElementById('regionCheckboxes');
+            container.innerHTML = '';
+
+            allRegions.forEach(region => {
+                if (region.code !== 'ALL' && region.code !== 'TEST') {
+                    const div = document.createElement('div');
+                    div.className = 'checkbox-item';
+                    div.innerHTML = `
+                        <input type="checkbox" id="create_region_${region.id}" value="${region.id}">
+                        <label for="create_region_${region.id}">${region.name} (${region.code})</label>
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+
+        // Toggle password visibility
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('adminPassword');
+            passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+        }
+
+        // Generate random password
+        function generatePassword() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+            let password = '';
+            for (let i = 0; i < 12; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('adminPassword').value = password;
+            document.getElementById('adminPassword').type = 'text';
+        }
+
+        // Create admin user
+        async function createAdminUser() {
+            const email = document.getElementById('adminEmail').value.trim();
+            const name = document.getElementById('adminName').value.trim();
+            const password = document.getElementById('adminPassword').value;
+            const role = document.getElementById('adminRole').value;
+
+            if (!email || !name || !password || !role) {
+                showAlert('error', 'Please fill in all required fields');
+                return;
+            }
+
+            if (password.length < 8) {
+                showAlert('error', 'Password must be at least 8 characters');
+                return;
+            }
+
+            const data = {
+                email,
+                name,
+                password,
+                role_name: role
+            };
+
+            // Get selected regions for regional admin
+            if (role === 'admin') {
+                const checkedRegions = Array.from(document.querySelectorAll('#regionCheckboxes input:checked')).map(cb => parseInt(cb.value));
+                if (checkedRegions.length === 0) {
+                    showAlert('error', 'Please select at least one region for Regional Administrator');
+                    return;
+                }
+                data.region_ids = checkedRegions;
+            }
+
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch('/api/admin/admin-users', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('success', `Admin user "${name}" created successfully`);
+                    closeCreateModal();
+                    await loadAdminUsers();
+                } else {
+                    showAlert('error', result.error || 'Failed to create admin user');
+                }
+            } catch (error) {
+                console.error('Error creating admin user:', error);
+                showAlert('error', 'Failed to create admin user');
+            }
+        }
+
+        // Delete admin user
+        async function deleteAdminUser(userId, userName, userEmail) {
+            // Double protection against deleting system admin
+            if (userEmail === 'admin@school.edu') {
+                showAlert('error', 'Cannot delete system administrator account');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete admin user "${userName}"?\n\nEmail: ${userEmail}\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch(`/api/admin/admin-users/${userId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('success', `Admin user "${userName}" deleted successfully`);
+                    await loadAdminUsers();
+                } else {
+                    showAlert('error', result.error || 'Failed to delete admin user');
+                }
+            } catch (error) {
+                console.error('Error deleting admin user:', error);
+                showAlert('error', 'Failed to delete admin user');
+            }
+        }
+
         // Handle logout
         function handleLogout() {
             localStorage.removeItem('adminToken');
@@ -1044,6 +1271,12 @@
         document.getElementById('regionsModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeModal();
+            }
+        });
+
+        document.getElementById('createAdminModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCreateModal();
             }
         });
     </script>
