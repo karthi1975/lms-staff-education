@@ -35,7 +35,8 @@ class AdminAuthService {
           id: admin.id,
           email: admin.email,
           name: admin.name,
-          role: admin.role
+          role: admin.role,
+          role_id: admin.role_id
         },
         tokens: {
           accessToken,

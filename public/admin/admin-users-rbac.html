@@ -779,7 +779,7 @@
                 document.getElementById('usersTable').style.display = 'none';
 
                 const token = localStorage.getItem('adminToken');
-                const response = await fetch('/api/admin/users', {
+                const response = await fetch('/api/admin/admin-users', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -789,7 +789,14 @@
 
                 if (data.success) {
                     adminUsers = data.data || [];
-                    isSuperAdmin = data.userRole?.isSuperAdmin || false;
+
+                    // Check if current user is Super Admin
+                    // Get from localStorage or check user's role_id (1 = Super Admin)
+                    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+                    isSuperAdmin = data.isSuperAdmin || adminUser.role_id === 1 || adminUser.role === 'super_admin';
+
+                    console.log('Is Super Admin:', isSuperAdmin, 'Admin User:', adminUser);
+
                     updateCreateButton();
                     renderUsers();
                 } else {
