@@ -426,20 +426,45 @@ router.post('/portal/courses', authMiddleware.authenticateToken, async (req, res
 
 /**
  * @route GET /api/admin/courses
- * @desc Get all courses
+ * @desc Get all courses (filtered by admin's region access)
  * @access Admin
  */
 router.get('/courses', authMiddleware.authenticateToken, async (req, res) => {
   try {
+    const rbacService = require('../services/rbac.service');
     const postgresService = require('../services/database/postgres.service');
 
-    const result = await postgresService.pool.query(`
-      SELECT
-        c.*,
-        (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
-      FROM courses c
-      ORDER BY c.sequence_order, c.created_at DESC
-    `);
+    // Check if Super Admin
+    const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+
+    let result;
+    if (isSuperAdmin) {
+      // Super Admin sees all courses
+      result = await postgresService.pool.query(`
+        SELECT
+          c.*,
+          (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
+        FROM courses c
+        ORDER BY c.sequence_order, c.created_at DESC
+      `);
+    } else {
+      // Regional Admin sees only their region courses
+      const regions = await rbacService.getAdminAssignedRegions(req.user.id);
+      const regionIds = regions.map(r => r.region_id);
+
+      if (regionIds.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+
+      result = await postgresService.pool.query(`
+        SELECT
+          c.*,
+          (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
+        FROM courses c
+        WHERE c.region_id = ANY($1::int[])
+        ORDER BY c.sequence_order, c.created_at DESC
+      `, [regionIds]);
+    }
 
     res.json({ success: true, data: result.rows });
   } catch (error) {
