@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Users & RBAC - Teachers Training System</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background: #004D40;
+            color: white;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: #00352A;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #95a5a6;
+        }
+
+        .nav-menu {
+            padding: 20px 0;
+        }
+
+        .nav-section {
+            margin-bottom: 25px;
+        }
+
+        .nav-section-title {
+            padding: 0 20px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #95a5a6;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: var(--md-sys-color-secondary);
+            transition: width 0.2s;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            padding-left: 23px;
+        }
+
+        .nav-item:hover::before {
+            width: 3px;
+        }
+
+        .nav-item.active {
+            background: rgba(38, 166, 154, 0.2);
+            padding-left: 23px;
+        }
+
+        .nav-item.active::before {
+            width: 3px;
+        }
+
+        .nav-item-icon {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        .nav-item-text {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .breadcrumb-item.active {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .top-bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #f8f9fa;
+            border-radius: 25px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .content-wrapper {
+            padding: 30px;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: #7f8c8d;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            gap: 16px;
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-tab {
+            padding: 8px 16px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-tab.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .users-table {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+        }
+
+        th {
+            padding: 16px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .role-super-admin {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .role-admin {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .region-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .region-tag {
+            background: #f0f0f0;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .region-tag.all-regions {
+            background: #d1f4ff;
+            color: #006c9c;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .admin-info {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .admin-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .admin-info p {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin: 4px 0;
+        }
+
+        .regions-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .region-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .region-item-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .region-flag {
+            font-size: 24px;
+        }
+
+        .region-name-code {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .region-name-code strong {
+            font-size: 14px;
+            color: #2c3e50;
+        }
+
+        .region-name-code small {
+            font-size: 12px;
+            color: #7f8c8d;
+            font-family: monospace;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loader {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input {
+            width: 18px;
+            height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Teachers Training</h2>
+            <p>Learning Management System</p>
+        </div>
+
+        <div class="nav-menu">
+            <div class="nav-section">
+                <a href="dashboard.html" class="nav-item">
+                    <span class="nav-item-icon">📊</span>
+                    <span class="nav-item-text">Dashboard</span>
+                </a>
+                <a href="courses.html" class="nav-item">
+                    <span class="nav-item-icon">📚</span>
+                    <span class="nav-item-text">Courses</span>
+                </a>
+                <a href="user-management.html" class="nav-item">
+                    <span class="nav-item-icon">👥</span>
+                    <span class="nav-item-text">Users</span>
+                </a>
+                <a href="chat.html" class="nav-item">
+                    <span class="nav-item-icon">💬</span>
+                    <span class="nav-item-text">AI Assistant</span>
+                </a>
+                <a href="coaching-analytics.html" class="nav-item">
+                    <span class="nav-item-icon">🎯</span>
+                    <span class="nav-item-text">Coaching Analytics</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">ADMINISTRATION</div>
+                <a href="regions.html" class="nav-item">
+                    <span class="nav-item-icon">🌍</span>
+                    <span class="nav-item-text">Regions</span>
+                </a>
+                <a href="admin-users-rbac.html" class="nav-item active">
+                    <span class="nav-item-icon">👨‍💼</span>
+                    <span class="nav-item-text">Admin Users & RBAC</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="breadcrumb">
+                <span class="breadcrumb-item">Administration</span>
+                <span>›</span>
+                <span class="breadcrumb-item active">Admin Users & RBAC</span>
+            </div>
+
+            <div class="top-bar-actions">
+                <div class="user-profile">
+                    <div class="user-avatar" id="userAvatar">A</div>
+                    <span class="user-name" id="userName">Admin User</span>
+                </div>
+                <button class="logout-btn" onclick="handleLogout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Content Wrapper -->
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">Admin Users & RBAC</h1>
+                <p class="page-subtitle">Manage admin users and their regional access control</p>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search admin users..." onkeyup="filterUsers()">
+                </div>
+                <div class="filter-tabs">
+                    <button class="filter-tab active" onclick="filterByRole('all')">All</button>
+                    <button class="filter-tab" onclick="filterByRole('super_admin')">Super Admins</button>
+                    <button class="filter-tab" onclick="filterByRole('admin')">Regional Admins</button>
+                </div>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="alertContainer"></div>
+
+            <!-- Loader -->
+            <div id="loader" class="loader">
+                <div class="spinner"></div>
+                <p style="margin-top: 16px; color: #7f8c8d;">Loading admin users...</p>
+            </div>
+
+            <!-- Users Table -->
+            <div id="usersTable" class="users-table" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Admin User</th>
+                            <th>Role</th>
+                            <th>Assigned Regions</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Regions Modal -->
+    <div id="regionsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Manage Regional Access</h2>
+            </div>
+            <div class="modal-body">
+                <div class="admin-info" id="adminInfo"></div>
+
+                <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 600;">Assigned Regions</h3>
+                <div id="assignedRegions" class="regions-list"></div>
+
+                <h3 style="margin: 24px 0 16px; font-size: 16px; font-weight: 600;">Assign New Regions</h3>
+                <div id="availableRegions" class="checkbox-group"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                <button class="btn btn-primary" onclick="assignRegions()">Assign Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminUsers = [];
+        let allRegions = [];
+        let currentFilter = 'all';
+        let selectedAdminId = null;
+        let isSuperAdmin = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadData();
+        });
+
+        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('adminToken');
+            const user = JSON.parse(localStorage.getItem('adminUser') || '{}');
+
+            if (!token || !user.id) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('userName').textContent = user.name || user.email;
+            document.getElementById('userAvatar').textContent = (user.name || user.email).charAt(0).toUpperCase();
+        }
+
+        // Load all data
+        async function loadData() {
+            await Promise.all([loadAdminUsers(), loadRegions()]);
+        }
+
+        // Load admin users
+        async function loadAdminUsers() {
+            try {
+                document.getElementById('loader').style.display = 'block';
+                document.getElementById('usersTable').style.display = 'none';
+
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch('/api/admin/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    adminUsers = data.data || [];
+                    isSuperAdmin = data.userRole?.isSuperAdmin || false;
+                    renderUsers();
+                } else {
+                    showAlert('error', data.error || 'Failed to load admin users');
+                }
+            } catch (error) {
+                console.error('Error loading admin users:', error);
+                showAlert('error', 'Failed to load admin users');
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        // Load regions
+        async function loadRegions() {
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch('/api/regions', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    allRegions = data.data || [];
+                }
+            } catch (error) {
+                console.error('Error loading regions:', error);
+            }
+        }
+
+        // Render users table
+        function renderUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+            document.getElementById('usersTable').style.display = 'block';
+
+            const filteredUsers = adminUsers.filter(user => {
+                if (currentFilter === 'all') return true;
+                return user.role_name === currentFilter;
+            });
+
+            filteredUsers.forEach(user => {
+                const row = document.createElement('tr');
+
+                // Parse regions
+                const regions = user.assigned_regions ? user.assigned_regions.split(', ') : [];
+
+                row.innerHTML = `
+                    <td>
+                        <div style="font-weight: 600; color: #2c3e50;">${user.name}</div>
+                        <div style="font-size: 12px; color: #7f8c8d;">${user.email}</div>
+                    </td>
+                    <td>
+                        <span class="role-badge ${user.role_name === 'super_admin' ? 'role-super-admin' : 'role-admin'}">
+                            ${user.role_name === 'super_admin' ? '⭐ Super Admin' : '👤 Regional Admin'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="region-tags">
+                            ${regions.length > 0 ? regions.map(r => {
+                                const parts = r.split(':');
+                                const code = parts[0];
+                                const isAll = code === 'ALL';
+                                return `<span class="region-tag ${isAll ? 'all-regions' : ''}">${code}</span>`;
+                            }).join('') : '<span class="region-tag">No regions</span>'}
+                        </div>
+                    </td>
+                    <td>
+                        ${isSuperAdmin ? `
+                            <button class="btn btn-primary btn-sm" onclick="manageRegions(${user.id})">
+                                🔐 Manage Access
+                            </button>
+                        ` : '-'}
+                    </td>
+                `;
+
+                tbody.appendChild(row);
+            });
+        }
+
+        // Filter users by search
+        function filterUsers() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const tbody = document.getElementById('usersTableBody');
+            const rows = tbody.getElementsByTagName('tr');
+
+            for (let row of rows) {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            }
+        }
+
+        // Filter by role
+        function filterByRole(role) {
+            currentFilter = role;
+
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            renderUsers();
+        }
+
+        // Manage regions for admin
+        async function manageRegions(adminId) {
+            selectedAdminId = adminId;
+            const user = adminUsers.find(u => u.id === adminId);
+
+            if (!user) return;
+
+            // Display admin info
+            document.getElementById('adminInfo').innerHTML = `
+                <h3>${user.name}</h3>
+                <p>${user.email}</p>
+                <p><strong>Role:</strong> ${user.role_name === 'super_admin' ? 'Super Admin' : 'Regional Admin'}</p>
+            `;
+
+            // Load user's regions
+            await loadUserRegions(adminId);
+
+            document.getElementById('regionsModal').classList.add('active');
+        }
+
+        // Load user's assigned regions
+        async function loadUserRegions(adminId) {
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch(`/api/admin/users/${adminId}/regions`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    renderAssignedRegions(data.regions || []);
+                    renderAvailableRegions(data.regions || []);
+                } else {
+                    showAlert('error', data.error || 'Failed to load user regions');
+                }
+            } catch (error) {
+                console.error('Error loading user regions:', error);
+                showAlert('error', 'Failed to load user regions');
+            }
+        }
+
+        // Render assigned regions
+        function renderAssignedRegions(assignedRegions) {
+            const container = document.getElementById('assignedRegions');
+            container.innerHTML = '';
+
+            const flagEmojis = {
+                'TZ': '🇹🇿',
+                'RW': '🇷🇼',
+                'KE': '🇰🇪',
+                'BI': '🇧🇮',
+                'ALL': '🌍',
+                'TEST': '🧪'
+            };
+
+            if (assignedRegions.length === 0) {
+                container.innerHTML = '<p style="color: #7f8c8d; font-size: 14px;">No regions assigned yet</p>';
+                return;
+            }
+
+            assignedRegions.forEach(region => {
+                const item = document.createElement('div');
+                item.className = 'region-item';
+                item.innerHTML = `
+                    <div class="region-item-info">
+                        <span class="region-flag">${flagEmojis[region.code] || '🌍'}</span>
+                        <div class="region-name-code">
+                            <strong>${region.name}</strong>
+                            <small>${region.code}</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="removeRegion(${region.id})">
+                        Remove
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Render available regions
+        function renderAvailableRegions(assignedRegions) {
+            const container = document.getElementById('availableRegions');
+            container.innerHTML = '';
+
+            const assignedIds = assignedRegions.map(r => r.id);
+            const available = allRegions.filter(r => !assignedIds.includes(r.id));
+
+            if (available.length === 0) {
+                container.innerHTML = '<p style="color: #7f8c8d; font-size: 14px;">All regions already assigned</p>';
+                return;
+            }
+
+            available.forEach(region => {
+                const item = document.createElement('div');
+                item.className = 'checkbox-item';
+                item.innerHTML = `
+                    <input type="checkbox" id="region_${region.id}" value="${region.id}">
+                    <label for="region_${region.id}">${region.name} (${region.code})</label>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Assign selected regions
+        async function assignRegions() {
+            const checkboxes = document.querySelectorAll('#availableRegions input:checked');
+            const regionIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (regionIds.length === 0) {
+                showAlert('error', 'Please select at least one region');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch(`/api/admin/users/${selectedAdminId}/regions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ regionIds })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', 'Regions assigned successfully');
+                    await loadUserRegions(selectedAdminId);
+                    await loadAdminUsers();
+                } else {
+                    showAlert('error', data.error || 'Failed to assign regions');
+                }
+            } catch (error) {
+                console.error('Error assigning regions:', error);
+                showAlert('error', 'Failed to assign regions');
+            }
+        }
+
+        // Remove region
+        async function removeRegion(regionId) {
+            if (!confirm('Are you sure you want to remove this region assignment?')) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch(`/api/admin/users/${selectedAdminId}/regions/${regionId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', 'Region removed successfully');
+                    await loadUserRegions(selectedAdminId);
+                    await loadAdminUsers();
+                } else {
+                    showAlert('error', data.error || 'Failed to remove region');
+                }
+            } catch (error) {
+                console.error('Error removing region:', error);
+                showAlert('error', 'Failed to remove region');
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('regionsModal').classList.remove('active');
+            selectedAdminId = null;
+        }
+
+        // Show alert
+        function showAlert(type, message) {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type === 'error' ? 'error' : 'success'}`;
+            alert.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Handle logout
+        function handleLogout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminUser');
+            window.location.href = 'login.html';
+        }
+
+        // Close modal on outside click
+        document.getElementById('regionsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
