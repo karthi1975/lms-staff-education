@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Region Management - Teachers Training System</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background: #004D40;
+            color: white;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: #00352A;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #95a5a6;
+        }
+
+        .nav-menu {
+            padding: 20px 0;
+        }
+
+        .nav-section {
+            margin-bottom: 25px;
+        }
+
+        .nav-section-title {
+            padding: 0 20px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #95a5a6;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: var(--md-sys-color-secondary);
+            transition: width 0.2s;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            padding-left: 23px;
+        }
+
+        .nav-item:hover::before {
+            width: 3px;
+        }
+
+        .nav-item.active {
+            background: rgba(38, 166, 154, 0.2);
+            padding-left: 23px;
+        }
+
+        .nav-item.active::before {
+            width: 3px;
+        }
+
+        .nav-item-icon {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        .nav-item-text {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .breadcrumb-item.active {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .top-bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            background: #f8f9fa;
+            border-radius: 25px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .content-wrapper {
+            padding: 30px;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: #7f8c8d;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            gap: 16px;
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .regions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .region-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        .region-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .region-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 16px;
+        }
+
+        .region-flag {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .region-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+
+        .region-code {
+            font-size: 14px;
+            color: #7f8c8d;
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .region-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .region-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #3498db;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }
+
+        .region-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 24px;
+        }
+
+        .loader {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Teachers Training</h2>
+            <p>Learning Management System</p>
+        </div>
+
+        <div class="nav-menu">
+            <div class="nav-section">
+                <a href="dashboard.html" class="nav-item">
+                    <span class="nav-item-icon">📊</span>
+                    <span class="nav-item-text">Dashboard</span>
+                </a>
+                <a href="courses.html" class="nav-item">
+                    <span class="nav-item-icon">📚</span>
+                    <span class="nav-item-text">Courses</span>
+                </a>
+                <a href="user-management.html" class="nav-item">
+                    <span class="nav-item-icon">👥</span>
+                    <span class="nav-item-text">Users</span>
+                </a>
+                <a href="chat.html" class="nav-item">
+                    <span class="nav-item-icon">💬</span>
+                    <span class="nav-item-text">AI Assistant</span>
+                </a>
+                <a href="coaching-analytics.html" class="nav-item">
+                    <span class="nav-item-icon">🎯</span>
+                    <span class="nav-item-text">Coaching Analytics</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">ADMINISTRATION</div>
+                <a href="regions.html" class="nav-item active">
+                    <span class="nav-item-icon">🌍</span>
+                    <span class="nav-item-text">Regions</span>
+                </a>
+                <a href="admin-users-rbac.html" class="nav-item">
+                    <span class="nav-item-icon">👨‍💼</span>
+                    <span class="nav-item-text">Admin Users & RBAC</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="breadcrumb">
+                <span class="breadcrumb-item">Administration</span>
+                <span>›</span>
+                <span class="breadcrumb-item active">Regions</span>
+            </div>
+
+            <div class="top-bar-actions">
+                <div class="user-profile">
+                    <div class="user-avatar" id="userAvatar">A</div>
+                    <span class="user-name" id="userName">Admin User</span>
+                </div>
+                <button class="logout-btn" onclick="handleLogout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Content Wrapper -->
+        <div class="content-wrapper">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1 class="page-title">Region Management</h1>
+                <p class="page-subtitle">Manage regional access and course assignments</p>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search regions..." onkeyup="filterRegions()">
+                </div>
+                <button class="btn btn-primary" id="createRegionBtn" onclick="showCreateModal()">
+                    <span>➕</span>
+                    Create Region
+                </button>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="alertContainer"></div>
+
+            <!-- Loader -->
+            <div id="loader" class="loader">
+                <div class="spinner"></div>
+                <p style="margin-top: 16px; color: #7f8c8d;">Loading regions...</p>
+            </div>
+
+            <!-- Regions Grid -->
+            <div id="regionsGrid" class="regions-grid" style="display: none;"></div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">🌍</div>
+                <h2 class="empty-state-title">No Regions Found</h2>
+                <p class="empty-state-text">Get started by creating your first region</p>
+                <button class="btn btn-primary" onclick="showCreateModal()">Create Region</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Region Modal -->
+    <div id="regionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Create New Region</h2>
+            </div>
+            <div class="modal-body">
+                <form id="regionForm">
+                    <input type="hidden" id="regionId">
+
+                    <div class="form-group">
+                        <label class="form-label">Region Code *</label>
+                        <input type="text" class="form-control" id="regionCode"
+                               placeholder="e.g., TZ, RW, KE" maxlength="10" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Region Name *</label>
+                        <input type="text" class="form-control" id="regionName"
+                               placeholder="e.g., Tanzania" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="regionDescription"
+                                  rows="3" placeholder="Enter region description"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="regionActive" checked> Active
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveRegion()">Save Region</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let regions = [];
+        let currentUser = null;
+        let isSuperAdmin = false;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadRegions();
+        });
+
+        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('adminToken');
+            const user = JSON.parse(localStorage.getItem('adminUser') || '{}');
+
+            if (!token || !user.id) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            currentUser = user;
+            document.getElementById('userName').textContent = user.name || user.email;
+            document.getElementById('userAvatar').textContent = (user.name || user.email).charAt(0).toUpperCase();
+        }
+
+        // Load regions from API
+        async function loadRegions() {
+            try {
+                document.getElementById('loader').style.display = 'block';
+                document.getElementById('regionsGrid').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
+
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch('/api/regions', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    regions = data.data || [];
+                    isSuperAdmin = data.userRole?.isSuperAdmin || false;
+
+                    // Hide create button for non-super admins
+                    if (!isSuperAdmin) {
+                        document.getElementById('createRegionBtn').style.display = 'none';
+                    }
+
+                    if (regions.length === 0) {
+                        document.getElementById('loader').style.display = 'none';
+                        document.getElementById('emptyState').style.display = 'block';
+                    } else {
+                        renderRegions();
+                    }
+                } else {
+                    showAlert('error', data.error || 'Failed to load regions');
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('emptyState').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading regions:', error);
+                showAlert('error', 'Failed to load regions');
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+            }
+        }
+
+        // Render regions grid
+        function renderRegions() {
+            const grid = document.getElementById('regionsGrid');
+            grid.innerHTML = '';
+            grid.style.display = 'grid';
+            document.getElementById('loader').style.display = 'none';
+
+            const flagEmojis = {
+                'TZ': '🇹🇿',
+                'RW': '🇷🇼',
+                'KE': '🇰🇪',
+                'BI': '🇧🇮',
+                'ALL': '🌍',
+                'TEST': '🧪'
+            };
+
+            regions.forEach(region => {
+                const card = document.createElement('div');
+                card.className = 'region-card';
+                card.innerHTML = `
+                    <div class="region-header">
+                        <div>
+                            <div class="region-flag">${flagEmojis[region.code] || '🌍'}</div>
+                            <h3 class="region-name">${region.name}</h3>
+                            <span class="region-code">${region.code}</span>
+                        </div>
+                        <span class="region-status ${region.is_active ? 'status-active' : 'status-inactive'}">
+                            ${region.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+
+                    <div class="region-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">${region.total_courses || 0}</span>
+                            <span class="stat-label">Courses</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">${region.total_admins || 0}</span>
+                            <span class="stat-label">Admins</span>
+                        </div>
+                    </div>
+
+                    ${region.description ? `<p style="color: #7f8c8d; font-size: 14px; margin-top: 12px;">${region.description}</p>` : ''}
+
+                    ${isSuperAdmin ? `
+                    <div class="region-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="editRegion(${region.id})">
+                            ✏️ Edit
+                        </button>
+                        ${region.code !== 'ALL' ? `
+                        <button class="btn btn-danger btn-sm" onclick="deleteRegion(${region.id}, '${region.name}')">
+                            🗑️ Delete
+                        </button>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Filter regions by search
+        function filterRegions() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filteredRegions = regions.filter(r =>
+                r.name.toLowerCase().includes(search) ||
+                r.code.toLowerCase().includes(search)
+            );
+
+            // Temporarily replace regions for rendering
+            const originalRegions = regions;
+            regions = filteredRegions;
+            renderRegions();
+            regions = originalRegions;
+        }
+
+        // Show create modal
+        function showCreateModal() {
+            if (!isSuperAdmin) {
+                showAlert('error', 'Only Super Admins can create regions');
+                return;
+            }
+
+            document.getElementById('modalTitle').textContent = 'Create New Region';
+            document.getElementById('regionForm').reset();
+            document.getElementById('regionId').value = '';
+            document.getElementById('regionModal').classList.add('active');
+        }
+
+        // Edit region
+        async function editRegion(id) {
+            const region = regions.find(r => r.id === id);
+            if (!region) return;
+
+            document.getElementById('modalTitle').textContent = 'Edit Region';
+            document.getElementById('regionId').value = region.id;
+            document.getElementById('regionCode').value = region.code;
+            document.getElementById('regionName').value = region.name;
+            document.getElementById('regionDescription').value = region.description || '';
+            document.getElementById('regionActive').checked = region.is_active;
+            document.getElementById('regionModal').classList.add('active');
+        }
+
+        // Save region
+        async function saveRegion() {
+            const id = document.getElementById('regionId').value;
+            const code = document.getElementById('regionCode').value.trim().toUpperCase();
+            const name = document.getElementById('regionName').value.trim();
+            const description = document.getElementById('regionDescription').value.trim();
+            const isActive = document.getElementById('regionActive').checked;
+
+            if (!code || !name) {
+                showAlert('error', 'Please fill in all required fields');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('adminToken');
+                const url = id ? `/api/regions/${id}` : '/api/regions';
+                const method = id ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code, name, description, is_active: isActive })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', id ? 'Region updated successfully' : 'Region created successfully');
+                    closeModal();
+                    loadRegions();
+                } else {
+                    showAlert('error', data.error || 'Failed to save region');
+                }
+            } catch (error) {
+                console.error('Error saving region:', error);
+                showAlert('error', 'Failed to save region');
+            }
+        }
+
+        // Delete region
+        async function deleteRegion(id, name) {
+            if (!confirm(`Are you sure you want to delete the region "${name}"?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('adminToken');
+                const response = await fetch(`/api/regions/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', 'Region deleted successfully');
+                    loadRegions();
+                } else {
+                    showAlert('error', data.error || 'Failed to delete region');
+                }
+            } catch (error) {
+                console.error('Error deleting region:', error);
+                showAlert('error', 'Failed to delete region');
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('regionModal').classList.remove('active');
+        }
+
+        // Show alert
+        function showAlert(type, message) {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type === 'error' ? 'error' : 'success'}`;
+            alert.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Handle logout
+        function handleLogout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminUser');
+            window.location.href = 'login.html';
+        }
+
+        // Close modal on outside click
+        document.getElementById('regionModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
