@@ -601,6 +601,7 @@ class ContentService {
           u.created_at,
           u.last_active_at,
           u.current_module_id,
+          u.primary_region_id,
           COUNT(DISTINCT up.module_id) FILTER (WHERE up.status = 'completed') as modules_completed,
           COUNT(DISTINCT up.module_id) FILTER (WHERE up.status = 'in_progress') as modules_in_progress,
           SUM(up.time_spent_minutes) as total_time_spent_minutes,
@@ -611,7 +612,7 @@ class ContentService {
           ) as quizzes_passed
          FROM users u
          LEFT JOIN user_progress up ON u.id = up.user_id
-         GROUP BY u.id, u.whatsapp_id, u.name, u.is_active, u.created_at, u.last_active_at, u.current_module_id
+         GROUP BY u.id, u.whatsapp_id, u.name, u.is_active, u.created_at, u.last_active_at, u.current_module_id, u.primary_region_id
          ORDER BY u.last_active_at DESC NULLS LAST`
       );
 
