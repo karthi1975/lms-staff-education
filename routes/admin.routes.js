@@ -172,12 +172,39 @@ router.delete('/content/:contentId',
 
 /**
  * @route GET /api/admin/users
- * @desc Get all users with progress summary
+ * @desc Get all users with progress summary (filtered by admin's region access)
  * @access Admin
  */
 router.get('/users', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const users = await contentService.getAllUsersProgress();
+    const rbacService = require('../services/rbac.service');
+    const postgresService = require('../services/database/postgres.service');
+
+    // Check if Super Admin
+    const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+
+    let users;
+    if (isSuperAdmin) {
+      // Super Admin sees all users
+      users = await contentService.getAllUsersProgress();
+    } else {
+      // Regional Admin sees only users from their assigned regions
+      const regions = await rbacService.getAdminAssignedRegions(req.user.id);
+      const regionIds = regions.map(r => r.region_id);
+
+      if (regionIds.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+
+      // Get all users and filter by region
+      const allUsers = await contentService.getAllUsersProgress();
+
+      // Filter users by primary_region_id
+      users = allUsers.filter(user =>
+        user.primary_region_id && regionIds.includes(user.primary_region_id)
+      );
+    }
+
     // Return in expected format with data property
     res.json({ success: true, data: users || [] });
   } catch (error) {
@@ -1537,18 +1564,41 @@ router.delete('/courses/:courseId', authMiddleware.authenticateToken, async (req
 
 /**
  * @route GET /api/admin/admin-users
- * @desc Get all admin users
+ * @desc Get all admin users (filtered by admin's region access)
  * @access Admin
  */
 router.get('/admin-users', authMiddleware.authenticateToken, async (req, res) => {
   try {
+    const rbacService = require('../services/rbac.service');
     const postgresService = require('../services/database/postgres.service');
 
-    const result = await postgresService.pool.query(`
-      SELECT id, email, name, role, is_active, created_at, updated_at, last_login_at
-      FROM admin_users
-      ORDER BY created_at DESC
-    `);
+    // Check if Super Admin
+    const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+
+    let result;
+    if (isSuperAdmin) {
+      // Super Admin sees all admin users
+      result = await postgresService.pool.query(`
+        SELECT id, email, name, role, role_id, primary_region_id, is_active, created_at, updated_at, last_login_at
+        FROM admin_users
+        ORDER BY created_at DESC
+      `);
+    } else {
+      // Regional Admin sees only admin users from their assigned regions
+      const regions = await rbacService.getAdminAssignedRegions(req.user.id);
+      const regionIds = regions.map(r => r.region_id);
+
+      if (regionIds.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+
+      result = await postgresService.pool.query(`
+        SELECT id, email, name, role, role_id, primary_region_id, is_active, created_at, updated_at, last_login_at
+        FROM admin_users
+        WHERE primary_region_id = ANY($1::int[])
+        ORDER BY created_at DESC
+      `, [regionIds]);
+    }
 
     res.json({ success: true, data: result.rows });
   } catch (error) {
