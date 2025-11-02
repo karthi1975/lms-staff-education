@@ -558,7 +558,7 @@
                 </a>
             </div>
 
-            <div class="nav-section">
+            <div class="nav-section" id="administrationSection">
                 <div class="nav-section-title">ADMINISTRATION</div>
                 <a href="regions.html" class="nav-item active">
                     <span class="nav-item-icon">🌍</span>
@@ -698,6 +698,21 @@
             currentUser = user;
             document.getElementById('userName').textContent = user.name || user.email;
             document.getElementById('userAvatar').textContent = (user.name || user.email).charAt(0).toUpperCase();
+
+            // Hide Administration section for Regional Admins (only Super Admins can see it)
+            const isSuperAdmin = user.role_id === 1 || user.role === 'super_admin';
+            const administrationSection = document.getElementById('administrationSection');
+            if (administrationSection && !isSuperAdmin) {
+                administrationSection.style.display = 'none';
+                console.log('Regional Admin detected - Administration section hidden');
+            }
+
+            // Regional Admins cannot access Regions page
+            if (!isSuperAdmin) {
+                alert('Access Denied: Only Super Administrators can manage regions.');
+                window.location.href = 'dashboard.html';
+                return;
+            }
         }
 
         // Load regions from API

@@ -828,7 +828,7 @@
                     <span class="nav-item-text">Coaching Analytics</span>
                 </a>
 
-            <div class="nav-section">
+            <div class="nav-section" id="administrationSection">
                 <div class="nav-section-title">ADMINISTRATION</div>
                 <a href="regions.html" class="nav-item">
                     <span class="nav-item-icon">🌍</span>
@@ -1032,6 +1032,14 @@
         if (user.name) {
             document.getElementById('userName').textContent = user.name;
             document.getElementById('userAvatar').textContent = user.name.charAt(0).toUpperCase();
+        }
+
+        // Hide Administration section for Regional Admins (only Super Admins can see it)
+        const isSuperAdmin = user.role_id === 1 || user.role === 'super_admin';
+        const administrationSection = document.getElementById('administrationSection');
+        if (administrationSection && !isSuperAdmin) {
+            administrationSection.style.display = 'none';
+            console.log('Regional Admin detected - Administration section hidden');
         }
 
         // Load dashboard data
