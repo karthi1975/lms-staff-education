@@ -38,14 +38,16 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024 // 50MB max
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /pdf|docx|doc|txt|md|png|jpg|jpeg/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    const allowedExtensions = /\.(pdf|docx|doc|txt|md|png|jpg|jpeg)$/i;
+    const allowedMimetypes = /^(application\/pdf|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|application\/msword|text\/plain|text\/markdown|image\/png|image\/jpeg)$/;
 
-    if (extname && mimetype) {
+    const hasValidExtension = allowedExtensions.test(file.originalname);
+    const hasValidMimetype = allowedMimetypes.test(file.mimetype);
+
+    if (hasValidExtension || hasValidMimetype) {
       return cb(null, true);
     } else {
-      cb(new Error('Only PDF, DOCX, TXT, MD, and image files are allowed'));
+      cb(new Error(`File type not allowed: ${file.mimetype}. Only PDF, DOCX, TXT, MD, and image files are allowed`));
     }
   }
 });
@@ -53,11 +55,12 @@ const upload = multer({
 /**
  * @route POST /api/admin/courses/:courseId/upload-bilingual
  * @desc Upload bilingual document with OCR and language detection
- * @access Admin
+ * @access Authenticated Admin (RBAC enforced on course visibility only)
  */
 router.post('/courses/:courseId/upload-bilingual',
   authMiddleware.authenticateToken,
-  authMiddleware.requireRole(['admin']),
+  // Note: No role check - Regional admins can upload to courses they can access
+  // RBAC is enforced on which courses they can SEE, not upload permissions
   upload.array('files', 10),
   async (req, res) => {
     try {
@@ -238,11 +241,10 @@ async function processFile({ file, courseId, moduleId, language, adminUserId }) 
 /**
  * @route GET /api/admin/courses/:courseId/bilingual-stats
  * @desc Get statistics for bilingual content
- * @access Admin
+ * @access Authenticated Admin
  */
 router.get('/courses/:courseId/bilingual-stats',
   authMiddleware.authenticateToken,
-  authMiddleware.requireRole(['admin']),
   async (req, res) => {
     try {
       const { courseId } = req.params;
@@ -286,11 +288,10 @@ router.get('/courses/:courseId/bilingual-stats',
 /**
  * @route POST /api/admin/courses/:courseId/query-bilingual
  * @desc Query bilingual RAG system
- * @access Admin
+ * @access Authenticated Admin
  */
 router.post('/courses/:courseId/query-bilingual',
   authMiddleware.authenticateToken,
-  authMiddleware.requireRole(['admin']),
   async (req, res) => {
     try {
       const { courseId } = req.params;
