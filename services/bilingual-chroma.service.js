@@ -339,6 +339,52 @@ class BilingualChromaService {
       throw error;
     }
   }
+
+  /**
+   * Delete all documents for a specific module across all language collections
+   * @param {number} moduleId - Module ID to delete
+   */
+  async deleteByModule(moduleId) {
+    try {
+      if (!this.isConnected()) {
+        logger.warn('[BilingualChroma] Not connected - skipping module deletion');
+        return;
+      }
+
+      let totalDeleted = 0;
+
+      // Delete from all language collections
+      for (const [language, collection] of Object.entries(this.collections)) {
+        if (!collection) continue;
+
+        try {
+          // Query for documents with this module_id
+          const results = await collection.get({
+            where: { module_id: String(moduleId) }
+          });
+
+          if (results && results.ids && results.ids.length > 0) {
+            // Delete the documents
+            await collection.delete({
+              ids: results.ids
+            });
+
+            totalDeleted += results.ids.length;
+            logger.info(`[BilingualChroma] Deleted ${results.ids.length} documents from ${language} collection for module ${moduleId}`);
+          }
+        } catch (collectionError) {
+          logger.warn(`[BilingualChroma] Error deleting from ${language} collection:`, collectionError.message);
+        }
+      }
+
+      logger.info(`[BilingualChroma] ✅ Deleted ${totalDeleted} total documents for module ${moduleId}`);
+      return totalDeleted;
+
+    } catch (error) {
+      logger.error('[BilingualChroma] Error in deleteByModule:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new BilingualChromaService();

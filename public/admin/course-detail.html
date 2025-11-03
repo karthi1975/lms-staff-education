@@ -1112,9 +1112,14 @@
                             <div class="module-card">
                                 <div class="module-header">
                                     <div class="module-title">${module.module_number}. ${module.title}</div>
-                                    <button class="btn btn-quiz btn-sm" onclick="uploadQuiz(${module.id}, '${module.title}', event)">
-                                        📝 ${module.quiz_questions > 0 ? 'Update Quiz' : 'Upload Quiz'}
-                                    </button>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="btn btn-quiz btn-sm" onclick="uploadQuiz(${module.id}, '${module.title}', event)">
+                                            📝 ${module.quiz_questions > 0 ? 'Update Quiz' : 'Upload Quiz'}
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteModule(${module.id}, '${module.title.replace(/'/g, "\\'")}', event)" title="Delete this module">
+                                            🗑️ Delete
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="module-meta">
                                     <span>📝 ${module.content_count || 0} files</span>
@@ -1908,6 +1913,61 @@
                 }
             } catch (error) {
                 alert(`❌ Error deleting quiz: ${error.message}`);
+            }
+        }
+
+        async function deleteModule(moduleId, moduleTitle, event) {
+            event.stopPropagation();
+
+            const confirmMessage = `⚠️ DELETE MODULE: "${moduleTitle}"
+
+This will permanently delete:
+• The module and all its content
+• All uploaded files and documents
+• Quiz questions and answers
+• Vector embeddings (ChromaDB - English/Swahili/Mixed)
+• Knowledge graph data (Neo4j)
+• User progress and enrollments
+
+This action CANNOT be undone!
+
+Type "DELETE" to confirm:`;
+
+            const confirmation = prompt(confirmMessage);
+
+            if (confirmation !== 'DELETE') {
+                if (confirmation !== null) {
+                    alert('❌ Deletion cancelled. You must type "DELETE" to confirm.');
+                }
+                return;
+            }
+
+            try {
+                const deleteBtn = event.target;
+                deleteBtn.disabled = true;
+                deleteBtn.textContent = '⏳ Deleting...';
+
+                const response = await fetch(`${API_BASE}/courses/${courseId}/modules/${moduleId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ Module "${moduleTitle}" deleted successfully!\n\nDeleted ${result.deletedFiles || 0} file(s) from filesystem.`);
+                    await loadModules(); // Reload module list
+                    await loadFiles();   // Reload files list
+                    await loadStats();   // Reload statistics
+                } else {
+                    throw new Error(result.error || 'Failed to delete module');
+                }
+            } catch (error) {
+                alert(`❌ Error deleting module: ${error.message}`);
+                event.target.disabled = false;
+                event.target.textContent = '🗑️ Delete';
             }
         }
     </script>

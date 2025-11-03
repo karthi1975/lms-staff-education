@@ -1439,6 +1439,159 @@ router.delete('/courses/:courseId/modules/:moduleId/quiz', authMiddleware.authen
 });
 
 /**
+ * @route DELETE /api/admin/courses/:courseId/modules/:moduleId
+ * @desc Delete a module and all its related data (RBAC enforced by region)
+ * @access Admin (regional admins can delete modules from courses in their region)
+ */
+router.delete('/courses/:courseId/modules/:moduleId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId, moduleId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+    const rbacService = require('../services/rbac.service');
+    const neo4jService = require('../services/neo4j.service');
+    const chromaService = require('../services/chroma.service');
+    const bilingualChroma = require('../services/bilingual-chroma.service');
+    const fs = require('fs').promises;
+    const path = require('path');
+
+    // Verify module exists and belongs to the course
+    const moduleResult = await postgresService.pool.query(
+      'SELECT * FROM modules WHERE id = $1 AND course_id = $2',
+      [moduleId, courseId]
+    );
+
+    if (moduleResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Module not found in this course'
+      });
+    }
+
+    const module = moduleResult.rows[0];
+
+    // RBAC: Verify course belongs to admin's region (for regional admins)
+    const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+
+    if (!isSuperAdmin) {
+      // Regional admin - verify course is in their region
+      const regions = await rbacService.getAdminAssignedRegions(req.user.id);
+      const regionIds = regions.map(r => r.region_id);
+
+      const courseCheck = await postgresService.pool.query(
+        'SELECT region_id FROM courses WHERE id = $1',
+        [courseId]
+      );
+
+      if (!courseCheck.rows[0] || !regionIds.includes(courseCheck.rows[0].region_id)) {
+        return res.status(403).json({
+          success: false,
+          error: 'You do not have permission to delete modules from this course'
+        });
+      }
+    }
+
+    logger.info(`[Module Delete] Starting deletion of module ${moduleId} (${module.title}) from course ${courseId}`);
+
+    // Step 1: Delete physical files from filesystem
+    let deletedFiles = 0;
+    const contentResult = await postgresService.pool.query(
+      'SELECT file_path FROM module_content WHERE module_id = $1',
+      [moduleId]
+    );
+
+    for (const row of contentResult.rows) {
+      const filePath = row.file_path;
+      let deleted = false;
+
+      // Try multiple path variations
+      const pathsToTry = [filePath];
+      if (path.isAbsolute(filePath)) {
+        const filename = path.basename(filePath);
+        pathsToTry.push(`uploads/${filename}`);
+        pathsToTry.push(`uploads/bilingual/${filename}`);
+      }
+
+      for (const tryPath of pathsToTry) {
+        try {
+          await fs.unlink(tryPath);
+          deletedFiles++;
+          deleted = true;
+          logger.info(`[Module Delete] Deleted file: ${tryPath}`);
+          break;
+        } catch (fileError) {
+          // Continue to next path variant
+        }
+      }
+
+      if (!deleted) {
+        logger.warn(`[Module Delete] Could not delete file: ${filePath}`);
+      }
+    }
+
+    // Step 2: Delete from Neo4j knowledge graph
+    try {
+      await neo4jService.deleteModuleGraph(moduleId);
+      logger.info(`[Module Delete] Deleted Neo4j graph for module ${moduleId}`);
+    } catch (neo4jError) {
+      logger.warn('[Module Delete] Error deleting from Neo4j:', neo4jError);
+    }
+
+    // Step 3: Delete from ChromaDB (legacy single collection)
+    try {
+      await chromaService.deleteByModule(moduleId);
+      logger.info(`[Module Delete] Deleted ChromaDB vectors for module ${moduleId}`);
+    } catch (chromaError) {
+      logger.warn('[Module Delete] Error deleting from ChromaDB:', chromaError);
+    }
+
+    // Step 4: Delete from BilingualChroma (English/Swahili/Mixed collections)
+    try {
+      if (bilingualChroma.isConnected && bilingualChroma.isConnected()) {
+        await bilingualChroma.deleteByModule(moduleId);
+        logger.info(`[Module Delete] Deleted BilingualChroma vectors for module ${moduleId}`);
+      }
+    } catch (bilingualError) {
+      logger.warn('[Module Delete] Error deleting from BilingualChroma:', bilingualError);
+    }
+
+    // Step 5: Delete from course_content table (for bilingual uploads)
+    try {
+      await postgresService.pool.query(
+        'DELETE FROM course_content WHERE course_id = $1',
+        [courseId]
+      );
+      logger.info(`[Module Delete] Deleted course_content records for course ${courseId}`);
+    } catch (courseContentError) {
+      logger.warn('[Module Delete] Error deleting from course_content:', courseContentError);
+    }
+
+    // Step 6: Delete from PostgreSQL
+    // CASCADE will handle: quiz_questions, quizzes, module_content, enrollments, etc.
+    await postgresService.pool.query(
+      'DELETE FROM modules WHERE id = $1',
+      [moduleId]
+    );
+
+    logger.info(`[Module Delete] ✅ Successfully deleted module ${moduleId} (${module.title})`);
+
+    res.json({
+      success: true,
+      message: `Module "${module.title}" and all related data deleted successfully`,
+      deletedFiles: deletedFiles,
+      moduleId: parseInt(moduleId),
+      moduleTitle: module.title
+    });
+
+  } catch (error) {
+    logger.error('[Module Delete] Error deleting module:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route DELETE /api/admin/courses/:courseId
  * @desc Delete a course and all its related data
  * @access Admin
