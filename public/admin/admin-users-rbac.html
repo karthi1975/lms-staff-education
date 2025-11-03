@@ -951,7 +951,7 @@
         async function loadUserRegions(adminId) {
             try {
                 const token = localStorage.getItem('adminToken');
-                const response = await fetch(`/api/admin/users/${adminId}/regions`, {
+                const response = await fetch(`/api/admin/admin-users/${adminId}/regions`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -960,6 +960,8 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    // Store all regions for rendering
+                    allRegions = data.allRegions || [];
                     renderAssignedRegions(data.regions || []);
                     renderAvailableRegions(data.regions || []);
                 } else {
@@ -1045,7 +1047,7 @@
 
             try {
                 const token = localStorage.getItem('adminToken');
-                const response = await fetch(`/api/admin/users/${selectedAdminId}/regions`, {
+                const response = await fetch(`/api/admin/admin-users/${selectedAdminId}/regions`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -1077,7 +1079,7 @@
 
             try {
                 const token = localStorage.getItem('adminToken');
-                const response = await fetch(`/api/admin/users/${selectedAdminId}/regions/${regionId}`, {
+                const response = await fetch(`/api/admin/admin-users/${selectedAdminId}/regions/${regionId}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`

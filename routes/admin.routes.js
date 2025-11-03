@@ -1771,6 +1771,133 @@ router.delete('/admin-users/:userId', authMiddleware.authenticateToken, async (r
 });
 
 /**
+ * @route GET /api/admin/admin-users/:userId/regions
+ * @desc Get regions assigned to an admin user
+ * @access Admin
+ */
+router.get('/admin-users/:userId/regions', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    // Get all available regions
+    const allRegionsResult = await postgresService.pool.query(
+      'SELECT id, code, name, description FROM regions WHERE is_active = TRUE ORDER BY name'
+    );
+
+    // Get assigned regions for this admin user
+    const assignedResult = await postgresService.pool.query(`
+      SELECT r.id, r.code, r.name, r.description, ar.assigned_at
+      FROM admin_regions ar
+      JOIN regions r ON ar.region_id = r.id
+      WHERE ar.admin_user_id = $1
+      ORDER BY r.name
+    `, [userId]);
+
+    res.json({
+      success: true,
+      regions: assignedResult.rows,
+      allRegions: allRegionsResult.rows
+    });
+
+  } catch (error) {
+    logger.error('Error fetching admin user regions:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route POST /api/admin/admin-users/:userId/regions
+ * @desc Assign regions to an admin user
+ * @access Admin
+ */
+router.post('/admin-users/:userId/regions', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { regionIds } = req.body;
+    const postgresService = require('../services/database/postgres.service');
+
+    if (!regionIds || !Array.isArray(regionIds) || regionIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'regionIds array is required'
+      });
+    }
+
+    // Insert region assignments (ignore duplicates)
+    const values = regionIds.map((regionId, index) =>
+      `($1, $${index + 2}, $${index + 2 + regionIds.length})`
+    ).join(', ');
+
+    const params = [
+      userId,
+      ...regionIds,
+      ...regionIds.map(() => req.user.id) // assigned_by
+    ];
+
+    await postgresService.pool.query(`
+      INSERT INTO admin_regions (admin_user_id, region_id, assigned_by)
+      VALUES ${values}
+      ON CONFLICT (admin_user_id, region_id) DO NOTHING
+    `, params);
+
+    // Also update primary_region_id if not set
+    await postgresService.pool.query(`
+      UPDATE admin_users
+      SET primary_region_id = $2
+      WHERE id = $1 AND primary_region_id IS NULL
+    `, [userId, regionIds[0]]);
+
+    logger.info(`Assigned ${regionIds.length} region(s) to admin user ${userId}`);
+
+    res.json({
+      success: true,
+      message: `Successfully assigned ${regionIds.length} region(s)`
+    });
+
+  } catch (error) {
+    logger.error('Error assigning regions:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route DELETE /api/admin/admin-users/:userId/regions/:regionId
+ * @desc Remove a region assignment from an admin user
+ * @access Admin
+ */
+router.delete('/admin-users/:userId/regions/:regionId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId, regionId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+
+    const result = await postgresService.pool.query(`
+      DELETE FROM admin_regions
+      WHERE admin_user_id = $1 AND region_id = $2
+      RETURNING id
+    `, [userId, regionId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Region assignment not found'
+      });
+    }
+
+    logger.info(`Removed region ${regionId} from admin user ${userId}`);
+
+    res.json({
+      success: true,
+      message: 'Region assignment removed successfully'
+    });
+
+  } catch (error) {
+    logger.error('Error removing region assignment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * @route PATCH /api/admin/users/:userId/toggle-status
  * @desc Toggle WhatsApp user active status
  * @access Admin
