@@ -1809,6 +1809,32 @@ router.delete('/admin-users/:userId', authMiddleware.authenticateToken, async (r
 });
 
 /**
+ * @route GET /api/admin/regions
+ * @desc Get all active regions
+ * @access Admin
+ */
+router.get('/regions', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const postgresService = require('../services/database/postgres.service');
+
+    const result = await postgresService.pool.query(
+      'SELECT id, code, name, description FROM regions WHERE is_active = TRUE ORDER BY name'
+    );
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching regions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch regions'
+    });
+  }
+});
+
+/**
  * @route GET /api/admin/admin-users/:userId/regions
  * @desc Get regions assigned to an admin user
  * @access Admin
