@@ -1577,11 +1577,30 @@ router.get('/admin-users', authMiddleware.authenticateToken, async (req, res) =>
 
     let result;
     if (isSuperAdmin) {
-      // Super Admin sees all admin users
+      // Super Admin sees all admin users with their assigned regions
       result = await postgresService.pool.query(`
-        SELECT id, email, name, role, role_id, primary_region_id, is_active, created_at, updated_at, last_login_at
-        FROM admin_users
-        ORDER BY created_at DESC
+        SELECT
+          au.id,
+          au.email,
+          au.name,
+          au.role,
+          au.role_id,
+          au.primary_region_id,
+          au.is_active,
+          au.created_at,
+          au.updated_at,
+          au.last_login_at,
+          CASE
+            WHEN au.role_id = 1 THEN 'super_admin'
+            ELSE 'admin'
+          END as role_name,
+          STRING_AGG(r.code || ':' || r.name, ', ' ORDER BY r.name) as assigned_regions
+        FROM admin_users au
+        LEFT JOIN admin_regions ar ON au.id = ar.admin_user_id
+        LEFT JOIN regions r ON ar.region_id = r.id
+        GROUP BY au.id, au.email, au.name, au.role, au.role_id, au.primary_region_id,
+                 au.is_active, au.created_at, au.updated_at, au.last_login_at
+        ORDER BY au.created_at DESC
       `);
     } else {
       // Regional Admin sees only admin users from their assigned regions
@@ -1593,10 +1612,29 @@ router.get('/admin-users', authMiddleware.authenticateToken, async (req, res) =>
       }
 
       result = await postgresService.pool.query(`
-        SELECT id, email, name, role, role_id, primary_region_id, is_active, created_at, updated_at, last_login_at
-        FROM admin_users
-        WHERE primary_region_id = ANY($1::int[])
-        ORDER BY created_at DESC
+        SELECT
+          au.id,
+          au.email,
+          au.name,
+          au.role,
+          au.role_id,
+          au.primary_region_id,
+          au.is_active,
+          au.created_at,
+          au.updated_at,
+          au.last_login_at,
+          CASE
+            WHEN au.role_id = 1 THEN 'super_admin'
+            ELSE 'admin'
+          END as role_name,
+          STRING_AGG(r.code || ':' || r.name, ', ' ORDER BY r.name) as assigned_regions
+        FROM admin_users au
+        LEFT JOIN admin_regions ar ON au.id = ar.admin_user_id
+        LEFT JOIN regions r ON ar.region_id = r.id
+        WHERE au.primary_region_id = ANY($1::int[])
+        GROUP BY au.id, au.email, au.name, au.role, au.role_id, au.primary_region_id,
+                 au.is_active, au.created_at, au.updated_at, au.last_login_at
+        ORDER BY au.created_at DESC
       `, [regionIds]);
     }
 
