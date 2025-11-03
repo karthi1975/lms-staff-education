@@ -71,8 +71,15 @@ async function testRegionAssignment() {
       console.log('✅ Test Regional Admin created');
     }
 
-    // Now find and click Manage Access button
+    // Now open the dropdown menu first
     await page.waitForTimeout(1000);
+    const dropdownToggle = testAdminRow.locator('button.dropdown-toggle');
+    await dropdownToggle.click();
+
+    // Wait for dropdown to be visible
+    await page.waitForTimeout(500);
+
+    // Now click Manage Access button
     const manageAccessButton = testAdminRow.locator('button:has-text("Manage Access")');
     await manageAccessButton.click();
 

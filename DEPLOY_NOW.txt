@@ -1,0 +1,65 @@
+================================================================================
+REGION ASSIGNMENT FEATURE - DEPLOYMENT COMMANDS
+================================================================================
+
+ISSUE: UI shows empty modal because API endpoints are NOT deployed yet.
+
+SOLUTION: Copy/paste these commands to deploy:
+
+================================================================================
+STEP 1: SSH to GCP
+================================================================================
+
+gcloud compute ssh teachers-training --zone "us-east5-a" --project "lms-tanzania-consultant"
+
+
+================================================================================
+STEP 2: On GCP server, copy/paste this entire block:
+================================================================================
+
+cd /home/karthi/teachers_training && \
+git fetch origin && \
+git pull origin feature/multi-region-rbac && \
+echo "✅ Code pulled" && \
+docker cp routes/admin.routes.js teachers_training_app_1:/app/routes/admin.routes.js && \
+docker cp public/admin/admin-users-rbac.html teachers_training_app_1:/app/public/admin/admin-users-rbac.html && \
+echo "✅ Files copied" && \
+docker exec teachers_training_app_1 sh -c 'pkill -f node' && \
+echo "✅ Node restarted, waiting..." && \
+sleep 5 && \
+docker logs teachers_training_app_1 --tail 30
+
+================================================================================
+STEP 3: Verify deployment (on GCP server):
+================================================================================
+
+docker exec teachers_training_app_1 grep -c "admin-users/:userId/regions" /app/routes/admin.routes.js
+
+(Should output: 3 or more)
+
+================================================================================
+STEP 4: Test on local machine:
+================================================================================
+
+./check-region-api.sh
+
+(Should show JSON response with regions, not HTML 404)
+
+================================================================================
+STEP 5: Run full Playwright test:
+================================================================================
+
+node test-region-assignment-comprehensive.js
+
+(Should show all tests passing)
+
+================================================================================
+EXPECTED TIME: 2 minutes total
+================================================================================
+
+After deployment, the modal will show:
+- Checkboxes for: Tanzania, Rwanda, Kenya, Burundi
+- Ability to assign regions to test1
+- Regions will show in "Assigned Regions" section
+
+================================================================================
