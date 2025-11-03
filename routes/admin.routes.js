@@ -1936,6 +1936,86 @@ router.delete('/admin-users/:userId/regions/:regionId', authMiddleware.authentic
 });
 
 /**
+ * @route POST /api/admin/admin-users/:userId/reset-password
+ * @desc Reset password for an admin user (auto-generate secure password)
+ * @access Super Admin only
+ */
+router.post('/admin-users/:userId/reset-password', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const postgresService = require('../services/database/postgres.service');
+    const bcrypt = require('bcrypt');
+
+    // Verify requester is Super Admin (role_id = 1)
+    if (req.user.role_id !== 1) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only Super Admins can reset passwords'
+      });
+    }
+
+    // Check if target user exists
+    const userCheck = await postgresService.pool.query(
+      'SELECT id, name, email FROM admin_users WHERE id = $1',
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Admin user not found'
+      });
+    }
+
+    const targetUser = userCheck.rows[0];
+
+    // Generate secure random password
+    // Format: Uppercase + lowercase + numbers + special char (e.g., "Admin2025!Xyz")
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const specialChars = '!@#$%^&*';
+    const generatePassword = () => {
+      const year = new Date().getFullYear();
+      const prefix = 'Admin';
+      const random = Array.from({ length: 3 }, () =>
+        chars[Math.floor(Math.random() * chars.length)]
+      ).join('');
+      const special = specialChars[Math.floor(Math.random() * specialChars.length)];
+      return `${prefix}${year}${special}${random}`;
+    };
+
+    const newPassword = generatePassword();
+
+    // Hash the password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password in database
+    await postgresService.pool.query(
+      'UPDATE admin_users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [passwordHash, userId]
+    );
+
+    logger.info(`Password reset for admin user ${userId} (${targetUser.email}) by Super Admin ${req.user.id}`);
+
+    // Return the plain password (ONLY TIME it's sent)
+    res.json({
+      success: true,
+      message: 'Password reset successfully',
+      user: {
+        id: targetUser.id,
+        name: targetUser.name,
+        email: targetUser.email
+      },
+      newPassword: newPassword,
+      warning: 'This password will only be shown once. Please save it securely.'
+    });
+
+  } catch (error) {
+    logger.error('Error resetting admin user password:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * @route PATCH /api/admin/users/:userId/toggle-status
  * @desc Toggle WhatsApp user active status
  * @access Admin
