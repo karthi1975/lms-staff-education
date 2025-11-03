@@ -714,6 +714,9 @@
 
     <script>
         let allCourses = [];
+        let allRegions = [];
+        let currentUserRegions = [];
+        let currentUser = null;
         const API_BASE = '/api/admin';
 
         // Check authentication
@@ -722,10 +725,22 @@
             window.location.href = 'login.html';
         }
 
+        // Get current user info
+        try {
+            const adminUserStr = localStorage.getItem('adminUser');
+            if (adminUserStr) {
+                currentUser = JSON.parse(adminUserStr);
+                console.log('Current user:', currentUser);
+            }
+        } catch (e) {
+            console.error('Error parsing admin user:', e);
+        }
+
         // Load courses on page load
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadRegions();
+            await loadUserRegions();
             loadCourses();
-            loadRegions();
             setupFileUploadHandler();
         });
 
@@ -854,19 +869,44 @@
         }
 
         function openCreateCourseModal() {
+            console.log('Opening create course modal...');
             document.getElementById('modalTitle').textContent = 'Create New Course';
             document.getElementById('courseForm').reset();
             document.getElementById('courseId').value = '';
+
+            // Ensure regions are populated
+            if (allRegions.length > 0) {
+                populateRegionDropdown();
+            }
+
+            // Auto-select user's assigned region if they only have one
+            const select = document.getElementById('courseRegion');
+            if (currentUserRegions.length > 0) {
+                // Use the first assigned region as default
+                const defaultRegion = currentUserRegions[0];
+                select.value = defaultRegion.region_id || defaultRegion.id;
+                console.log('Auto-selected region:', defaultRegion.name || defaultRegion.code);
+            } else {
+                // For super admins, check if Tanzania exists and select it
+                const tanzaniaRegion = allRegions.find(r => r.code === 'TZ' || r.name.includes('Tanzania'));
+                if (tanzaniaRegion) {
+                    select.value = tanzaniaRegion.id;
+                    console.log('Auto-selected Tanzania region');
+                }
+            }
+
             document.getElementById('courseModal').classList.add('active');
+            console.log('Modal opened with region:', select.value);
         }
 
         function closeCourseModal() {
             document.getElementById('courseModal').classList.remove('active');
         }
 
-        // Load regions for dropdown
+        // Load all regions
         async function loadRegions() {
             try {
+                console.log('Loading regions...');
                 const response = await fetch(`${API_BASE}/regions`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -875,21 +915,59 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    const regions = data.data || [];
-
-                    const select = document.getElementById('courseRegion');
-                    select.innerHTML = '<option value="">Select region (optional)</option>';
-
-                    regions.forEach(region => {
-                        const option = document.createElement('option');
-                        option.value = region.id;
-                        option.textContent = `${region.name} (${region.code})`;
-                        select.appendChild(option);
-                    });
+                    allRegions = data.data || [];
+                    console.log('Loaded regions:', allRegions);
+                    populateRegionDropdown();
+                } else {
+                    console.error('Failed to load regions:', response.status);
                 }
             } catch (error) {
                 console.error('Error loading regions:', error);
             }
+        }
+
+        // Load user's assigned regions
+        async function loadUserRegions() {
+            if (!currentUser || !currentUser.id) {
+                console.log('No current user, skipping region load');
+                return;
+            }
+
+            try {
+                console.log('Loading user regions for user ID:', currentUser.id);
+                const response = await fetch(`${API_BASE}/admin-users/${currentUser.id}/regions`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUserRegions = data.regions || [];
+                    console.log('User assigned regions:', currentUserRegions);
+                } else {
+                    console.error('Failed to load user regions:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading user regions:', error);
+            }
+        }
+
+        // Populate region dropdown
+        function populateRegionDropdown() {
+            const select = document.getElementById('courseRegion');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">Select region (optional)</option>';
+
+            allRegions.forEach(region => {
+                const option = document.createElement('option');
+                option.value = region.id;
+                option.textContent = `${region.name} (${region.code})`;
+                select.appendChild(option);
+            });
+
+            console.log('Region dropdown populated with', allRegions.length, 'regions');
         }
 
         // Setup file upload handler
@@ -912,9 +990,13 @@
         }
 
         async function saveCourse() {
+            console.log('=== SAVE COURSE CALLED ===');
             const courseId = document.getElementById('courseId').value;
             const regionId = document.getElementById('courseRegion').value;
             const files = document.getElementById('courseDocuments').files;
+
+            console.log('Region ID selected:', regionId);
+            console.log('Files selected:', files.length);
 
             const courseData = {
                 title: document.getElementById('courseTitle').value,
@@ -927,18 +1009,27 @@
                 region_id: regionId ? parseInt(regionId) : null
             };
 
+            console.log('Course data:', courseData);
+
             if (!courseData.title || !courseData.code) {
+                console.error('Missing required fields');
                 showAlert('Please fill in required fields', 'error');
                 return;
             }
 
             // Disable save button
             const saveBtn = document.getElementById('saveCourseBtn');
+            if (!saveBtn) {
+                console.error('Save button not found!');
+                return;
+            }
             saveBtn.disabled = true;
             saveBtn.textContent = 'Creating...';
+            console.log('Button disabled, starting course creation...');
 
             try {
                 // Step 1: Create course
+                console.log('Sending POST request to:', `${API_BASE}/courses`);
                 const response = await fetch(`${API_BASE}/courses`, {
                     method: 'POST',
                     headers: {
@@ -948,29 +1039,41 @@
                     body: JSON.stringify(courseData)
                 });
 
+                console.log('Response status:', response.status);
+
                 if (!response.ok) {
                     const error = await response.json();
+                    console.error('Server error:', error);
                     throw new Error(error.error || 'Failed to create course');
                 }
 
                 const result = await response.json();
+                console.log('Course creation result:', result);
                 const createdCourse = result.course;
 
                 showAlert(result.message || 'Course created successfully!', 'success');
 
                 // Step 2: If files were uploaded, create module and upload documents
                 if (files.length > 0) {
+                    console.log('Uploading', files.length, 'files...');
                     await uploadCourseDocuments(createdCourse.id, files);
+                } else {
+                    console.log('No files to upload');
                 }
 
                 closeCourseModal();
                 loadCourses();
+                console.log('=== COURSE CREATION COMPLETE ===');
             } catch (error) {
-                console.error('Error saving course:', error);
+                console.error('!!! ERROR SAVING COURSE !!!');
+                console.error('Error type:', error.name);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
                 showAlert('Error: ' + error.message, 'error');
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Save Course';
+                console.log('Save button re-enabled');
             }
         }
 
