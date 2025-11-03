@@ -585,9 +585,24 @@
         </div>
 
         <div class="sidebar">
-            <h2>Training Modules</h2>
+            <h2>Select Course & Module</h2>
+
+            <!-- Course Selection -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 14px;">📚 Course:</label>
+                <select id="courseSelect" onchange="loadModulesByCourse()" style="width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; cursor: pointer; background: white;">
+                    <option value="">-- Select a Course --</option>
+                </select>
+            </div>
+
+            <!-- Module Selection -->
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 14px;">📖 Module:</label>
+            </div>
             <ul class="module-list" id="moduleList">
-                <!-- Modules will be loaded here -->
+                <li style="padding: 20px; text-align: center; color: #999; font-size: 13px;">
+                    Select a course first
+                </li>
             </ul>
         </div>
 
@@ -597,7 +612,14 @@
                     <h2 id="chatTitle">Select a Module</h2>
                     <p id="chatSubtitle">Choose a module to start chatting</p>
                 </div>
-                <button class="btn-clear" onclick="clearChat()" style="display: none;" id="clearChatBtn">🗑️ Clear Chat</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select id="languageSelect" onchange="changeLanguage()" style="padding: 8px 16px; border: 1px solid #e0e0e0; border-radius: 20px; font-size: 13px; cursor: pointer; background: white;">
+                        <option value="auto">🌍 Auto-detect</option>
+                        <option value="english">🇬🇧 English</option>
+                        <option value="swahili">🇹🇿 Swahili</option>
+                    </select>
+                    <button class="btn-clear" onclick="clearChat()" style="display: none;" id="clearChatBtn">🗑️ Clear Chat</button>
+                </div>
             </div>
 
             <!-- Mode Selector Bar -->
@@ -647,28 +669,29 @@
     <script>
         const API_BASE = '/api/admin';
         let currentModuleId = null;
+        let currentCourseId = null;
         let authToken = localStorage.getItem('adminToken');
         let messageHistory = {};
+        let currentLanguage = 'auto'; // auto, english, swahili
 
         // Mode management
         let currentMode = 'regular';
         let currentUserId = null; // Will be set from user profile
-        let currentCourseId = null;
 
         // Check authentication
         if (!authToken) {
             window.location.href = 'login.html';
         }
 
-        // Load modules on page load
+        // Load courses on page load
         document.addEventListener('DOMContentLoaded', () => {
-            loadModules();
+            loadCourses();
             setupInputHandlers();
         });
 
-        async function loadModules() {
+        async function loadCourses() {
             try {
-                const response = await fetch(`${API_BASE}/modules`, {
+                const response = await fetch(`${API_BASE}/courses`, {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
@@ -679,13 +702,51 @@
                         logout();
                         return;
                     }
+                    throw new Error('Failed to load courses');
+                }
+
+                const result = await response.json();
+                displayCourses(result.data || result);
+            } catch (error) {
+                console.error('Error loading courses:', error);
+            }
+        }
+
+        function displayCourses(courses) {
+            const select = document.getElementById('courseSelect');
+            select.innerHTML = '<option value="">-- Select a Course --</option>';
+            courses.forEach(course => {
+                select.innerHTML += `<option value="${course.id}">${course.title}</option>`;
+            });
+        }
+
+        async function loadModulesByCourse() {
+            const courseId = document.getElementById('courseSelect').value;
+            const moduleList = document.getElementById('moduleList');
+
+            if (!courseId) {
+                moduleList.innerHTML = '<li style="padding: 20px; text-align: center; color: #999; font-size: 13px;">Select a course first</li>';
+                return;
+            }
+
+            currentCourseId = parseInt(courseId);
+
+            try {
+                const response = await fetch(`${API_BASE}/courses/${courseId}/modules`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
                     throw new Error('Failed to load modules');
                 }
 
                 const result = await response.json();
-                displayModules(result.data);
+                displayModules(result.data || result.modules || result);
             } catch (error) {
                 console.error('Error loading modules:', error);
+                moduleList.innerHTML = '<li style="padding: 20px; text-align: center; color: #e74c3c; font-size: 13px;">Error loading modules</li>';
             }
         }
 
@@ -954,6 +1015,12 @@
             }
         }
 
+        function changeLanguage() {
+            const select = document.getElementById('languageSelect');
+            currentLanguage = select.value;
+            console.log('Language changed to:', currentLanguage);
+        }
+
         function setupInputHandlers() {
             const input = document.getElementById('messageInput');
 
@@ -976,7 +1043,10 @@
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
 
-            if (!message || !currentModuleId) return;
+            if (!message || !currentModuleId || !currentCourseId) {
+                alert('Please select both a course and module first');
+                return;
+            }
 
             // Add user message to chat
             addMessage(message, 'user');
@@ -989,17 +1059,17 @@
             showTypingIndicator();
 
             try {
-                const response = await fetch(`/api/chat`, {
+                // Use bilingual RAG endpoint
+                const response = await fetch(`${API_BASE}/courses/${currentCourseId}/query-bilingual`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        module_id: currentModuleId,
-                        message: message,
-                        useContext: true,
-                        language: 'english'
+                        query: message,
+                        language: currentLanguage, // auto, english, swahili
+                        moduleId: currentModuleId
                     })
                 });
 
@@ -1012,12 +1082,19 @@
                 const result = await response.json();
 
                 // Add AI response to chat
-                // Extract source titles from context array - check multiple possible filename fields
-                const sources = result.context ? result.context.map(c => {
-                    // Try multiple metadata fields that might contain the filename
-                    return c.title || c.original_file || c.file_name || c.original_name || c.filename || c.module || 'Unknown';
+                // Extract sources from bilingual RAG response
+                const sources = result.sources ? result.sources.map(s => {
+                    return s.filename || s.file_name || s.original_name || 'Unknown';
                 }) : [];
-                addMessage(result.response, 'assistant', sources);
+
+                // Show detected language badge
+                let languageBadge = '';
+                if (result.language) {
+                    const langEmoji = result.language === 'english' ? '🇬🇧' : result.language === 'swahili' ? '🇹🇿' : '🌍';
+                    languageBadge = `<div style="display: inline-block; background: rgba(0,137,123,0.1); padding: 4px 12px; border-radius: 12px; margin-bottom: 8px; font-size: 11px; font-weight: 600; color: #00897B;">${langEmoji} ${result.language.charAt(0).toUpperCase() + result.language.slice(1)}</div>`;
+                }
+
+                addMessage(languageBadge + result.answer, 'assistant', sources);
 
             } catch (error) {
                 hideTypingIndicator();
