@@ -1017,6 +1017,143 @@ class Neo4jService {
     }
   }
 
+  // ========================================
+  // BILINGUAL RAG SUPPORT
+  // ========================================
+
+  /**
+   * Create user interaction node (for RAG Q&A tracking)
+   */
+  async createInteraction(data) {
+    if (!this.isConnected()) {
+      logger.warn('[Neo4j] Not connected - skipping interaction tracking');
+      return null;
+    }
+
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {id: $userId})
+        CREATE (i:Interaction {
+          id: randomUUID(),
+          query: $query,
+          response: $response,
+          language: $language,
+          course_id: $courseId,
+          module_id: $moduleId,
+          sources_count: $sourcesCount,
+          timestamp: datetime($timestamp)
+        })
+        CREATE (u)-[:ASKED]->(i)
+        RETURN i`,
+        {
+          userId: data.userId,
+          query: data.query,
+          response: data.response,
+          language: data.language || 'english',
+          courseId: data.courseId || null,
+          moduleId: data.moduleId || null,
+          sourcesCount: data.sourcesCount || 0,
+          timestamp: data.timestamp
+        }
+      );
+
+      return result.records[0]?.get('i').properties;
+    } catch (error) {
+      logger.error('[Neo4j] Error creating interaction:', error.message);
+      return null;
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Create document node in knowledge graph
+   */
+  async createDocument(data) {
+    if (!this.isConnected()) {
+      logger.warn('[Neo4j] Not connected - skipping document creation');
+      return null;
+    }
+
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MERGE (d:Document {id: $id})
+        ON CREATE SET
+          d.course_id = $courseId,
+          d.module_id = $moduleId,
+          d.language = $language,
+          d.filename = $filename,
+          d.source = $source,
+          d.content_type = $contentType,
+          d.created_at = datetime($createdAt)
+        WITH d
+        OPTIONAL MATCH (c:Course {id: $courseId})
+        FOREACH (ignored IN CASE WHEN c IS NOT NULL THEN [1] ELSE [] END |
+          MERGE (d)-[:BELONGS_TO]->(c)
+        )
+        WITH d
+        OPTIONAL MATCH (m:Module {id: $moduleId})
+        FOREACH (ignored IN CASE WHEN m IS NOT NULL THEN [1] ELSE [] END |
+          MERGE (d)-[:PART_OF]->(m)
+        )
+        RETURN d`,
+        {
+          id: data.id,
+          courseId: data.courseId || null,
+          moduleId: data.moduleId || null,
+          language: data.language || 'english',
+          filename: data.filename || 'Unknown',
+          source: data.source || 'upload',
+          contentType: data.contentType || 'document',
+          createdAt: data.createdAt
+        }
+      );
+
+      return result.records[0]?.get('d').properties;
+    } catch (error) {
+      logger.error('[Neo4j] Error creating document:', error.message);
+      return null;
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * Get user's module progress for context building
+   */
+  async getUserModuleProgress(userId, courseId = null) {
+    if (!this.isConnected()) {
+      return [];
+    }
+
+    const session = this.driver.session();
+    try {
+      const query = courseId ?
+        `MATCH (u:User {id: $userId})-[p:PROGRESS]->(m:Module)
+         WHERE m.course_id = $courseId
+         RETURN m.id as moduleId, m.name as moduleName, p.status as status
+         ORDER BY m.order_index` :
+        `MATCH (u:User {id: $userId})-[p:PROGRESS]->(m:Module)
+         RETURN m.id as moduleId, m.name as moduleName, p.status as status
+         ORDER BY m.order_index`;
+
+      const result = await session.run(query, { userId, courseId });
+
+      return result.records.map(record => ({
+        moduleId: record.get('moduleId'),
+        moduleName: record.get('moduleName'),
+        status: record.get('status')
+      }));
+    } catch (error) {
+      logger.error('[Neo4j] Error getting user module progress:', error.message);
+      return [];
+    } finally {
+      await session.close();
+    }
+  }
+
   async close() {
     if (this.driver) {
       await this.driver.close();

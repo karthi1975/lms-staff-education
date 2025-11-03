@@ -40,6 +40,7 @@ const classificationRoutes = require('./routes/classification.routes');
 const fileProcessingRoutes = require('./routes/file-processing.routes');
 const simpleUploadRoutes = require('./routes/simple-upload.routes');
 const fileListRoutes = require('./routes/file-list.routes');
+const bilingualUploadRoutes = require('./routes/bilingual-upload.routes');
 const coachingRoutes = require('./routes/coaching.routes');
 
 // Multi-Region RBAC Routes
@@ -116,6 +117,9 @@ app.use('/api/admin', fileProcessingRoutes);
 
 // Add simple upload routes (module-independent upload → RAG+Graph DB)
 app.use('/api/admin', simpleUploadRoutes);
+
+// Add bilingual upload routes (OCR + RAG + GraphDB for English/Swahili)
+app.use('/api/admin', bilingualUploadRoutes);
 
 // Add file list routes (view uploaded files with processing status)
 app.use('/api/admin', fileListRoutes);
