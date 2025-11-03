@@ -27,8 +27,22 @@ async function testPasswordReset() {
 
     await page.waitForURL(/dashboard\.html/, { timeout: 10000 });
     const token = await page.evaluate(() => localStorage.getItem('adminToken'));
+    const adminUser = await page.evaluate(() => localStorage.getItem('adminUser'));
+
     console.log('✅ Logged in successfully');
     console.log(`Token: ${token.substring(0, 20)}...`);
+    console.log(`Admin User: ${adminUser}`);
+
+    // Parse and check role
+    try {
+      const user = JSON.parse(adminUser);
+      console.log(`  Name: ${user.name}`);
+      console.log(`  Email: ${user.email}`);
+      console.log(`  Role: ${user.role}`);
+      console.log(`  Role ID: ${user.role_id}`);
+    } catch (e) {
+      console.log('  Could not parse admin user');
+    }
     console.log();
 
     // ============================================
@@ -107,8 +121,28 @@ async function testPasswordReset() {
       console.log('✅ Confirmed password reset');
     });
 
+    // Capture console errors
+    const consoleMessages = [];
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        consoleMessages.push(msg.text());
+      }
+    });
+
     await page.click('button.dropdown-item:has-text("Reset Password")');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
+
+    // Check for error alerts
+    const alertContainer = await page.textContent('#alertContainer').catch(() => '');
+    if (alertContainer.trim()) {
+      console.log(`Alert message: ${alertContainer}`);
+    }
+
+    // Check for console errors
+    if (consoleMessages.length > 0) {
+      console.log('Console errors:');
+      consoleMessages.forEach(msg => console.log(`  - ${msg}`));
+    }
 
     console.log();
 

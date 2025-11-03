@@ -42,6 +42,7 @@ const authenticateToken = async (req, res, next) => {
         email: admin.email,
         name: admin.name,
         role: admin.role,
+        role_id: admin.role_id,
         type: 'admin'
       };
     } else {
