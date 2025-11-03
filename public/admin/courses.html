@@ -675,11 +675,39 @@
                         <input type="number" id="durationWeeks" min="1" placeholder="e.g., 12">
                         <small>Estimated time to complete this course</small>
                     </div>
+
+                    <div class="form-group">
+                        <label for="courseRegion">Region</label>
+                        <select id="courseRegion">
+                            <option value="">Select region (optional)</option>
+                        </select>
+                        <small>Assign this course to a specific region</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="courseDocuments">Upload Course Documents (OCR Supported)</label>
+                        <input type="file" id="courseDocuments" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png">
+                        <small>Upload PDF, Word docs, or scanned images. OCR will extract text automatically.</small>
+                        <div id="fileList" style="margin-top: 10px; display: none;">
+                            <h4 style="font-size: 14px; margin-bottom: 8px;">Selected Files:</h4>
+                            <ul id="fileItems" style="font-size: 13px; color: #666; list-style-position: inside;"></ul>
+                        </div>
+                    </div>
+
+                    <div id="uploadProgress" style="display: none; margin-top: 16px;">
+                        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px;">
+                            <h4 style="font-size: 14px; margin-bottom: 8px;">Upload Progress</h4>
+                            <div style="background: white; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                                <div id="progressBar" style="background: #00897B; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                            <p id="uploadStatus" style="font-size: 13px; color: #666; margin: 0;">Preparing...</p>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeCourseModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveCourse()">Save Course</button>
+                <button class="btn btn-primary" id="saveCourseBtn" onclick="saveCourse()">Save Course</button>
             </div>
         </div>
     </div>
@@ -697,6 +725,8 @@
         // Load courses on page load
         document.addEventListener('DOMContentLoaded', () => {
             loadCourses();
+            loadRegions();
+            setupFileUploadHandler();
         });
 
         async function loadCourses() {
@@ -834,8 +864,58 @@
             document.getElementById('courseModal').classList.remove('active');
         }
 
+        // Load regions for dropdown
+        async function loadRegions() {
+            try {
+                const response = await fetch(`${API_BASE}/regions`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const regions = data.data || [];
+
+                    const select = document.getElementById('courseRegion');
+                    select.innerHTML = '<option value="">Select region (optional)</option>';
+
+                    regions.forEach(region => {
+                        const option = document.createElement('option');
+                        option.value = region.id;
+                        option.textContent = `${region.name} (${region.code})`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading regions:', error);
+            }
+        }
+
+        // Setup file upload handler
+        function setupFileUploadHandler() {
+            const fileInput = document.getElementById('courseDocuments');
+            fileInput.addEventListener('change', function() {
+                const files = Array.from(this.files);
+                const fileList = document.getElementById('fileList');
+                const fileItems = document.getElementById('fileItems');
+
+                if (files.length > 0) {
+                    fileList.style.display = 'block';
+                    fileItems.innerHTML = files.map(f =>
+                        `<li>${f.name} (${(f.size / 1024).toFixed(1)} KB)</li>`
+                    ).join('');
+                } else {
+                    fileList.style.display = 'none';
+                }
+            });
+        }
+
         async function saveCourse() {
             const courseId = document.getElementById('courseId').value;
+            const regionId = document.getElementById('courseRegion').value;
+            const files = document.getElementById('courseDocuments').files;
+
             const courseData = {
                 title: document.getElementById('courseTitle').value,
                 code: document.getElementById('courseCode').value,
@@ -843,7 +923,8 @@
                 category: document.getElementById('courseCategory').value,
                 difficulty_level: document.getElementById('difficultyLevel').value,
                 duration_weeks: parseInt(document.getElementById('durationWeeks').value) || null,
-                sequence_order: allCourses.length + 1
+                sequence_order: allCourses.length + 1,
+                region_id: regionId ? parseInt(regionId) : null
             };
 
             if (!courseData.title || !courseData.code) {
@@ -851,7 +932,13 @@
                 return;
             }
 
+            // Disable save button
+            const saveBtn = document.getElementById('saveCourseBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Creating...';
+
             try {
+                // Step 1: Create course
                 const response = await fetch(`${API_BASE}/courses`, {
                     method: 'POST',
                     headers: {
@@ -867,13 +954,101 @@
                 }
 
                 const result = await response.json();
+                const createdCourse = result.course;
 
                 showAlert(result.message || 'Course created successfully!', 'success');
+
+                // Step 2: If files were uploaded, create module and upload documents
+                if (files.length > 0) {
+                    await uploadCourseDocuments(createdCourse.id, files);
+                }
+
                 closeCourseModal();
                 loadCourses();
             } catch (error) {
                 console.error('Error saving course:', error);
                 showAlert('Error: ' + error.message, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Course';
+            }
+        }
+
+        // Upload documents to course (creates module and processes with OCR)
+        async function uploadCourseDocuments(courseId, files) {
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('uploadStatus');
+
+            progressDiv.style.display = 'block';
+            statusText.textContent = 'Creating default module...';
+            progressBar.style.width = '10%';
+
+            try {
+                // Step 1: Create a default module for the documents
+                const moduleResponse = await fetch(`${API_BASE}/portal/courses/${courseId}/modules`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        module_name: 'Course Materials',
+                        module_description: 'Main course content and learning materials',
+                        sequence_order: 1
+                    })
+                });
+
+                if (!moduleResponse.ok) {
+                    throw new Error('Failed to create module');
+                }
+
+                const moduleResult = await moduleResponse.json();
+                const moduleId = moduleResult.module.id;
+
+                progressBar.style.width = '30%';
+                statusText.textContent = `Uploading ${files.length} document(s)...`;
+
+                // Step 2: Upload each file to the module (OCR processing happens automatically)
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const formData = new FormData();
+                    formData.append('content', file);
+
+                    statusText.textContent = `Processing ${file.name} (${i + 1}/${files.length})...`;
+                    progressBar.style.width = `${30 + ((i / files.length) * 60)}%`;
+
+                    const uploadResponse = await fetch(
+                        `${API_BASE}/portal/courses/${courseId}/modules/${moduleId}/upload`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: formData
+                        }
+                    );
+
+                    if (!uploadResponse.ok) {
+                        console.error(`Failed to upload ${file.name}`);
+                        statusText.textContent = `Warning: ${file.name} failed to upload`;
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                }
+
+                progressBar.style.width = '100%';
+                statusText.textContent = `✅ Successfully uploaded ${files.length} document(s) with OCR processing!`;
+
+                // Auto-hide progress after 3 seconds
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressBar.style.width = '0%';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Error uploading documents:', error);
+                statusText.textContent = '❌ Error uploading documents: ' + error.message;
+                throw error;
             }
         }
 

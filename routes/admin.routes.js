@@ -327,7 +327,7 @@ router.get('/user-progress/:userId', authMiddleware.authenticateToken, async (re
  */
 router.post('/courses', authMiddleware.authenticateToken, async (req, res) => {
   try {
-    const { code, title, description, category, difficulty_level, duration_weeks, sequence_order } = req.body;
+    const { code, title, description, category, difficulty_level, duration_weeks, sequence_order, region_id } = req.body;
     const postgresService = require('../services/database/postgres.service');
 
     if (!code || !title) {
@@ -351,10 +351,10 @@ router.post('/courses', authMiddleware.authenticateToken, async (req, res) => {
     }
 
     const result = await postgresService.pool.query(`
-      INSERT INTO courses (code, title, description, category, difficulty_level, duration_weeks, sequence_order)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO courses (code, title, description, category, difficulty_level, duration_weeks, sequence_order, region_id, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [code, title, description, category, difficulty_level, duration_weeks || 24, sequence_order || 1]);
+    `, [code, title, description, category, difficulty_level, duration_weeks || 24, sequence_order || 1, region_id || null, req.user.id]);
 
     res.json({
       success: true,
@@ -392,7 +392,7 @@ router.post('/courses', authMiddleware.authenticateToken, async (req, res) => {
 router.post('/portal/courses', authMiddleware.authenticateToken, async (req, res) => {
   try {
     // Map portal UI fields to courses table schema
-    const { course_name, course_code, description, category } = req.body;
+    const { course_name, course_code, description, category, region_id } = req.body;
     const postgresService = require('../services/database/postgres.service');
 
     if (!course_name) {
@@ -418,10 +418,10 @@ router.post('/portal/courses', authMiddleware.authenticateToken, async (req, res
     }
 
     const result = await postgresService.pool.query(`
-      INSERT INTO courses (code, title, description, category, sequence_order)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO courses (code, title, description, category, sequence_order, region_id, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [code, course_name, description, category || 'General', 1]);
+    `, [code, course_name, description, category || 'General', 1, region_id || null, req.user.id]);
 
     res.json({
       success: true,
