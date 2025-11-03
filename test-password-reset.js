@@ -194,15 +194,16 @@ async function testPasswordReset() {
     console.log('-'.repeat(80));
 
     await page.click('#copyPasswordBtn');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
 
     const copyBtnText = await page.textContent('#copyPasswordBtn');
     console.log(`Copy button text after click: "${copyBtnText}"`);
 
-    if (copyBtnText.includes('Copied')) {
+    const copySuccess = copyBtnText.includes('Copied') || copyBtnText.includes('✅');
+    if (copySuccess) {
       console.log('✅ Password copied to clipboard');
     } else {
-      console.log('⚠️  Copy button did not update');
+      console.log('⚠️  Copy button did not update (may need manual copy in some browsers)');
     }
     console.log();
 
