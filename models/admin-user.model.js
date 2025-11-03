@@ -38,9 +38,9 @@ class AdminUserModel {
    */
   static async findById(id) {
     const query = `
-      SELECT id, email, name, role, ldap_dn, created_at, 
+      SELECT id, email, name, role, role_id, ldap_dn, created_at,
              updated_at, last_login_at, is_active
-      FROM admin_users 
+      FROM admin_users
       WHERE id = $1
     `;
     const result = await postgresService.query(query, [id]);
