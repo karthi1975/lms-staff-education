@@ -536,6 +536,8 @@
             }
         }
     </style>
+    <!-- Security utilities for XSS protection -->
+    <script src="/admin/js/security.js"></script>
 </head>
 <body>
     <div class="container">
@@ -826,10 +828,16 @@
 
                 const progress = user.progress_percentage || 0;
 
+                // XSS PROTECTION: Escape all user-controlled data
+                const safeName = escapeHtml(user.name || 'N/A');
+                const safeEmail = escapeHtml(user.email || 'N/A');
+                const safeWhatsappId = escapeHtml(user.whatsapp_id || 'N/A');
+                const safeUserType = escapeHtml(user.userType || '');
+
                 // WhatsApp field: show email for admin users, phone for WhatsApp users
                 const whatsappField = isAdminUser
-                    ? `<span style="color: #6b7280; font-size: 12px;">${user.email || 'N/A'}</span>`
-                    : (user.whatsapp_id || 'N/A');
+                    ? `<span style="color: #6b7280; font-size: 12px;">${safeEmail}</span>`
+                    : safeWhatsappId;
 
                 // Role field: show "Admin" or "WhatsApp User"
                 const moduleField = isAdminUser
@@ -841,7 +849,7 @@
 
                 return `
                     <tr>
-                        <td>${user.name || 'N/A'}</td>
+                        <td>${safeName}</td>
                         <td>${whatsappField}</td>
                         <td>${moduleField}</td>
                         <td>${progressField}</td>
@@ -853,7 +861,7 @@
                             <button class="btn ${user.is_active ? 'btn-secondary' : 'btn-primary'}" style="padding: 6px 12px; font-size: 12px;"
                                 onclick="${isAdminUser ? `toggleAdminStatus(${user.id}, ${user.is_active})` : `toggleWhatsAppStatus(${user.id}, ${user.is_active})`}">${user.is_active ? 'Deactivate' : 'Activate'}</button>
                             <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;"
-                                onclick="openDeleteModal(${user.id}, '${user.name}', '${user.userType}')">Delete</button>
+                                onclick="openDeleteModal(${user.id}, '${safeName}', '${safeUserType}')">Delete</button>
                         </td>
                     </tr>
                 `;

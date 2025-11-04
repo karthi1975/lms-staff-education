@@ -796,6 +796,8 @@
             opacity: 0.5;
         }
     </style>
+    <!-- Security utilities for XSS protection -->
+    <script src="/admin/js/security.js"></script>
 </head>
 <body>
     <!-- Sidebar Navigation -->
@@ -1097,9 +1099,12 @@
                     const inProgress = parseInt(user.modules_in_progress) || 0;
                     const status = completedModules > 0 ? 'Active' : 'Enrolled';
 
+                    // XSS PROTECTION: Escape user-controlled data
+                    const safeName = escapeHtml(user.name || 'N/A');
+
                     return `
                         <tr style="cursor: pointer;" onclick="window.location.href='user-detail.html?id=${user.id}'">
-                            <td>${user.name}</td>
+                            <td>${safeName}</td>
                             <td><span class="badge badge-${status === 'Active' ? 'success' : 'info'}">${status}</span></td>
                             <td>${completedModules} / 5 modules</td>
                             <td>${lastActive}</td>
@@ -1152,35 +1157,41 @@
         function renderCourseTree() {
             const courseTree = document.getElementById('courseTree');
 
-            courseTree.innerHTML = coursesData.map(course => `
-                <li class="course-item">
-                    <div class="course-header" onclick="toggleCourse(${course.id})" id="course-header-${course.id}">
-                        <div class="course-expand-icon">▶</div>
-                        <div class="course-info">
-                            <div class="course-title">${course.title || 'Untitled Course'}</div>
-                            <div class="course-meta">
-                                <div class="course-meta-item">
-                                    <span class="icon">📁</span>
-                                    <span id="course-${course.id}-modules">Loading...</span>
+            courseTree.innerHTML = coursesData.map(course => {
+                // XSS PROTECTION: Escape course data
+                const safeTitle = escapeHtml(course.title || 'Untitled Course');
+                const safeDifficulty = escapeHtml(course.difficulty_level || 'N/A');
+
+                return `
+                    <li class="course-item">
+                        <div class="course-header" onclick="toggleCourse(${course.id})" id="course-header-${course.id}">
+                            <div class="course-expand-icon">▶</div>
+                            <div class="course-info">
+                                <div class="course-title">${safeTitle}</div>
+                                <div class="course-meta">
+                                    <div class="course-meta-item">
+                                        <span class="icon">📁</span>
+                                        <span id="course-${course.id}-modules">Loading...</span>
+                                    </div>
+                                    <div class="course-meta-item">
+                                        <span class="icon">📊</span>
+                                        <span>${safeDifficulty}</span>
+                                    </div>
+                                    <span class="badge badge-success">Active</span>
                                 </div>
-                                <div class="course-meta-item">
-                                    <span class="icon">📊</span>
-                                    <span>${course.difficulty_level || 'N/A'}</span>
-                                </div>
-                                <span class="badge badge-success">Active</span>
                             </div>
                         </div>
-                    </div>
-                    <div class="modules-container" id="modules-${course.id}">
-                        <ul class="module-list" id="module-list-${course.id}">
-                            <div style="padding: 20px; text-align: center; color: #999;">
-                                <div style="font-size: 16px;">⏳</div>
-                                <div style="margin-top: 8px;">Loading modules...</div>
-                            </div>
-                        </ul>
-                    </div>
-                </li>
-            `).join('');
+                        <div class="modules-container" id="modules-${course.id}">
+                            <ul class="module-list" id="module-list-${course.id}">
+                                <div style="padding: 20px; text-align: center; color: #999;">
+                                    <div style="font-size: 16px;">⏳</div>
+                                    <div style="margin-top: 8px;">Loading modules...</div>
+                                </div>
+                            </ul>
+                        </div>
+                    </li>
+                `;
+            }).join('');
 
             // Load modules for each course
             coursesData.forEach(course => loadCourseModules(course.id));
@@ -1220,11 +1231,14 @@
                     const quizCount = questionCount > 0 ? 1 : 0;
                     const quizText = `${quizCount} quiz${quizCount !== 1 ? 'zes' : ''} • ${questionCount} question${questionCount !== 1 ? 's' : ''}`;
 
+                    // XSS PROTECTION: Escape module data
+                    const safeTitle = escapeHtml(module.title || 'Untitled Module');
+
                     return `
                         <li class="module-item" style="animation-delay: ${index * 50}ms;">
                             <div class="module-number">${module.sequence_order || index + 1}</div>
                             <div class="module-info">
-                                <div class="module-name">${module.title || 'Untitled Module'}</div>
+                                <div class="module-name">${safeTitle}</div>
                                 <div class="module-stats">
                                     <div class="module-stat" id="module-${module.id}-files-container" style="display: none;">
                                         <span>📄</span>
