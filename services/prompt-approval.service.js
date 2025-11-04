@@ -456,7 +456,7 @@ class PromptApprovalService {
           c.code as course_code,
           au.name as requester_name,
           au.email as requester_email,
-          EXTRACT(EPOCH FROM (NOW() - pcr.submitted_at))/3600 as hours_pending
+          EXTRACT(EPOCH FROM (NOW() - pcr.requested_at))/3600 as hours_pending
         FROM prompt_change_requests pcr
         JOIN courses c ON pcr.course_id = c.id
         JOIN admin_users au ON pcr.requested_by = au.id
@@ -476,7 +476,7 @@ class PromptApprovalService {
         query += ` AND pcr.mode = $${params.length}`;
       }
 
-      query += ' ORDER BY pcr.submitted_at ASC';
+      query += ' ORDER BY pcr.requested_at ASC';
 
       const result = await this.postgresService.query(query, params);
 
