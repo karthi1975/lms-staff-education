@@ -58,6 +58,9 @@ const coachingModeRoutes = require('./routes/coaching-mode.routes');
 // Password Reset Routes (Secure - Security Fix BE-001)
 const passwordResetRoutes = require('./routes/password-reset.routes');
 
+// Prompt Approval Routes (Dual Coaching Bot - Phase 2)
+const promptApprovalRoutes = require('./routes/prompt-approval.routes');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -144,6 +147,9 @@ app.use('/api/coaching-mode', coachingModeRoutes);
 
 // Add password reset routes (Secure - Security Fix BE-001)
 app.use('/api', passwordResetRoutes);
+
+// Add prompt approval routes (Dual Coaching Bot - Phase 2)
+app.use('/api', promptApprovalRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
