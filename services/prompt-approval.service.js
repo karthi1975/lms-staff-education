@@ -5,7 +5,7 @@
  * Phase 2 of Dual Coaching Bot Feature
  */
 
-const logger = require('../config/logger');
+const logger = require('../utils/logger');
 
 class PromptApprovalService {
   constructor(postgresService) {

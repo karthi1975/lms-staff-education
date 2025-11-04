@@ -6,7 +6,7 @@
 
 const express = require('express');
 const router = express.Router();
-const logger = require('../config/logger');
+const logger = require('../utils/logger');
 const authMiddleware = require('../middleware/auth.middleware');
 const postgresService = require('../services/postgres.service');
 const PromptApprovalService = require('../services/prompt-approval.service');
