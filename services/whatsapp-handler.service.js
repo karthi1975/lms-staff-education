@@ -140,12 +140,36 @@ class WhatsAppHandlerService {
           const verificationResult = await enrollmentService.verifyUserPIN(normalizedPhone, messageBody.trim());
 
           if (verificationResult.verified) {
-            // PIN verified successfully - send welcome message
+            // PIN verified successfully - fetch actual courses and send welcome message
+            let coursesText = '';
+            try {
+              const coursesResult = await postgresService.query(`
+                SELECT c.id, c.code, c.title,
+                       (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
+                FROM courses c
+                WHERE c.is_active = true
+                ORDER BY c.sequence_order
+                LIMIT 5
+              `);
+
+              if (coursesResult.rows.length > 0) {
+                coursesText = coursesResult.rows.map((course, idx) => {
+                  const moduleText = course.module_count > 0 ? ` (${course.module_count} module${course.module_count > 1 ? 's' : ''})` : '';
+                  return `${idx + 1}️⃣ ${course.title}${moduleText}`;
+                }).join('\n');
+              } else {
+                coursesText = '📚 Courses coming soon!';
+              }
+            } catch (error) {
+              logger.warn('Error fetching courses for welcome message:', error);
+              coursesText = '📚 Courses available - type *"courses"* to see them';
+            }
+
             const welcomeMessage =
               `🎉 *Account Activated!*\n\n` +
               `Welcome ${verificationResult.name}! You now have access to the Teachers Training program!\n\n` +
               `📚 *Available Courses:*\n` +
-              `1️⃣ Business Studies & Entrepreneurship (5 modules)\n\n` +
+              `${coursesText}\n\n` +
               `🚀 *Getting Started:*\n` +
               `• Ask me questions about the course content\n` +
               `• Type *'courses'* to see available courses\n` +
