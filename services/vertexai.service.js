@@ -365,12 +365,13 @@ class VertexAIService {
     }
   }
 
-  async generateEducationalResponse(query, context, language = 'swahili', userId = 'anonymous') {
+  async generateEducationalResponse(query, context, language = 'swahili', userId = 'anonymous', customPrompt = null) {
     // Use prompt service to format the prompt in the specified language
     const formattedPrompt = promptService.formatPrompt(query, context, language);
 
-    // Fortified system prompt with anti-injection directives
-    const basePrompt = "You are a helpful educational assistant for teacher training. Provide clear, concise answers based on the information given.";
+    // Use custom prompt if provided (from course_bot_configs), otherwise use default
+    // This allows approved prompts (Regular/Socratic) from the approval workflow
+    const basePrompt = customPrompt || "You are a helpful educational assistant for teacher training. Provide clear, concise answers based on the information given.";
     const systemPrompt = promptInjectionProtection.fortifySystemPrompt(basePrompt);
 
     const messages = [

@@ -14,6 +14,8 @@ const promptInjectionGuard = require('./prompt-injection-guard.service');
 const responseValidator = require('./response-validator.service');
 const m3Formatter = require('./whatsapp-m3-formatter.service');
 const translationService = require('./translation.service');
+const botConfigService = require('./bot-config.service');
+const userBotPreferencesService = require('./user-bot-preferences.service');
 const logger = require('../utils/logger');
 const path = require('path');
 
@@ -158,6 +160,50 @@ class CourseOrchestratorService {
         });
 
         return this.showCourseSelection();
+      }
+
+      // **MODE SWITCHING COMMANDS**: Check for /regular or /socratic
+      if (lowerMsg.match(/^\/(regular|socratic)$/)) {
+        const requestedMode = lowerMsg.substring(1); // Remove leading "/"
+
+        // User must be enrolled in a course to switch modes
+        if (!context.current_course_id) {
+          return {
+            type: 'text',
+            text: '⚠️ You must be enrolled in a course to switch modes.\n\n' +
+                  'Type "start" to select a course first.'
+          };
+        }
+
+        logger.info(`User ${userId} requesting mode switch to: ${requestedMode}`);
+
+        const switchResult = await userBotPreferencesService.switchMode(
+          userId,
+          context.current_course_id,
+          requestedMode
+        );
+
+        if (switchResult.success) {
+          // Get the greeting for the new mode
+          const promptConfig = await botConfigService.getPromptForMode(
+            context.current_course_id,
+            requestedMode
+          );
+
+          return {
+            type: 'text',
+            text: `✅ ${switchResult.message}\n\n` +
+                  `${promptConfig.greeting}\n\n` +
+                  `📖 ${promptConfig.helpText}\n\n` +
+                  `You can switch back anytime using /regular or /socratic.`
+          };
+        } else {
+          return {
+            type: 'text',
+            text: `❌ ${switchResult.error}\n\n` +
+                  `Current mode: ${switchResult.currentMode || requestedMode}`
+          };
+        }
       }
 
       // Route based on conversation state (use sanitized message)
@@ -671,16 +717,48 @@ class CourseOrchestratorService {
         // Continue without graph enrichment - not critical
       }
 
-      // Step 4: Generate response with Vertex AI (RAG + Graph context)
+      // Step 4: Fetch approved prompt based on user's mode (Regular/Socratic)
+      let approvedPrompt = null;
+      let promptVersion = 1;
+      let currentMode = 'regular';
+
+      try {
+        const courseId = context.current_course_id;
+
+        if (courseId) {
+          // Get user's current mode (regular or socratic)
+          currentMode = await userBotPreferencesService.getUserMode(userId, courseId);
+
+          // Fetch the approved prompt for this mode
+          const promptConfig = await botConfigService.getPromptForMode(courseId, currentMode);
+          approvedPrompt = promptConfig.prompt;
+          promptVersion = promptConfig.version;
+
+          logger.info(`✅ Using ${currentMode} mode prompt v${promptVersion} for user ${userId}, course ${courseId}`);
+        }
+      } catch (promptError) {
+        logger.warn('Failed to fetch approved prompt, using default:', promptError.message);
+        // Will use default prompt from VertexAI service
+      }
+
+      // Step 5: Generate response with Vertex AI (RAG + Graph context + Approved Prompt)
       const enrichedContext = ragContext + graphContext;
       const response = await vertexAIService.generateEducationalResponse(
         query,
         enrichedContext,
-        'english'
+        'english',
+        userId,
+        approvedPrompt  // Pass approved prompt (null = use default)
       );
 
-      // Step 5: Track interaction in PostgreSQL and Neo4j (non-blocking)
-      this.trackLearningInteraction(userId, context.current_module_id, query, response).catch(err => {
+      // Step 6: Track interaction with prompt metadata
+      this.trackLearningInteraction(
+        userId,
+        context.current_module_id,
+        query,
+        response,
+        { mode: currentMode, promptVersion: promptVersion }  // Track mode & version
+      ).catch(err => {
         logger.warn('Failed to track PostgreSQL interaction (non-critical):', err.message);
       });
 
@@ -689,7 +767,7 @@ class CourseOrchestratorService {
         logger.warn('Failed to track Neo4j interaction (non-critical):', err.message);
       });
 
-      // Step 6: Build source citations from ChromaDB search results
+      // Step 7: Build source citations from ChromaDB search results
       const sources = [];
       const seenSources = new Set(); // Deduplicate sources
 
@@ -1373,9 +1451,11 @@ class CourseOrchestratorService {
   /**
    * Track learning interaction
    */
-  async trackLearningInteraction(userId, moduleId, question, response) {
+  async trackLearningInteraction(userId, moduleId, question, response, metadata = {}) {
     try {
-      // Track the interaction
+      // Track the interaction (with optional mode and version metadata)
+      const metadataJson = metadata ? JSON.stringify(metadata) : null;
+
       await postgresService.query(`
         INSERT INTO learning_interactions (
           user_id, moodle_module_id, interaction_type,
@@ -1383,6 +1463,11 @@ class CourseOrchestratorService {
         )
         VALUES ($1, $2, 'question', $3, $4)
       `, [userId, moduleId, question, response]);
+
+      // Log metadata for analytics (mode & prompt version tracking)
+      if (metadata.mode || metadata.promptVersion) {
+        logger.debug(`💬 Interaction tracked: mode=${metadata.mode}, version=${metadata.promptVersion}`);
+      }
 
       // ✅ Update progressive learning progress
       // Each question increases progress by 8% (up to max 80% before quiz)
