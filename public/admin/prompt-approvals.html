@@ -95,18 +95,228 @@
         .page-header {
             margin-bottom: 30px;
             animation: md3-slide-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
         }
 
-        .page-header h1 {
+        .page-header-content h1 {
             font-size: 32px;
             font-weight: 600;
             color: var(--md-sys-color-on-background);
             margin-bottom: 8px;
         }
 
-        .page-header p {
+        .page-header-content p {
             color: var(--md-sys-color-on-surface-variant);
             font-size: 14px;
+        }
+
+        /* Notification Bell */
+        .notification-bell {
+            position: relative;
+            padding: 12px;
+            background: var(--md-sys-color-surface);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-level1);
+        }
+
+        .notification-bell:hover {
+            background: var(--md-sys-color-primary-container);
+            box-shadow: var(--md-sys-elevation-level2);
+        }
+
+        .notification-bell-icon {
+            font-size: 24px;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #C62828;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .notification-badge.urgent {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Notification Panel */
+        .notification-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 400px;
+            max-height: 600px;
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            box-shadow: var(--md-sys-elevation-level3);
+            z-index: 1000;
+            overflow: hidden;
+            animation: md3-slide-down var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        @keyframes md3-slide-down {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .notification-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface-container);
+        }
+
+        .notification-panel-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin: 0;
+        }
+
+        .btn-close-notifications {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            color: var(--md-sys-color-on-surface-variant);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .btn-close-notifications:hover {
+            background: var(--md-sys-color-surface-container-highest);
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .notification-list {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .notification-item {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background: var(--md-sys-color-surface-container-low);
+            border-left: 4px solid transparent;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .notification-item:hover {
+            background: var(--md-sys-color-surface-container);
+            transform: translateX(4px);
+        }
+
+        .notification-item.submitted {
+            border-left-color: #FFA726;
+        }
+
+        .notification-item.approved {
+            border-left-color: #66BB6A;
+        }
+
+        .notification-item.rejected {
+            border-left-color: #EF5350;
+        }
+
+        .notification-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .notification-item-action {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .notification-item-time {
+            font-size: 11px;
+            color: var(--md-sys-color-on-surface-variant);
+            white-space: nowrap;
+        }
+
+        .notification-item-course {
+            font-size: 13px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-bottom: 4px;
+        }
+
+        .notification-item-mode {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            font-weight: 600;
+        }
+
+        .notification-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .notification-loading .loading-spinner {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 16px;
+        }
+
+        .notification-loading p {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+        }
+
+        .notification-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+        }
+
+        .notification-empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .notification-empty-text {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+            text-align: center;
         }
 
         /* Stats Cards */
@@ -550,8 +760,28 @@
     <div class="main-content">
         <!-- Page Header -->
         <div class="page-header">
-            <h1>Prompt Approvals</h1>
-            <p>Review and approve coaching bot prompt changes</p>
+            <div class="page-header-content">
+                <h1>Prompt Approvals</h1>
+                <p>Review and approve coaching bot prompt changes</p>
+            </div>
+            <div class="notification-bell" onclick="toggleNotifications()">
+                <span class="notification-bell-icon">🔔</span>
+                <span class="notification-badge urgent" id="notificationCount" style="display: none;">0</span>
+            </div>
+        </div>
+
+        <!-- Notification Panel -->
+        <div class="notification-panel" id="notificationPanel" style="display: none;">
+            <div class="notification-panel-header">
+                <h3>Recent Activity</h3>
+                <button class="btn-close-notifications" onclick="toggleNotifications()">✕</button>
+            </div>
+            <div class="notification-list" id="notificationList">
+                <div class="notification-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading notifications...</p>
+                </div>
+            </div>
         </div>
 
         <!-- Stats Cards -->
@@ -912,6 +1142,144 @@
             window.location.href = `prompt-request-detail.html?id=${requestId}`;
         }
 
+        // Toggle notification panel
+        function toggleNotifications() {
+            const panel = document.getElementById('notificationPanel');
+            const isVisible = panel.style.display === 'block';
+
+            if (isVisible) {
+                panel.style.display = 'none';
+            } else {
+                panel.style.display = 'block';
+                loadRecentActivity();
+            }
+        }
+
+        // Load recent activity for notifications
+        async function loadRecentActivity() {
+            const container = document.getElementById('notificationList');
+
+            try {
+                // Show loading state
+                container.innerHTML = `
+                    <div class="notification-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading notifications...</p>
+                    </div>
+                `;
+
+                // Fetch recent approval activity (last 20 records across all courses)
+                const response = await fetch(`${API_BASE}/prompt-approval/pending`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.requests.length > 0) {
+                    // Display pending requests as notifications
+                    container.innerHTML = data.requests.slice(0, 10).map(request =>
+                        createNotificationItem(request)
+                    ).join('');
+                } else {
+                    // Empty state
+                    container.innerHTML = `
+                        <div class="notification-empty">
+                            <div class="notification-empty-icon">🔕</div>
+                            <div class="notification-empty-text">No pending requests</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                container.innerHTML = `
+                    <div class="notification-empty">
+                        <div class="notification-empty-icon">⚠️</div>
+                        <div class="notification-empty-text">Failed to load notifications</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Create notification item HTML
+        function createNotificationItem(request) {
+            const safeTitle = escapeHtml(request.courseTitle || 'Unknown Course');
+            const safeCode = escapeHtml(request.courseCode || '');
+            const safeMode = escapeHtml(request.mode || '');
+            const safeModeDisplay = safeMode.charAt(0).toUpperCase() + safeMode.slice(1);
+            const timeAgo = formatTimeAgo(request.requestedAt);
+
+            let actionText = '📤 New submission';
+            let statusClass = 'submitted';
+
+            return `
+                <div class="notification-item ${statusClass}" onclick="closeNotificationAndView(${request.id})">
+                    <div class="notification-item-header">
+                        <div class="notification-item-action">${actionText}</div>
+                        <div class="notification-item-time">${timeAgo}</div>
+                    </div>
+                    <div class="notification-item-course">${safeTitle} (${safeCode})</div>
+                    <span class="notification-item-mode">${safeModeDisplay} Mode</span>
+                </div>
+            `;
+        }
+
+        // Close notification panel and scroll to request
+        function closeNotificationAndView(requestId) {
+            toggleNotifications();
+            // Scroll to the request card
+            const requestCards = document.querySelectorAll('.request-card');
+            requestCards.forEach(card => {
+                if (card.textContent.includes(`#${requestId}`)) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+
+        // Format timestamp as "X time ago"
+        function formatTimeAgo(timestamp) {
+            const now = new Date();
+            const time = new Date(timestamp);
+            const diffMs = now - time;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return time.toLocaleDateString();
+        }
+
+        // Update notification badge count
+        async function updateNotificationBadge() {
+            try {
+                const response = await fetch(`${API_BASE}/prompt-approval/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.stats) {
+                    const pendingCount = data.stats.pendingCount || 0;
+                    const badge = document.getElementById('notificationCount');
+
+                    if (pendingCount > 0) {
+                        badge.textContent = pendingCount;
+                        badge.style.display = 'block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating notification badge:', error);
+            }
+        }
+
         // Logout
         function logout() {
             localStorage.removeItem('token');
@@ -924,11 +1292,13 @@
             loadUserInfo();
             loadStats();
             loadPendingRequests();
+            updateNotificationBadge();
 
             // Refresh every 30 seconds
             setInterval(() => {
                 loadStats();
                 loadPendingRequests();
+                updateNotificationBadge();
             }, 30000);
         });
     </script>
