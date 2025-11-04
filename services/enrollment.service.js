@@ -127,14 +127,27 @@ class EnrollmentService {
 
       const firstModuleId = firstModuleResult.rows[0].id;
 
-      // Create user record
+      // Get admin's primary region to assign to WhatsApp user
+      const adminRegionResult = await postgresService.query(
+        'SELECT primary_region_id FROM admin_users WHERE id = $1',
+        [adminId]
+      );
+
+      const adminRegionId = adminRegionResult.rows.length > 0
+        ? adminRegionResult.rows[0].primary_region_id
+        : null;
+
+      logger.info(`Enrolling user ${name} with region ${adminRegionId} (from admin ${adminId})`);
+
+      // Create user record with admin's region
       const result = await postgresService.query(
         `INSERT INTO users (
           whatsapp_id, name, enrollment_pin, enrollment_status,
           pin_attempts, pin_expires_at, enrolled_by, enrolled_at,
-          current_module_id, is_verified, is_active, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, false, true, NOW(), NOW())
-        RETURNING id, whatsapp_id, name, enrollment_status`,
+          current_module_id, is_verified, is_active, primary_region_id,
+          created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, false, true, $9, NOW(), NOW())
+        RETURNING id, whatsapp_id, name, enrollment_status, primary_region_id`,
         [
           normalizedPhone,
           name,
@@ -143,7 +156,8 @@ class EnrollmentService {
           this.MAX_ATTEMPTS,
           pinExpiresAt,
           adminId,
-          firstModuleId
+          firstModuleId,
+          adminRegionId
         ]
       );
 
