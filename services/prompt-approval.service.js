@@ -197,10 +197,10 @@ class PromptApprovalService {
         throw new Error(`Cannot submit request with status: ${request.status}`);
       }
 
-      // Update status to pending
+      // Update status to pending (no submitted_at column, using requested_at)
       const updateResult = await this.postgresService.query(
         `UPDATE prompt_change_requests
-         SET status = $1, submitted_at = NOW(), updated_at = NOW()
+         SET status = $1
          WHERE id = $2
          RETURNING *`,
         [this.STATUS.PENDING, requestId]
@@ -729,7 +729,6 @@ class PromptApprovalService {
       requestedBy: row.requested_by,
       status: row.status,
       requestedAt: row.requested_at,
-      submittedAt: row.submitted_at,
       reviewedBy: row.reviewed_by,
       reviewedAt: row.reviewed_at,
       reviewNotes: row.review_notes,
