@@ -128,42 +128,31 @@ class PromptApprovalService {
         throw new Error(`Course ${courseId} not found`);
       }
 
-      // Get current prompt version
+      // Get current prompt version from course_bot_configs
       const currentPromptResult = await this.postgresService.query(
-        `SELECT ${mode}_prompt as current_prompt, ${mode}_version as current_version
+        `SELECT ${mode}_version as current_version
          FROM course_bot_configs WHERE course_id = $1`,
         [courseId]
       );
 
-      const currentPrompt = currentPromptResult.rows.length > 0
-        ? currentPromptResult.rows[0].current_prompt
-        : null;
       const currentVersion = currentPromptResult.rows.length > 0
         ? currentPromptResult.rows[0].current_version
         : 0;
 
-      // Create draft request
+      // Create draft request (matching actual schema)
       const result = await this.postgresService.query(
         `INSERT INTO prompt_change_requests (
-          course_id, mode, current_prompt, new_prompt, current_version,
-          change_reason, change_description, requested_by, status
+          course_id, mode, new_prompt, change_reason, change_description,
+          requested_by, status, version_number, replaces_version
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *`,
         [
-          courseId, mode, currentPrompt, newPrompt, currentVersion,
-          changeReason, changeDescription, requestedBy, this.STATUS.DRAFT
+          courseId, mode, newPrompt, changeReason, changeDescription || '',
+          requestedBy, this.STATUS.DRAFT, currentVersion + 1, currentVersion
         ]
       );
 
       const request = result.rows[0];
-
-      // Log audit action
-      await this.logAuditAction({
-        requestId: request.id,
-        action: 'draft_created',
-        performedBy: requestedBy,
-        notes: 'Draft prompt change request created'
-      });
 
       logger.info(`Draft request created: ${request.id} (course: ${courseId}, mode: ${mode})`);
 
@@ -219,13 +208,18 @@ class PromptApprovalService {
 
       const updatedRequest = updateResult.rows[0];
 
-      // Log audit action
-      await this.logAuditAction({
-        requestId: requestId,
-        action: 'submitted',
-        performedBy: adminId,
-        notes: 'Request submitted for Super Admin approval'
-      });
+      // Log submission to approval history
+      await this.postgresService.query(
+        `INSERT INTO prompt_approval_history (
+          request_id, course_id, action, actor_id, actor_role,
+          notes, previous_status, new_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          requestId, request.course_id, 'submitted', adminId, 'admin',
+          'Request submitted for Super Admin approval',
+          this.STATUS.DRAFT, this.STATUS.PENDING
+        ]
+      );
 
       // Notify Super Admins
       await this.notifySuperAdmins(updatedRequest);
@@ -280,17 +274,16 @@ class PromptApprovalService {
       await this.postgresService.query('BEGIN');
 
       try {
+        const newVersion = request.version_number;
+
         // Update request status to approved
         await this.postgresService.query(
           `UPDATE prompt_change_requests
            SET status = $1, reviewed_by = $2, reviewed_at = NOW(),
-               review_notes = $3, updated_at = NOW()
+               review_notes = $3, activated_at = NOW(), updated_at = NOW()
            WHERE id = $4`,
           [this.STATUS.APPROVED, superAdminId, reviewNotes, requestId]
         );
-
-        // Calculate new version number
-        const newVersion = (request.current_version || 0) + 1;
 
         // Update course_bot_configs with new approved prompt
         const modeColumn = request.mode === this.MODES.REGULAR ? 'regular' : 'socratic';
@@ -306,27 +299,31 @@ class PromptApprovalService {
           [request.new_prompt, newVersion, superAdminId, request.course_id]
         );
 
-        // Log to approval history
+        // Log to approval history (matching actual schema)
         await this.postgresService.query(
           `INSERT INTO prompt_approval_history (
-            request_id, course_id, mode, old_prompt, new_prompt,
-            old_version, new_version, action, performed_by, review_notes
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            request_id, course_id, action, actor_id, actor_role,
+            notes, previous_status, new_status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
-            requestId, request.course_id, request.mode,
-            request.current_prompt, request.new_prompt,
-            request.current_version, newVersion,
-            'approved', superAdminId, reviewNotes
+            requestId, request.course_id, 'approved', superAdminId, 'super_admin',
+            reviewNotes || `Approved version ${newVersion}`,
+            this.STATUS.PENDING, this.STATUS.APPROVED
           ]
         );
 
-        // Log audit action
-        await this.logAuditAction({
-          requestId: requestId,
-          action: 'approved',
-          performedBy: superAdminId,
-          notes: `Approved and activated version ${newVersion}. ${reviewNotes}`
-        });
+        // Log activation to history
+        await this.postgresService.query(
+          `INSERT INTO prompt_approval_history (
+            request_id, course_id, action, actor_id, actor_role,
+            notes, previous_status, new_status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            requestId, request.course_id, 'activated', superAdminId, 'super_admin',
+            `Activated ${request.mode} prompt version ${newVersion}`,
+            this.STATUS.APPROVED, this.STATUS.APPROVED
+          ]
+        );
 
         await this.postgresService.query('COMMIT');
 
@@ -405,27 +402,17 @@ class PromptApprovalService {
 
       const rejectedRequest = updateResult.rows[0];
 
-      // Log to approval history
+      // Log to approval history (matching actual schema)
       await this.postgresService.query(
         `INSERT INTO prompt_approval_history (
-          request_id, course_id, mode, old_prompt, new_prompt,
-          old_version, new_version, action, performed_by, review_notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          request_id, course_id, action, actor_id, actor_role,
+          notes, previous_status, new_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
-          requestId, request.course_id, request.mode,
-          request.current_prompt, request.new_prompt,
-          request.current_version, null, // No new version since rejected
-          'rejected', superAdminId, rejectionFeedback
+          requestId, request.course_id, 'rejected', superAdminId, 'super_admin',
+          rejectionFeedback, this.STATUS.PENDING, this.STATUS.REJECTED
         ]
       );
-
-      // Log audit action
-      await this.logAuditAction({
-        requestId: requestId,
-        action: 'rejected',
-        performedBy: superAdminId,
-        notes: `Rejected with feedback: ${rejectionFeedback}`
-      });
 
       // Notify the requesting admin
       await this.notifyAdmin({
@@ -529,12 +516,12 @@ class PromptApprovalService {
       const query = `
         SELECT
           pah.*,
-          au.name as performed_by_name,
-          au.email as performed_by_email
+          au.name as actor_name,
+          au.email as actor_email
         FROM prompt_approval_history pah
-        JOIN admin_users au ON pah.performed_by = au.id
+        JOIN admin_users au ON pah.actor_id = au.id
         WHERE pah.course_id = $1
-        ORDER BY pah.action_timestamp DESC
+        ORDER BY pah.created_at DESC
         LIMIT $2 OFFSET $3
       `;
 
@@ -543,17 +530,17 @@ class PromptApprovalService {
       const history = result.rows.map(row => ({
         id: row.id,
         requestId: row.request_id,
-        mode: row.mode,
-        oldVersion: row.old_version,
-        newVersion: row.new_version,
         action: row.action,
-        performedBy: {
-          id: row.performed_by,
-          name: row.performed_by_name,
-          email: row.performed_by_email
+        actor: {
+          id: row.actor_id,
+          name: row.actor_name,
+          email: row.actor_email,
+          role: row.actor_role
         },
-        reviewNotes: row.review_notes,
-        actionTimestamp: row.action_timestamp
+        notes: row.notes,
+        previousStatus: row.previous_status,
+        newStatus: row.new_status,
+        createdAt: row.created_at
       }));
 
       logger.info(`Retrieved ${history.length} approval history records for course ${courseId}`);
@@ -665,46 +652,6 @@ class PromptApprovalService {
   }
 
   /**
-   * Log audit action to prompt_approval_history
-   * @param {object} params - Audit parameters
-   * @returns {Promise<void>}
-   */
-  async logAuditAction({ requestId, action, performedBy, notes = '' }) {
-    try {
-      // Get request details
-      const requestResult = await this.postgresService.query(
-        'SELECT course_id, mode, current_prompt, new_prompt, current_version FROM prompt_change_requests WHERE id = $1',
-        [requestId]
-      );
-
-      if (requestResult.rows.length === 0) {
-        logger.warn(`Cannot log audit action: request ${requestId} not found`);
-        return;
-      }
-
-      const request = requestResult.rows[0];
-
-      await this.postgresService.query(
-        `INSERT INTO prompt_approval_history (
-          request_id, course_id, mode, old_prompt, new_prompt,
-          old_version, new_version, action, performed_by, review_notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [
-          requestId, request.course_id, request.mode,
-          request.current_prompt, request.new_prompt,
-          request.current_version, null, // Version updated only on approval
-          action, performedBy, notes
-        ]
-      );
-
-      logger.debug(`Audit action logged: ${action} for request ${requestId}`);
-    } catch (error) {
-      logger.error('Error logging audit action:', error);
-      // Don't throw - audit logging failure shouldn't break main flow
-    }
-  }
-
-  /**
    * Notify Super Admins of new approval request
    * @param {object} request - Request object
    * @returns {Promise<void>}
@@ -772,19 +719,22 @@ class PromptApprovalService {
       id: row.id,
       courseId: row.course_id,
       mode: row.mode,
-      currentPrompt: row.current_prompt,
       newPrompt: row.new_prompt,
-      currentVersion: row.current_version,
+      newGreeting: row.new_greeting,
+      newHelpText: row.new_help_text,
+      versionNumber: row.version_number,
+      replacesVersion: row.replaces_version,
       changeReason: row.change_reason,
       changeDescription: row.change_description,
       requestedBy: row.requested_by,
       status: row.status,
+      requestedAt: row.requested_at,
       submittedAt: row.submitted_at,
       reviewedBy: row.reviewed_by,
       reviewedAt: row.reviewed_at,
       reviewNotes: row.review_notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+      activatedAt: row.activated_at,
+      createdAt: row.created_at
     };
   }
 }
