@@ -11,15 +11,15 @@ echo "Course ID: $COURSE_ID"
 echo ""
 
 # Step 1: Login
-echo "📝 Step 1: Login as admin..."
+echo "📝 Step 1: Login as super admin..."
 LOGIN_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/admin/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "test1@school.edu",
-    "password": "Admin2025^lCl"
+    "email": "Lynda@admin.com",
+    "password": "Admin123!"
   }')
 
-TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.accessToken')
+TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.tokens.accessToken // .accessToken')
 
 if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
   echo "❌ Login failed!"

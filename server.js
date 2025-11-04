@@ -55,6 +55,9 @@ const statisticsRoutes = require('./routes/statistics.routes');
 // Coaching Mode Routes
 const coachingModeRoutes = require('./routes/coaching-mode.routes');
 
+// Password Reset Routes (Secure - Security Fix BE-001)
+const passwordResetRoutes = require('./routes/password-reset.routes');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -138,6 +141,9 @@ app.use('/api/statistics', statisticsRoutes);
 
 // Add coaching mode routes
 app.use('/api/coaching-mode', coachingModeRoutes);
+
+// Add password reset routes (Secure - Security Fix BE-001)
+app.use('/api', passwordResetRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
