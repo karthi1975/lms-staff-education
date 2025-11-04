@@ -628,7 +628,7 @@ class PromptApprovalService {
           COUNT(*) FILTER (WHERE status = 'pending_approval') as pending_count,
           COUNT(*) FILTER (WHERE status = 'approved' AND reviewed_at >= NOW() - INTERVAL '${days} days') as approved_count,
           COUNT(*) FILTER (WHERE status = 'rejected' AND reviewed_at >= NOW() - INTERVAL '${days} days') as rejected_count,
-          AVG(EXTRACT(EPOCH FROM (reviewed_at - submitted_at))/3600) FILTER (WHERE status IN ('approved', 'rejected')) as avg_review_hours
+          AVG(EXTRACT(EPOCH FROM (reviewed_at - requested_at))/3600) FILTER (WHERE status IN ('approved', 'rejected') AND reviewed_at IS NOT NULL) as avg_review_hours
         FROM prompt_change_requests
       `;
 
