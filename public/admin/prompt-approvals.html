@@ -886,6 +886,76 @@
         </div>
     </div>
 
+    <!-- Details Modal -->
+    <div class="modal" id="detailsModal">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 class="modal-title">Prompt Change Request Details</h2>
+                <p class="modal-subtitle" id="detailsModalSubtitle"></p>
+            </div>
+
+            <!-- Metadata Section -->
+            <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 14px;">
+                    <div>
+                        <strong>Requested By:</strong> <span id="detailsRequester"></span>
+                    </div>
+                    <div>
+                        <strong>Version:</strong> <span id="detailsVersion"></span>
+                    </div>
+                    <div>
+                        <strong>Region:</strong> <span id="detailsRegion"></span>
+                    </div>
+                    <div>
+                        <strong>Pending Duration:</strong> <span id="detailsPending"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reason for Change -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #333;">Reason for Change</h3>
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; border-radius: 4px;" id="detailsReason"></div>
+            </div>
+
+            <!-- Old vs New Prompt Comparison -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #333;">Prompt Comparison</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <!-- Old Prompt -->
+                    <div>
+                        <div style="background: #ffebee; color: #c62828; padding: 8px 12px; border-radius: 4px 4px 0 0; font-weight: 600; font-size: 13px;">
+                            ❌ Current Prompt (Will be replaced)
+                        </div>
+                        <div style="background: #f5f5f5; border: 2px solid #ffebee; border-top: none; border-radius: 0 0 4px 4px; padding: 16px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;" id="detailsOldPrompt">
+                            No previous prompt
+                        </div>
+                    </div>
+
+                    <!-- New Prompt -->
+                    <div>
+                        <div style="background: #e8f5e9; color: #2e7d32; padding: 8px 12px; border-radius: 4px 4px 0 0; font-weight: 600; font-size: 13px;">
+                            ✅ New Prompt (Proposed)
+                        </div>
+                        <div style="background: #f5f5f5; border: 2px solid #e8f5e9; border-top: none; border-radius: 0 0 4px 4px; padding: 16px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;" id="detailsNewPrompt"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeDetailsModal()">Close</button>
+                <button class="btn btn-approve" onclick="approveFromDetails()">
+                    <span>✓</span>
+                    <span>Approve</span>
+                </button>
+                <button class="btn btn-reject" onclick="rejectFromDetails()">
+                    <span>✗</span>
+                    <span>Reject</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
@@ -1147,9 +1217,98 @@
             }
         }
 
-        // View request details
+        // View request details in modal
         async function viewRequestDetails(requestId) {
-            window.location.href = `prompt-request-detail.html?id=${requestId}`;
+            try {
+                // Fetch full request details
+                const response = await fetch(`${API_BASE}/prompt-approval/requests/${requestId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load request details');
+                }
+
+                const data = await response.json();
+                if (!data.success || !data.request) {
+                    throw new Error('Invalid response data');
+                }
+
+                const request = data.request;
+
+                // Store for approve/reject from details
+                currentRequestId = requestId;
+
+                // Populate modal
+                const safeTitle = escapeHtml(request.courseTitle || 'Unknown Course');
+                const safeMode = escapeHtml(request.mode || '');
+                const safeModeDisplay = safeMode.charAt(0).toUpperCase() + safeMode.slice(1);
+
+                setSafeText(document.getElementById('detailsModalSubtitle'),
+                    `${safeTitle} - ${safeModeDisplay} Mode`);
+                setSafeText(document.getElementById('detailsRequester'),
+                    `${escapeHtml(request.requester?.name || 'Unknown')} (${escapeHtml(request.requester?.email || '')})`);
+                setSafeText(document.getElementById('detailsVersion'), `Version ${request.versionNumber || request.currentVersion || '?'}`);
+                setSafeText(document.getElementById('detailsRegion'), escapeHtml(request.regionName || 'No Region'));
+
+                // Calculate pending duration if submittedAt is available
+                let pendingText = '?';
+                if (request.submittedAt || request.requestedAt) {
+                    const submittedDate = new Date(request.submittedAt || request.requestedAt);
+                    const now = new Date();
+                    const hoursDiff = Math.floor((now - submittedDate) / (1000 * 60 * 60));
+                    pendingText = `${hoursDiff} hours`;
+                }
+                setSafeText(document.getElementById('detailsPending'), pendingText);
+
+                setSafeText(document.getElementById('detailsReason'), escapeHtml(request.changeReason || 'No reason provided'));
+                setSafeText(document.getElementById('detailsNewPrompt'), escapeHtml(request.newPrompt || 'No prompt provided'));
+
+                // Show old prompt if available (API returns 'currentPrompt' field)
+                const oldPromptEl = document.getElementById('detailsOldPrompt');
+                if (request.currentPrompt || request.oldPrompt) {
+                    setSafeText(oldPromptEl, escapeHtml(request.currentPrompt || request.oldPrompt));
+                } else {
+                    oldPromptEl.innerHTML = '<em style="color: #999;">No previous prompt (new course)</em>';
+                }
+
+                // Show modal
+                document.getElementById('detailsModal').classList.add('show');
+
+            } catch (error) {
+                console.error('Error loading request details:', error);
+                alert('Failed to load request details: ' + error.message);
+            }
+        }
+
+        // Close details modal
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').classList.remove('show');
+            currentRequestId = null;
+        }
+
+        // Approve from details modal
+        function approveFromDetails() {
+            closeDetailsModal();
+            // Get course title and mode from the subtitle
+            const subtitle = document.getElementById('detailsModalSubtitle').textContent;
+            const parts = subtitle.split(' - ');
+            const courseTitle = parts[0] || '';
+            const mode = parts[1] ? parts[1].replace(' Mode', '') : '';
+            openApproveModal(currentRequestId, courseTitle, mode);
+        }
+
+        // Reject from details modal
+        function rejectFromDetails() {
+            closeDetailsModal();
+            // Get course title and mode from the subtitle
+            const subtitle = document.getElementById('detailsModalSubtitle').textContent;
+            const parts = subtitle.split(' - ');
+            const courseTitle = parts[0] || '';
+            const mode = parts[1] ? parts[1].replace(' Mode', '') : '';
+            openRejectModal(currentRequestId, courseTitle, mode);
         }
 
         // Toggle notification panel
