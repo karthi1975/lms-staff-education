@@ -351,6 +351,31 @@ router.get('/prompt-approval/pending',
 );
 
 /**
+ * GET /api/prompt-approval/my-requests
+ * Get prompt requests submitted by the logged-in admin
+ * Shows status of their submissions (pending, approved, rejected)
+ * Access: Any authenticated admin
+ */
+router.get('/prompt-approval/my-requests',
+  authMiddleware.authenticateToken,
+  async (req, res) => {
+    try {
+      const courseId = req.query.courseId ? parseInt(req.query.courseId) : null;
+
+      const result = await promptApprovalService.getMyRequests(req.user.id, courseId);
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error getting my requests:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to get my requests'
+      });
+    }
+  }
+);
+
+/**
  * POST /api/prompt-approval/requests/:id/approve
  * Approve prompt change request
  * Access: Super Admin only

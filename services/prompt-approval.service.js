@@ -1013,6 +1013,117 @@ class PromptApprovalService {
   }
 
   /**
+   * Get prompt requests submitted by the logged-in admin
+   * Shows status of their submissions (pending, approved, rejected)
+   * @param {number} adminId - Admin user ID
+   * @param {number} courseId - Optional course ID filter
+   * @returns {Promise<object>} - Admin's prompt requests with status
+   */
+  async getMyRequests(adminId, courseId = null) {
+    try {
+      let query = `
+        SELECT
+          pcr.*,
+          c.title as course_title,
+          c.code as course_code,
+          c.region_id as course_region_id,
+          r.name as region_name,
+          reviewer.name as reviewer_name,
+          reviewer.email as reviewer_email,
+          EXTRACT(EPOCH FROM (NOW() - pcr.requested_at))/3600 as hours_pending
+        FROM prompt_change_requests pcr
+        JOIN courses c ON pcr.course_id = c.id
+        LEFT JOIN regions r ON c.region_id = r.id
+        LEFT JOIN admin_users reviewer ON pcr.reviewed_by = reviewer.id
+        WHERE pcr.requested_by = $1
+          AND pcr.status != $2
+      `;
+
+      const params = [adminId, this.STATUS.DRAFT];
+
+      if (courseId) {
+        query += ` AND pcr.course_id = $${params.length + 1}`;
+        params.push(courseId);
+      }
+
+      query += ` ORDER BY pcr.requested_at DESC`;
+
+      const result = await this.postgresService.query(query, params);
+
+      const requests = result.rows.map(row => ({
+        id: row.id,
+        courseId: row.course_id,
+        courseTitle: row.course_title,
+        courseCode: row.course_code,
+        regionId: row.course_region_id,
+        regionName: row.region_name || 'No Region',
+        mode: row.mode,
+        status: row.status,
+        versionNumber: row.version_number,
+        changeReason: row.change_reason,
+        changeDescription: row.change_description,
+        newPromptPreview: row.new_prompt ? row.new_prompt.substring(0, 100) + '...' : '',
+        requestedAt: row.requested_at,
+        reviewedBy: row.reviewed_by,
+        reviewerName: row.reviewer_name,
+        reviewerEmail: row.reviewer_email,
+        reviewedAt: row.reviewed_at,
+        reviewNotes: row.review_notes,
+        hoursPending: row.hours_pending ? parseFloat(row.hours_pending).toFixed(1) : null,
+        // Status badges for UI
+        statusBadge: this.getStatusBadge(row.status),
+        statusColor: this.getStatusColor(row.status)
+      }));
+
+      logger.info(`Retrieved ${requests.length} requests for admin ${adminId}`);
+
+      return {
+        success: true,
+        count: requests.length,
+        requests: requests,
+        summary: {
+          pending: requests.filter(r => r.status === this.STATUS.PENDING).length,
+          approved: requests.filter(r => r.status === this.STATUS.APPROVED).length,
+          rejected: requests.filter(r => r.status === this.STATUS.REJECTED).length
+        }
+      };
+    } catch (error) {
+      logger.error('Error getting my requests:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get status badge text for UI display
+   * @param {string} status - Request status
+   * @returns {string} - Badge text
+   */
+  getStatusBadge(status) {
+    const badges = {
+      [this.STATUS.PENDING]: 'Pending Review',
+      [this.STATUS.APPROVED]: 'Approved & Active',
+      [this.STATUS.REJECTED]: 'Rejected',
+      [this.STATUS.DRAFT]: 'Draft'
+    };
+    return badges[status] || status;
+  }
+
+  /**
+   * Get status color for UI display
+   * @param {string} status - Request status
+   * @returns {string} - Color code
+   */
+  getStatusColor(status) {
+    const colors = {
+      [this.STATUS.PENDING]: 'warning',      // Yellow/Orange
+      [this.STATUS.APPROVED]: 'success',     // Green
+      [this.STATUS.REJECTED]: 'error',       // Red
+      [this.STATUS.DRAFT]: 'info'            // Blue
+    };
+    return colors[status] || 'default';
+  }
+
+  /**
    * Format request object for API response
    * @param {object} row - Database row
    * @returns {object} - Formatted request

@@ -396,6 +396,108 @@
             flex-wrap: wrap;
             margin-top: 12px;
         }
+
+        /* Request Status Cards */
+        .request-card {
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .request-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .request-mode {
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-badge.pending {
+            background: #FFF4E6;
+            color: #E65100;
+        }
+
+        .status-badge.approved {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .status-badge.rejected {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .request-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .request-info-item {
+            font-size: 13px;
+        }
+
+        .request-info-label {
+            color: var(--md-sys-color-on-surface-variant);
+            margin-bottom: 4px;
+        }
+
+        .request-info-value {
+            color: var(--md-sys-color-on-surface);
+            font-weight: 500;
+        }
+
+        .request-feedback {
+            margin-top: 16px;
+            padding: 12px;
+            background: #FFF3E0;
+            border-left: 3px solid #FF6F00;
+            border-radius: 4px;
+        }
+
+        .request-feedback-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #E65100;
+            margin-bottom: 8px;
+        }
+
+        .request-feedback-text {
+            font-size: 14px;
+            color: #5D4037;
+            line-height: 1.5;
+        }
+
+        .no-requests {
+            text-align: center;
+            padding: 32px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
     </style>
 </head>
 <body>
@@ -477,6 +579,15 @@
         <div class="loading active" id="loadingState">
             <div class="spinner"></div>
             <p>Loading prompts...</p>
+        </div>
+
+        <!-- My Request Status (Notifications) -->
+        <div id="myRequestsContainer" style="display: none; margin-bottom: 32px;">
+            <div style="margin-bottom: 16px;">
+                <h2 style="font-size: 20px; font-weight: 600; color: var(--md-sys-color-on-surface); margin-bottom: 8px;">My Prompt Requests</h2>
+                <p style="font-size: 14px; color: var(--md-sys-color-on-surface-variant);">Status of your submitted prompt changes for this course</p>
+            </div>
+            <div id="requestsList"></div>
         </div>
 
         <!-- Prompts Container -->
@@ -754,6 +865,9 @@
                 document.getElementById('promptContainer').style.display = 'grid';
                 document.getElementById('btnCreate').disabled = false;
 
+                // Load my requests for this course
+                loadMyRequests(courseId);
+
             } catch (error) {
                 console.error('Error loading prompts:', error);
                 document.getElementById('loadingState').classList.remove('active');
@@ -795,6 +909,106 @@
                 hour: '2-digit',
                 minute: '2-digit'
             });
+        }
+
+        async function loadMyRequests(courseId) {
+            try {
+                const response = await fetch(`${API_BASE}/prompt-approval/my-requests?courseId=${courseId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load my requests');
+                }
+
+                const data = await response.json();
+
+                if (data.success && data.requests && data.requests.length > 0) {
+                    displayMyRequests(data.requests);
+                } else {
+                    // Hide the section if no requests
+                    document.getElementById('myRequestsContainer').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading my requests:', error);
+                // Don't show error to user - it's okay if this fails
+                document.getElementById('myRequestsContainer').style.display = 'none';
+            }
+        }
+
+        function displayMyRequests(requests) {
+            const container = document.getElementById('requestsList');
+            container.innerHTML = '';
+
+            requests.forEach(request => {
+                const card = document.createElement('div');
+                card.className = 'request-card';
+
+                const statusClass = request.statusColor || 'pending';
+                const statusIcon = getStatusIcon(request.status);
+
+                const dateStr = formatDate(request.requestedAt);
+                const reviewDateStr = request.reviewedAt ? formatDate(request.reviewedAt) : '-';
+
+                card.innerHTML = `
+                    <div class="request-header">
+                        <div>
+                            <div class="request-title">${escapeHtml(request.courseTitle)}</div>
+                            <div class="request-mode">Mode: ${escapeHtml(request.mode.charAt(0).toUpperCase() + request.mode.slice(1))} • Version ${request.versionNumber}</div>
+                        </div>
+                        <span class="status-badge ${statusClass}">
+                            ${statusIcon} ${escapeHtml(request.statusBadge)}
+                        </span>
+                    </div>
+
+                    <div class="request-info">
+                        <div class="request-info-item">
+                            <div class="request-info-label">Submitted</div>
+                            <div class="request-info-value">${dateStr}</div>
+                        </div>
+                        ${request.reviewedAt ? `
+                            <div class="request-info-item">
+                                <div class="request-info-label">Reviewed</div>
+                                <div class="request-info-value">${reviewDateStr}</div>
+                            </div>
+                        ` : `
+                            <div class="request-info-item">
+                                <div class="request-info-label">Pending For</div>
+                                <div class="request-info-value">${request.hoursPending} hours</div>
+                            </div>
+                        `}
+                        ${request.reviewerName ? `
+                            <div class="request-info-item">
+                                <div class="request-info-label">Reviewed By</div>
+                                <div class="request-info-value">${escapeHtml(request.reviewerName)}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    ${request.reviewNotes && request.status === 'rejected' ? `
+                        <div class="request-feedback">
+                            <div class="request-feedback-title">⚠️ Rejection Feedback</div>
+                            <div class="request-feedback-text">${escapeHtml(request.reviewNotes)}</div>
+                        </div>
+                    ` : ''}
+                `;
+
+                container.appendChild(card);
+            });
+
+            document.getElementById('myRequestsContainer').style.display = 'block';
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'pending_approval': '⏳',
+                'approved': '✅',
+                'rejected': '❌',
+                'draft': '📝'
+            };
+            return icons[status] || '📄';
         }
 
         function createCustomPrompt() {
