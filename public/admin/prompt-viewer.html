@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Viewer - Teachers Training System</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
+    <!-- Security utilities for XSS protection -->
+    <script src="/admin/js/security.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .breadcrumb {
+            background: var(--md-sys-color-surface);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: var(--md-sys-elevation-1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: var(--md-sys-color-primary);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb span {
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        header {
+            background: var(--md-sys-color-surface);
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+        }
+
+        .controls {
+            background: var(--md-sys-color-surface);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--md-sys-elevation-1);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 8px;
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .btn:hover {
+            box-shadow: var(--md-sys-elevation-2);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+        }
+
+        .btn-secondary {
+            background: var(--md-sys-color-secondary);
+            color: var(--md-sys-color-on-secondary);
+        }
+
+        .btn-outlined {
+            background: transparent;
+            color: var(--md-sys-color-primary);
+            border: 1px solid var(--md-sys-color-outline);
+            box-shadow: none;
+        }
+
+        .prompt-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 968px) {
+            .prompt-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .prompt-card {
+            background: var(--md-sys-color-surface);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-2);
+            overflow: hidden;
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .prompt-card:hover {
+            box-shadow: var(--md-sys-elevation-3);
+            transform: translateY(-2px);
+        }
+
+        .prompt-header {
+            background: linear-gradient(135deg, #00897B 0%, #00695C 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .prompt-header.socratic {
+            background: linear-gradient(135deg, #0097A7 0%, #006064 100%);
+        }
+
+        .prompt-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .version-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .prompt-body {
+            padding: 20px;
+        }
+
+        .prompt-text {
+            background: #F5F5F5;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', Monaco, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .prompt-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            padding: 16px 0;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            margin-bottom: 16px;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meta-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--md-sys-color-on-surface-variant);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .meta-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .greeting-section,
+        .help-section {
+            margin-bottom: 16px;
+        }
+
+        .section-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .section-text {
+            background: var(--md-sys-color-surface-container);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface);
+            line-height: 1.5;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid var(--md-sys-color-outline-variant);
+            border-top: 3px solid var(--md-sys-color-primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--md-sys-color-surface);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.active {
+            display: block;
+        }
+
+        .alert-error {
+            background: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
+            border: 1px solid var(--md-sys-color-error);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span>/</span>
+            <span>Prompt Management</span>
+            <span>/</span>
+            <span>Viewer</span>
+        </nav>
+
+        <!-- Header -->
+        <header>
+            <h1>Prompt Viewer</h1>
+            <p class="subtitle">View current live prompts for coaching bot (Regular vs Socratic mode)</p>
+        </header>
+
+        <!-- Alert Messages -->
+        <div id="alertError" class="alert alert-error"></div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="form-group">
+                <label class="form-label" for="courseSelect">Select Course</label>
+                <select id="courseSelect" class="form-select" onchange="loadPrompts()">
+                    <option value="">Loading courses...</option>
+                </select>
+            </div>
+            <div class="action-buttons" style="margin-top: auto;">
+                <button class="btn btn-secondary" onclick="viewHistory()" id="btnHistory" disabled>
+                    <span>📜</span>
+                    <span>View Version History</span>
+                </button>
+                <button class="btn btn-primary" onclick="proposeChange()" id="btnPropose" disabled>
+                    <span>✏️</span>
+                    <span>Propose Change</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading active" id="loadingState">
+            <div class="spinner"></div>
+            <p>Loading prompts...</p>
+        </div>
+
+        <!-- Prompts Container -->
+        <div class="prompt-container" id="promptContainer" style="display: none;">
+            <!-- Regular Mode Card -->
+            <div class="prompt-card">
+                <div class="prompt-header">
+                    <h2>Regular Mode</h2>
+                    <span class="version-badge" id="regularVersion">v0</span>
+                </div>
+                <div class="prompt-body">
+                    <div class="section-label">System Prompt</div>
+                    <div class="prompt-text" id="regularPrompt">No prompt available</div>
+
+                    <div class="prompt-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Characters</span>
+                            <span class="meta-value" id="regularChars">0</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Last Updated</span>
+                            <span class="meta-value" id="regularDate">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Updated By</span>
+                            <span class="meta-value" id="regularUser">-</span>
+                        </div>
+                    </div>
+
+                    <div class="greeting-section">
+                        <div class="section-label">Greeting Message</div>
+                        <div class="section-text" id="regularGreeting">No greeting configured</div>
+                    </div>
+
+                    <div class="help-section">
+                        <div class="section-label">Help Text</div>
+                        <div class="section-text" id="regularHelp">No help text configured</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Socratic Mode Card -->
+            <div class="prompt-card">
+                <div class="prompt-header socratic">
+                    <h2>Socratic Mode</h2>
+                    <span class="version-badge" id="socraticVersion">v0</span>
+                </div>
+                <div class="prompt-body">
+                    <div class="section-label">System Prompt</div>
+                    <div class="prompt-text" id="socraticPrompt">No prompt available</div>
+
+                    <div class="prompt-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Characters</span>
+                            <span class="meta-value" id="socraticChars">0</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Last Updated</span>
+                            <span class="meta-value" id="socraticDate">-</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Updated By</span>
+                            <span class="meta-value" id="socraticUser">-</span>
+                        </div>
+                    </div>
+
+                    <div class="greeting-section">
+                        <div class="section-label">Greeting Message</div>
+                        <div class="section-text" id="socraticGreeting">No greeting configured</div>
+                    </div>
+
+                    <div class="help-section">
+                        <div class="section-label">Help Text</div>
+                        <div class="section-text" id="socraticHelp">No help text configured</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-title">No Prompts Found</div>
+            <div class="empty-state-text">This course does not have any prompts configured yet.</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let currentCourseId = null;
+        let token = localStorage.getItem('adminToken');
+
+        // Check authentication
+        if (!token) {
+            window.location.href = '/admin/login.html';
+        }
+
+        // Load courses on page load
+        document.addEventListener('DOMContentLoaded', loadCourses);
+
+        async function loadCourses() {
+            try {
+                const response = await fetch(`${API_BASE}/courses/pilot`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('adminToken');
+                        window.location.href = '/admin/login.html';
+                        return;
+                    }
+                    throw new Error('Failed to load courses');
+                }
+
+                const data = await response.json();
+                const courses = data.data || [];
+
+                const select = document.getElementById('courseSelect');
+                select.innerHTML = '<option value="">-- Select a course --</option>';
+
+                courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.title} (${course.code})`;
+                    select.appendChild(option);
+                });
+
+                // Auto-load first course if available
+                if (courses.length > 0) {
+                    select.value = courses[0].id;
+                    loadPrompts();
+                }
+            } catch (error) {
+                console.error('Error loading courses:', error);
+                showAlert('Error loading courses: ' + error.message);
+            }
+        }
+
+        async function loadPrompts() {
+            const courseId = document.getElementById('courseSelect').value;
+
+            if (!courseId) {
+                document.getElementById('loadingState').classList.remove('active');
+                document.getElementById('promptContainer').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('btnHistory').disabled = true;
+                document.getElementById('btnPropose').disabled = true;
+                return;
+            }
+
+            currentCourseId = courseId;
+
+            // Show loading
+            document.getElementById('loadingState').classList.add('active');
+            document.getElementById('promptContainer').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/courses/${courseId}/prompts`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load prompts');
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load prompts');
+                }
+
+                // Hide loading
+                document.getElementById('loadingState').classList.remove('active');
+
+                // Check if prompts exist
+                if (!data.prompts.regular && !data.prompts.socratic) {
+                    document.getElementById('emptyState').style.display = 'block';
+                    document.getElementById('btnHistory').disabled = true;
+                    document.getElementById('btnPropose').disabled = true;
+                    return;
+                }
+
+                // Display prompts
+                displayPrompts(data.prompts);
+                document.getElementById('promptContainer').style.display = 'grid';
+                document.getElementById('btnHistory').disabled = false;
+                document.getElementById('btnPropose').disabled = false;
+
+            } catch (error) {
+                console.error('Error loading prompts:', error);
+                document.getElementById('loadingState').classList.remove('active');
+                document.getElementById('emptyState').style.display = 'block';
+                showAlert('Error loading prompts: ' + error.message);
+                document.getElementById('btnHistory').disabled = true;
+                document.getElementById('btnPropose').disabled = true;
+            }
+        }
+
+        function displayPrompts(prompts) {
+            // Regular Mode
+            if (prompts.regular) {
+                const regular = prompts.regular;
+                setSafeText(document.getElementById('regularPrompt'), regular.prompt_text || 'No prompt available');
+                setSafeText(document.getElementById('regularVersion'), `v${regular.version_number || 0}`);
+                setSafeText(document.getElementById('regularChars'), (regular.prompt_text || '').length);
+                setSafeText(document.getElementById('regularDate'), formatDate(regular.updated_at));
+                setSafeText(document.getElementById('regularUser'), regular.updated_by_name || 'System');
+                setSafeText(document.getElementById('regularGreeting'), regular.greeting_text || 'No greeting configured');
+                setSafeText(document.getElementById('regularHelp'), regular.help_text || 'No help text configured');
+            }
+
+            // Socratic Mode
+            if (prompts.socratic) {
+                const socratic = prompts.socratic;
+                setSafeText(document.getElementById('socraticPrompt'), socratic.prompt_text || 'No prompt available');
+                setSafeText(document.getElementById('socraticVersion'), `v${socratic.version_number || 0}`);
+                setSafeText(document.getElementById('socraticChars'), (socratic.prompt_text || '').length);
+                setSafeText(document.getElementById('socraticDate'), formatDate(socratic.updated_at));
+                setSafeText(document.getElementById('socraticUser'), socratic.updated_by_name || 'System');
+                setSafeText(document.getElementById('socraticGreeting'), socratic.greeting_text || 'No greeting configured');
+                setSafeText(document.getElementById('socraticHelp'), socratic.help_text || 'No help text configured');
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function viewHistory() {
+            if (currentCourseId) {
+                window.location.href = `prompt-history.html?courseId=${currentCourseId}`;
+            }
+        }
+
+        function proposeChange() {
+            if (currentCourseId) {
+                window.location.href = `prompt-editor.html?courseId=${currentCourseId}`;
+            }
+        }
+
+        function showAlert(message) {
+            const alertEl = document.getElementById('alertError');
+            setSafeText(alertEl, message);
+            alertEl.classList.add('active');
+
+            setTimeout(() => {
+                alertEl.classList.remove('active');
+            }, 5000);
+        }
+    </script>
+
+    <!-- Moodle-style Sidebar Navigation -->
+    <script src="/js/sidebar-nav.js"></script>
+</body>
+</html>

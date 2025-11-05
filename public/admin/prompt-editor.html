@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Editor - Teachers Training System</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
+    <!-- Security utilities for XSS protection -->
+    <script src="/admin/js/security.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .breadcrumb {
+            background: var(--md-sys-color-surface);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: var(--md-sys-elevation-1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: var(--md-sys-color-primary);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb span {
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        header {
+            background: var(--md-sys-color-surface);
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+        }
+
+        .controls {
+            background: var(--md-sys-color-surface);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--md-sys-elevation-1);
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 16px;
+            align-items: end;
+        }
+
+        @media (max-width: 968px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-select {
+            padding: 12px 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 8px;
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .btn:hover {
+            box-shadow: var(--md-sys-elevation-2);
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface-variant);
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: none;
+        }
+
+        .btn-primary {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+        }
+
+        .btn-success {
+            background: var(--md-sys-color-success);
+            color: var(--md-sys-color-on-success);
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1200px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .editor-panel {
+            background: var(--md-sys-color-surface);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-2);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: var(--md-sys-color-surface-container);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .panel-badge {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .panel-body {
+            padding: 20px;
+        }
+
+        .prompt-textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 8px;
+            background: #F5F5F5;
+            font-family: 'Courier New', Monaco, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+            resize: vertical;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+        }
+
+        .prompt-textarea:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
+            background: white;
+        }
+
+        .prompt-textarea:disabled {
+            background: #E8E8E8;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .char-counter {
+            text-align: right;
+            font-size: 12px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-top: 8px;
+        }
+
+        .char-counter.warning {
+            color: var(--md-sys-color-warning);
+        }
+
+        .char-counter.error {
+            color: var(--md-sys-color-error);
+        }
+
+        .form-section {
+            background: var(--md-sys-color-surface);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 16px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 8px;
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-top: 6px;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.active {
+            display: block;
+            animation: md3-slide-down var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .alert-success {
+            background: var(--md-sys-color-success-container);
+            color: var(--md-sys-color-on-success-container);
+            border: 1px solid var(--md-sys-color-success);
+        }
+
+        .alert-error {
+            background: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
+            border: 1px solid var(--md-sys-color-error);
+        }
+
+        .alert-warning {
+            background: var(--md-sys-color-warning-container);
+            color: var(--md-sys-color-on-warning-container);
+            border: 1px solid var(--md-sys-color-warning);
+        }
+
+        .submit-section {
+            background: var(--md-sys-color-surface);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--md-sys-elevation-1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .validation-message {
+            color: var(--md-sys-color-error);
+            font-size: 13px;
+            margin-top: 6px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid var(--md-sys-color-outline-variant);
+            border-top: 3px solid var(--md-sys-color-primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span>/</span>
+            <a href="prompt-viewer.html">Prompt Management</a>
+            <span>/</span>
+            <span>Editor</span>
+        </nav>
+
+        <!-- Header -->
+        <header>
+            <h1>Propose Prompt Change</h1>
+            <p class="subtitle">Submit a prompt change request for review by superadmin</p>
+        </header>
+
+        <!-- Alert Messages -->
+        <div id="alertSuccess" class="alert alert-success"></div>
+        <div id="alertError" class="alert alert-error"></div>
+        <div id="alertWarning" class="alert alert-warning"></div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="form-group">
+                <label class="form-label" for="courseSelect">Select Course</label>
+                <select id="courseSelect" class="form-select" onchange="onCourseChange()">
+                    <option value="">Loading courses...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="modeSelect">Select Mode</label>
+                <select id="modeSelect" class="form-select" onchange="onModeChange()">
+                    <option value="">-- Select mode --</option>
+                    <option value="regular">Regular Mode</option>
+                    <option value="socratic">Socratic Mode</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="loadCurrentPrompt()" id="btnLoad" disabled>
+                <span>📥</span>
+                <span>Load Current Prompt</span>
+            </button>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading" id="loadingState" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading current prompt...</p>
+        </div>
+
+        <!-- Editor Container -->
+        <div class="editor-container" id="editorContainer" style="display: none;">
+            <!-- Current Prompt (Read-Only) -->
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <h2>Current Live Prompt</h2>
+                    <span class="panel-badge" id="currentVersion">v0</span>
+                </div>
+                <div class="panel-body">
+                    <textarea
+                        id="currentPrompt"
+                        class="prompt-textarea"
+                        readonly
+                        placeholder="No prompt loaded yet..."></textarea>
+                    <div class="char-counter" id="currentCharCount">0 characters</div>
+                </div>
+            </div>
+
+            <!-- New Proposed Prompt (Editable) -->
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <h2>New Proposed Prompt</h2>
+                    <span class="panel-badge" style="background: var(--md-sys-color-warning-container); color: var(--md-sys-color-on-warning-container);">DRAFT</span>
+                </div>
+                <div class="panel-body">
+                    <textarea
+                        id="newPrompt"
+                        class="prompt-textarea"
+                        placeholder="Enter your new prompt here... (100-5000 characters)"
+                        oninput="updateCharCount()"
+                        maxlength="5000"></textarea>
+                    <div class="char-counter" id="newCharCount">0 / 5000 characters</div>
+                    <div class="validation-message" id="promptValidation" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Details Form -->
+        <div class="form-section" id="detailsForm" style="display: none;">
+            <h2 class="section-title">Change Details</h2>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" for="changeReason">Reason for Change (Required) *</label>
+                <textarea
+                    id="changeReason"
+                    class="form-input form-textarea"
+                    placeholder="Explain why this prompt change is necessary... (minimum 10 characters)"
+                    oninput="validateReason()"
+                    required></textarea>
+                <div class="help-text">Minimum 10 characters, maximum 500 characters</div>
+                <div class="validation-message" id="reasonValidation" style="display: none;"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" for="newGreeting">New Greeting Message (Optional)</label>
+                <input
+                    type="text"
+                    id="newGreeting"
+                    class="form-input"
+                    placeholder="e.g., Hello! I'm your learning assistant..."
+                    maxlength="200">
+                <div class="help-text">Greeting shown when users first interact with the bot</div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="newHelp">New Help Text (Optional)</label>
+                <input
+                    type="text"
+                    id="newHelp"
+                    class="form-input"
+                    placeholder="e.g., Type 'help' for assistance..."
+                    maxlength="200">
+                <div class="help-text">Help text shown when users request assistance</div>
+            </div>
+        </div>
+
+        <!-- Submit Section -->
+        <div class="submit-section" id="submitSection" style="display: none;">
+            <div>
+                <p style="font-size: 14px; color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px;">
+                    <strong>Ready to submit?</strong> Your change request will be sent to superadmin for approval.
+                </p>
+                <p style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+                    You will be notified once it's reviewed.
+                </p>
+            </div>
+            <button class="btn btn-success" onclick="submitChangeRequest()" id="btnSubmit" disabled>
+                <span>✓</span>
+                <span>Submit for Approval</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let currentCourseId = null;
+        let currentMode = null;
+        let currentPromptData = null;
+        let token = localStorage.getItem('adminToken');
+
+        // Check authentication
+        if (!token) {
+            window.location.href = '/admin/login.html';
+        }
+
+        // Load courses on page load
+        document.addEventListener('DOMContentLoaded', loadCourses);
+
+        async function loadCourses() {
+            try {
+                const response = await fetch(`${API_BASE}/courses/pilot`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('adminToken');
+                        window.location.href = '/admin/login.html';
+                        return;
+                    }
+                    throw new Error('Failed to load courses');
+                }
+
+                const data = await response.json();
+                const courses = data.data || [];
+
+                const select = document.getElementById('courseSelect');
+                select.innerHTML = '<option value="">-- Select a course --</option>';
+
+                courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.title} (${course.code})`;
+                    select.appendChild(option);
+                });
+
+                // Check URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const courseId = urlParams.get('courseId');
+                const mode = urlParams.get('mode');
+
+                if (courseId) {
+                    select.value = courseId;
+                    onCourseChange();
+                }
+
+                if (mode && (mode === 'regular' || mode === 'socratic')) {
+                    document.getElementById('modeSelect').value = mode;
+                    onModeChange();
+                    if (courseId) {
+                        loadCurrentPrompt();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading courses:', error);
+                showAlert('Error loading courses: ' + error.message, 'error');
+            }
+        }
+
+        function onCourseChange() {
+            const courseId = document.getElementById('courseSelect').value;
+            currentCourseId = courseId;
+
+            if (courseId && currentMode) {
+                document.getElementById('btnLoad').disabled = false;
+            } else {
+                document.getElementById('btnLoad').disabled = true;
+            }
+
+            hideEditor();
+        }
+
+        function onModeChange() {
+            const mode = document.getElementById('modeSelect').value;
+            currentMode = mode;
+
+            if (currentCourseId && mode) {
+                document.getElementById('btnLoad').disabled = false;
+            } else {
+                document.getElementById('btnLoad').disabled = true;
+            }
+
+            hideEditor();
+        }
+
+        function hideEditor() {
+            document.getElementById('editorContainer').style.display = 'none';
+            document.getElementById('detailsForm').style.display = 'none';
+            document.getElementById('submitSection').style.display = 'none';
+        }
+
+        async function loadCurrentPrompt() {
+            if (!currentCourseId || !currentMode) {
+                showAlert('Please select both course and mode', 'warning');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loadingState').style.display = 'block';
+            hideEditor();
+
+            try {
+                const response = await fetch(`${API_BASE}/courses/${currentCourseId}/prompts`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load current prompt');
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load prompt');
+                }
+
+                // Get the prompt for selected mode
+                currentPromptData = data.prompts[currentMode];
+
+                if (!currentPromptData) {
+                    throw new Error(`No prompt found for ${currentMode} mode`);
+                }
+
+                // Display current prompt
+                document.getElementById('currentPrompt').value = currentPromptData.prompt_text || '';
+                document.getElementById('currentVersion').textContent = `v${currentPromptData.version_number || 0}`;
+                document.getElementById('currentCharCount').textContent = `${(currentPromptData.prompt_text || '').length} characters`;
+
+                // Clear new prompt
+                document.getElementById('newPrompt').value = '';
+                updateCharCount();
+
+                // Clear form
+                document.getElementById('changeReason').value = '';
+                document.getElementById('newGreeting').value = '';
+                document.getElementById('newHelp').value = '';
+
+                // Show editor
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('editorContainer').style.display = 'grid';
+                document.getElementById('detailsForm').style.display = 'block';
+                document.getElementById('submitSection').style.display = 'flex';
+
+                // Focus on new prompt textarea
+                document.getElementById('newPrompt').focus();
+
+            } catch (error) {
+                console.error('Error loading current prompt:', error);
+                document.getElementById('loadingState').style.display = 'none';
+                showAlert('Error loading current prompt: ' + error.message, 'error');
+            }
+        }
+
+        function updateCharCount() {
+            const textarea = document.getElementById('newPrompt');
+            const counter = document.getElementById('newCharCount');
+            const validation = document.getElementById('promptValidation');
+            const length = textarea.value.length;
+
+            counter.textContent = `${length} / 5000 characters`;
+
+            if (length < 100) {
+                counter.classList.add('warning');
+                counter.classList.remove('error');
+                validation.textContent = 'Prompt must be at least 100 characters';
+                validation.style.display = 'block';
+            } else if (length > 5000) {
+                counter.classList.add('error');
+                counter.classList.remove('warning');
+                validation.textContent = 'Prompt must not exceed 5000 characters';
+                validation.style.display = 'block';
+            } else {
+                counter.classList.remove('warning', 'error');
+                validation.style.display = 'none';
+            }
+
+            validateForm();
+        }
+
+        function validateReason() {
+            const textarea = document.getElementById('changeReason');
+            const validation = document.getElementById('reasonValidation');
+            const length = textarea.value.trim().length;
+
+            if (length > 0 && length < 10) {
+                validation.textContent = 'Reason must be at least 10 characters';
+                validation.style.display = 'block';
+            } else if (length > 500) {
+                validation.textContent = 'Reason must not exceed 500 characters';
+                validation.style.display = 'block';
+            } else {
+                validation.style.display = 'none';
+            }
+
+            validateForm();
+        }
+
+        function validateForm() {
+            const newPrompt = document.getElementById('newPrompt').value.trim();
+            const currentPrompt = document.getElementById('currentPrompt').value.trim();
+            const reason = document.getElementById('changeReason').value.trim();
+            const btnSubmit = document.getElementById('btnSubmit');
+
+            const isPromptValid = newPrompt.length >= 100 && newPrompt.length <= 5000;
+            const isReasonValid = reason.length >= 10 && reason.length <= 500;
+            const isDifferent = newPrompt !== currentPrompt;
+
+            if (isPromptValid && isReasonValid && isDifferent) {
+                btnSubmit.disabled = false;
+            } else {
+                btnSubmit.disabled = true;
+            }
+        }
+
+        async function submitChangeRequest() {
+            const newPrompt = document.getElementById('newPrompt').value.trim();
+            const currentPrompt = document.getElementById('currentPrompt').value.trim();
+            const reason = document.getElementById('changeReason').value.trim();
+            const greeting = document.getElementById('newGreeting').value.trim();
+            const help = document.getElementById('newHelp').value.trim();
+
+            // Final validation
+            if (newPrompt.length < 100 || newPrompt.length > 5000) {
+                showAlert('Prompt must be between 100 and 5000 characters', 'error');
+                return;
+            }
+
+            if (reason.length < 10 || reason.length > 500) {
+                showAlert('Change reason must be between 10 and 500 characters', 'error');
+                return;
+            }
+
+            if (newPrompt === currentPrompt) {
+                showAlert('New prompt must be different from current prompt', 'error');
+                return;
+            }
+
+            // Disable submit button
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Submitting...';
+
+            try {
+                const response = await fetch(`${API_BASE}/courses/${currentCourseId}/prompts/change-requests`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        mode: currentMode,
+                        newPrompt: newPrompt,
+                        changeReason: reason,
+                        newGreeting: greeting || null,
+                        newHelp: help || null
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to submit change request');
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to submit change request');
+                }
+
+                // Show success message
+                showAlert(
+                    `Change request submitted successfully! Request ID: #${data.requestId}. Awaiting superadmin approval.`,
+                    'success'
+                );
+
+                // Reset form after 2 seconds
+                setTimeout(() => {
+                    window.location.href = 'prompt-viewer.html';
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error submitting change request:', error);
+                showAlert('Error: ' + error.message, 'error');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<span>✓</span><span>Submit for Approval</span>';
+            }
+        }
+
+        function showAlert(message, type = 'error') {
+            const alertId = type === 'success' ? 'alertSuccess' :
+                           type === 'warning' ? 'alertWarning' : 'alertError';
+            const alertEl = document.getElementById(alertId);
+
+            // Use textContent for safety
+            alertEl.textContent = message;
+            alertEl.classList.add('active');
+
+            // Hide other alerts
+            ['alertSuccess', 'alertError', 'alertWarning'].forEach(id => {
+                if (id !== alertId) {
+                    document.getElementById(id).classList.remove('active');
+                }
+            });
+
+            setTimeout(() => {
+                alertEl.classList.remove('active');
+            }, 5000);
+        }
+    </script>
+
+    <!-- Moodle-style Sidebar Navigation -->
+    <script src="/js/sidebar-nav.js"></script>
+</body>
+</html>

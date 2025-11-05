@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Version History - Teachers Training System</title>
+
+    <!-- Material Design 3 Theme -->
+    <link rel="stylesheet" href="/admin/css/m3-theme.css">
+
+    <!-- Security utilities for XSS protection -->
+    <script src="/admin/js/security.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .breadcrumb {
+            background: var(--md-sys-color-surface);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: var(--md-sys-elevation-1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .breadcrumb a {
+            color: var(--md-sys-color-primary);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb span {
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        header {
+            background: var(--md-sys-color-surface);
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+        }
+
+        .controls {
+            background: var(--md-sys-color-surface);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: var(--md-sys-elevation-1);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-select {
+            padding: 12px 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 8px;
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px rgba(0, 137, 123, 0.1);
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--md-sys-color-outline-variant);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 40px;
+            animation: md3-slide-up var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .timeline-item:nth-child(1) { animation-delay: 0s; }
+        .timeline-item:nth-child(2) { animation-delay: 0.1s; }
+        .timeline-item:nth-child(3) { animation-delay: 0.2s; }
+        .timeline-item:nth-child(4) { animation-delay: 0.3s; }
+        .timeline-item:nth-child(5) { animation-delay: 0.4s; }
+
+        .timeline-marker {
+            position: absolute;
+            left: -27px;
+            top: 8px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--md-sys-color-primary);
+            border: 3px solid var(--md-sys-color-surface);
+            box-shadow: 0 0 0 2px var(--md-sys-color-outline-variant);
+        }
+
+        .timeline-item.current .timeline-marker {
+            width: 20px;
+            height: 20px;
+            left: -29px;
+            top: 6px;
+            background: var(--md-sys-color-success);
+            box-shadow: 0 0 0 4px rgba(46, 125, 50, 0.2);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .version-card {
+            background: var(--md-sys-color-surface);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            overflow: hidden;
+            transition: all var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+            cursor: pointer;
+        }
+
+        .version-card:hover {
+            box-shadow: var(--md-sys-elevation-3);
+            transform: translateX(4px);
+        }
+
+        .version-card.current {
+            border: 2px solid var(--md-sys-color-success);
+        }
+
+        .version-header {
+            padding: 16px 20px;
+            background: var(--md-sys-color-surface-container);
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .version-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .version-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--md-sys-color-primary);
+        }
+
+        .current-badge {
+            background: var(--md-sys-color-success);
+            color: var(--md-sys-color-on-success);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .version-date {
+            font-size: 13px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .version-body {
+            padding: 20px;
+        }
+
+        .version-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meta-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--md-sys-color-on-surface-variant);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .meta-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .change-reason {
+            background: var(--md-sys-color-primary-container);
+            border-left: 3px solid var(--md-sys-color-primary);
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+
+        .change-reason-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--md-sys-color-on-primary-container);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .change-reason-text {
+            font-size: 14px;
+            color: var(--md-sys-color-on-primary-container);
+            line-height: 1.5;
+        }
+
+        .version-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-view {
+            background: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+        }
+
+        .btn-download {
+            background: var(--md-sys-color-tertiary-container);
+            color: var(--md-sys-color-on-tertiary-container);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid var(--md-sys-color-outline-variant);
+            border-top: 3px solid var(--md-sys-color-primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--md-sys-color-surface);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.active {
+            display: block;
+        }
+
+        .alert-error {
+            background: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
+            border: 1px solid var(--md-sys-color-error);
+        }
+
+        /* Modal for viewing full prompt */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: md3-fade-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            padding: 0;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            animation: md3-scale-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
+            box-shadow: var(--md-sys-elevation-5);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--md-sys-color-surface-container);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .btn-close {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            color: var(--md-sys-color-on-surface-variant);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+        }
+
+        .btn-close:hover {
+            background: var(--md-sys-color-surface-container-highest);
+        }
+
+        .modal-body {
+            padding: 24px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .prompt-display {
+            background: #F5F5F5;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', Monaco, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb">
+            <a href="dashboard.html">Dashboard</a>
+            <span>/</span>
+            <a href="prompt-viewer.html">Prompt Management</a>
+            <span>/</span>
+            <span>Version History</span>
+        </nav>
+
+        <!-- Header -->
+        <header>
+            <h1>Prompt Version History</h1>
+            <p class="subtitle">View all version changes for course prompts</p>
+        </header>
+
+        <!-- Alert Messages -->
+        <div id="alertError" class="alert alert-error"></div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="form-group">
+                <label class="form-label" for="courseSelect">Select Course</label>
+                <select id="courseSelect" class="form-select" onchange="loadHistory()">
+                    <option value="">Loading courses...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="modeSelect">Select Mode</label>
+                <select id="modeSelect" class="form-select" onchange="loadHistory()">
+                    <option value="">-- All modes --</option>
+                    <option value="regular">Regular Mode</option>
+                    <option value="socratic">Socratic Mode</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading active" id="loadingState">
+            <div class="spinner"></div>
+            <p>Loading version history...</p>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline" id="timeline" style="display: none;"></div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">📜</div>
+            <div class="empty-state-title">No Version History</div>
+            <div class="empty-state-text">No prompt versions found for this course.</div>
+        </div>
+    </div>
+
+    <!-- View Prompt Modal -->
+    <div class="modal" id="viewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">View Prompt</h2>
+                <button class="btn-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="prompt-display" id="modalPrompt"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let currentCourseId = null;
+        let token = localStorage.getItem('adminToken');
+
+        // Check authentication
+        if (!token) {
+            window.location.href = '/admin/login.html';
+        }
+
+        // Load courses on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCourses();
+
+            // Check URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseId = urlParams.get('courseId');
+            const mode = urlParams.get('mode');
+
+            if (courseId) {
+                currentCourseId = courseId;
+            }
+
+            if (mode) {
+                document.getElementById('modeSelect').value = mode;
+            }
+        });
+
+        async function loadCourses() {
+            try {
+                const response = await fetch(`${API_BASE}/courses/pilot`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        localStorage.removeItem('adminToken');
+                        window.location.href = '/admin/login.html';
+                        return;
+                    }
+                    throw new Error('Failed to load courses');
+                }
+
+                const data = await response.json();
+                const courses = data.data || [];
+
+                const select = document.getElementById('courseSelect');
+                select.innerHTML = '<option value="">-- Select a course --</option>';
+
+                courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course.id;
+                    option.textContent = `${course.title} (${course.code})`;
+                    select.appendChild(option);
+                });
+
+                // Set from URL or load first course
+                if (currentCourseId) {
+                    select.value = currentCourseId;
+                    loadHistory();
+                } else if (courses.length > 0) {
+                    select.value = courses[0].id;
+                    loadHistory();
+                }
+            } catch (error) {
+                console.error('Error loading courses:', error);
+                showAlert('Error loading courses: ' + error.message);
+            }
+        }
+
+        async function loadHistory() {
+            const courseId = document.getElementById('courseSelect').value;
+            const mode = document.getElementById('modeSelect').value;
+
+            if (!courseId) {
+                document.getElementById('loadingState').classList.remove('active');
+                document.getElementById('timeline').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'none';
+                return;
+            }
+
+            currentCourseId = courseId;
+
+            // Show loading
+            document.getElementById('loadingState').classList.add('active');
+            document.getElementById('timeline').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+
+            try {
+                let url = `${API_BASE}/courses/${courseId}/prompts/history`;
+                if (mode) {
+                    url += `?mode=${mode}`;
+                }
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load version history');
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load history');
+                }
+
+                // Hide loading
+                document.getElementById('loadingState').classList.remove('active');
+
+                // Check if history exists
+                if (!data.history || data.history.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                    return;
+                }
+
+                // Display history
+                displayHistory(data.history);
+                document.getElementById('timeline').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading history:', error);
+                document.getElementById('loadingState').classList.remove('active');
+                document.getElementById('emptyState').style.display = 'block';
+                showAlert('Error loading version history: ' + error.message);
+            }
+        }
+
+        function displayHistory(history) {
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '';
+
+            history.forEach((version, index) => {
+                const isCurrent = version.is_active;
+                const item = document.createElement('div');
+                item.className = 'timeline-item' + (isCurrent ? ' current' : '');
+
+                item.innerHTML = `
+                    <div class="timeline-marker"></div>
+                    <div class="version-card ${isCurrent ? 'current' : ''}" onclick="viewPrompt(${version.id})">
+                        <div class="version-header">
+                            <div class="version-title">
+                                <span class="version-number">Version ${version.version_number}</span>
+                                ${isCurrent ? '<span class="current-badge">Current Live</span>' : ''}
+                            </div>
+                            <span class="version-date">${formatDate(version.created_at)}</span>
+                        </div>
+                        <div class="version-body">
+                            <div class="version-meta">
+                                <div class="meta-item">
+                                    <span class="meta-label">Mode</span>
+                                    <span class="meta-value">${capitalize(version.mode || 'N/A')}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Changed By</span>
+                                    <span class="meta-value">${escapeHtml(version.created_by_name || 'System')}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Characters</span>
+                                    <span class="meta-value">${(version.prompt_text || '').length}</span>
+                                </div>
+                            </div>
+
+                            ${version.change_reason ? `
+                                <div class="change-reason">
+                                    <div class="change-reason-label">Reason for Change</div>
+                                    <div class="change-reason-text">${escapeHtml(version.change_reason)}</div>
+                                </div>
+                            ` : ''}
+
+                            <div class="version-actions">
+                                <button class="btn btn-view" onclick="event.stopPropagation(); viewPrompt(${version.id})">
+                                    <span>👁️</span>
+                                    <span>View Full Prompt</span>
+                                </button>
+                                <button class="btn btn-download" onclick="event.stopPropagation(); downloadVersion(${version.id}, ${version.version_number})">
+                                    <span>⬇️</span>
+                                    <span>Download</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                timeline.appendChild(item);
+            });
+        }
+
+        async function viewPrompt(versionId) {
+            try {
+                const response = await fetch(`${API_BASE}/courses/${currentCourseId}/prompts/versions/${versionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load prompt version');
+                }
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load version');
+                }
+
+                const version = data.version;
+                setSafeText(document.getElementById('modalTitle'), `Version ${version.version_number} - ${capitalize(version.mode)} Mode`);
+                setSafeText(document.getElementById('modalPrompt'), version.prompt_text || 'No prompt text');
+
+                document.getElementById('viewModal').classList.add('show');
+
+            } catch (error) {
+                console.error('Error viewing prompt:', error);
+                showAlert('Error loading prompt: ' + error.message);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('viewModal').classList.remove('show');
+        }
+
+        function downloadVersion(versionId, versionNumber) {
+            fetch(`${API_BASE}/courses/${currentCourseId}/prompts/versions/${versionId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const version = data.version;
+                    const content = version.prompt_text || '';
+                    const mode = version.mode || 'unknown';
+                    const filename = `prompt_v${versionNumber}_${mode}_${Date.now()}.txt`;
+
+                    const blob = new Blob([content], { type: 'text/plain' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                }
+            })
+            .catch(error => {
+                console.error('Error downloading version:', error);
+                showAlert('Error downloading file: ' + error.message);
+            });
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function capitalize(str) {
+            if (!str) return str;
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function showAlert(message) {
+            const alertEl = document.getElementById('alertError');
+            setSafeText(alertEl, message);
+            alertEl.classList.add('active');
+
+            setTimeout(() => {
+                alertEl.classList.remove('active');
+            }, 5000);
+        }
+
+        // Close modal on outside click
+        document.getElementById('viewModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+
+    <!-- Moodle-style Sidebar Navigation -->
+    <script src="/js/sidebar-nav.js"></script>
+</body>
+</html>

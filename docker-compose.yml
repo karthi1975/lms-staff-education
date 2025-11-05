@@ -63,6 +63,7 @@ services:
       - ./public:/app/public
       - ./routes:/app/routes
       - ./services:/app/services
+      - ./middleware:/app/middleware
       - ./scripts:/app/scripts
       - ./server.js:/app/server.js
       - ./credentials:/app/credentials:ro

@@ -533,6 +533,83 @@ router.get('/portal/courses', authMiddleware.authenticateToken, async (req, res)
 });
 
 /**
+ * @route GET /api/admin/courses/pilot
+ * @desc Get all courses in Tanzania region (pilot program)
+ * @access Admin (Tanzania region only)
+ * NOTE: This route must come BEFORE /courses/:courseId to avoid matching "pilot" as courseId
+ */
+router.get('/courses/pilot', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const rbacService = require('../services/rbac.service');
+
+    // TANZANIA PILOT: Check region access
+    const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+
+    if (!isSuperAdmin) {
+      const regions = await rbacService.getAdminAssignedRegions(req.user.id);
+      const tanzaniaRegion = regions.find(r => r.region_code === 'TZ');
+
+      if (!tanzaniaRegion) {
+        return res.status(403).json({
+          success: false,
+          error: 'Prompt viewer is currently available only for Tanzania region admins',
+          pilotRegion: 'Tanzania (TZ)'
+        });
+      }
+    }
+
+    // Get Tanzania region ID
+    const tanzaniaRegionResult = await postgresService.pool.query(
+      'SELECT id FROM regions WHERE code = $1',
+      ['TZ']
+    );
+
+    if (tanzaniaRegionResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tanzania region not found'
+      });
+    }
+
+    const tzRegionId = tanzaniaRegionResult.rows[0].id;
+
+    // Fetch Tanzania courses with bot config info
+    const coursesResult = await postgresService.pool.query(`
+      SELECT
+        c.id,
+        c.code,
+        c.title,
+        c.description,
+        c.category,
+        c.is_active,
+        c.created_at,
+        bc.regular_version,
+        bc.socratic_version,
+        bc.last_approved_at,
+        (SELECT COUNT(*) FROM modules m WHERE m.course_id = c.id) as module_count
+      FROM courses c
+      LEFT JOIN course_bot_configs bc ON c.id = bc.course_id
+      WHERE c.region_id = $1 AND c.is_active = TRUE
+      ORDER BY c.sequence_order, c.created_at DESC
+    `, [tzRegionId]);
+
+    res.json({
+      success: true,
+      pilotRegion: 'Tanzania (TZ)',
+      courses: coursesResult.rows,
+      totalCourses: coursesResult.rows.length
+    });
+
+  } catch (error) {
+    logger.error('Error fetching pilot courses:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route GET /api/admin/courses/:courseId
  * @desc Get course with all modules
  * @access Admin
@@ -2547,6 +2624,902 @@ router.get('/module/:moduleId/completions', authMiddleware.authenticateToken, as
 
   } catch (error) {
     logger.error('Error fetching module completions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ==================== PROMPT MANAGEMENT SYSTEM (PHASE 1: READ-ONLY VIEWER) ====================
+
+/**
+ * @route GET /api/admin/courses/:courseId/prompts
+ * @desc Get current prompts for both Regular and Socratic modes (Read-only)
+ * @access Admin (Tanzania region pilot)
+ */
+router.get('/courses/:courseId/prompts', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const rbacService = require('../services/rbac.service');
+    const botConfigService = require('../services/bot-config.service');
+
+    // TANZANIA PILOT: Check if admin has access to Tanzania region
+    const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+
+    if (!isSuperAdmin) {
+      const regions = await rbacService.getAdminAssignedRegions(req.user.id);
+      const tanzaniaRegion = regions.find(r => r.region_code === 'TZ');
+
+      if (!tanzaniaRegion) {
+        return res.status(403).json({
+          success: false,
+          error: 'Prompt viewer is currently available only for Tanzania region admins (pilot program)',
+          pilotRegion: 'Tanzania (TZ)'
+        });
+      }
+    }
+
+    // Verify course belongs to Tanzania region (or admin is super admin)
+    const courseCheck = await postgresService.pool.query(
+      'SELECT id, title, code, region_id FROM courses WHERE id = $1',
+      [courseId]
+    );
+
+    if (courseCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Course not found'
+      });
+    }
+
+    const course = courseCheck.rows[0];
+
+    // Check if course is in Tanzania region (region_id for TZ)
+    const tanzaniaRegionResult = await postgresService.pool.query(
+      'SELECT id FROM regions WHERE code = $1',
+      ['TZ']
+    );
+
+    if (!isSuperAdmin && tanzaniaRegionResult.rows.length > 0) {
+      const tzRegionId = tanzaniaRegionResult.rows[0].id;
+      if (course.region_id !== tzRegionId) {
+        return res.status(403).json({
+          success: false,
+          error: 'This course is not in the Tanzania region',
+          pilotRegion: 'Tanzania (TZ)'
+        });
+      }
+    }
+
+    // Fetch bot config
+    const config = await botConfigService.getBotConfig(courseId);
+
+    // Return both prompts with metadata
+    res.json({
+      success: true,
+      courseId: parseInt(courseId),
+      courseName: course.title,
+      courseCode: course.code,
+      prompts: {
+        regular: {
+          prompt: config.regular_prompt,
+          greeting: config.regular_greeting,
+          helpText: config.regular_help_text,
+          version: config.regular_version,
+          characterCount: config.regular_prompt ? config.regular_prompt.length : 0
+        },
+        socratic: {
+          prompt: config.socratic_prompt,
+          greeting: config.socratic_greeting,
+          helpText: config.socratic_help_text,
+          version: config.socratic_version,
+          characterCount: config.socratic_prompt ? config.socratic_prompt.length : 0
+        }
+      },
+      metadata: {
+        defaultMode: config.default_mode || 'regular',
+        allowModeSwitching: config.allow_mode_switching !== false,
+        lastApprovedAt: config.last_approved_at,
+        lastApprovedBy: config.last_approved_by
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching course prompts:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/courses/:courseId/prompts/:mode/history
+ * @desc Get version history for a specific prompt mode
+ * @access Admin (Tanzania region pilot)
+ */
+router.get('/courses/:courseId/prompts/:mode/history', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId, mode } = req.params;
+    const rbacService = require('../services/rbac.service');
+
+    // Validate mode
+    if (mode !== 'regular' && mode !== 'socratic') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid mode. Must be "regular" or "socratic"'
+      });
+    }
+
+    // TANZANIA PILOT: Check region access
+    const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+
+    if (!isSuperAdmin) {
+      const regions = await rbacService.getAdminAssignedRegions(req.user.id);
+      const tanzaniaRegion = regions.find(r => r.region_code === 'TZ');
+
+      if (!tanzaniaRegion) {
+        return res.status(403).json({
+          success: false,
+          error: 'Prompt viewer is currently available only for Tanzania region admins'
+        });
+      }
+    }
+
+    // Fetch version history from prompt_approval_history
+    const historyResult = await postgresService.pool.query(`
+      SELECT
+        pah.id,
+        pah.request_id,
+        pah.action,
+        pah.actor_id,
+        pah.actor_role,
+        pah.notes,
+        pah.previous_status,
+        pah.new_status,
+        pah.created_at,
+        pcr.new_prompt,
+        pcr.version_number,
+        pcr.change_reason,
+        au.name as actor_name,
+        au.email as actor_email
+      FROM prompt_approval_history pah
+      LEFT JOIN prompt_change_requests pcr ON pah.request_id = pcr.id
+      LEFT JOIN admin_users au ON pah.actor_id = au.id
+      WHERE pah.course_id = $1
+        AND pcr.mode = $2
+        AND pah.action IN ('approved', 'activated')
+      ORDER BY pah.created_at DESC
+      LIMIT 50
+    `, [courseId, mode]);
+
+    res.json({
+      success: true,
+      courseId: parseInt(courseId),
+      mode: mode,
+      history: historyResult.rows,
+      totalVersions: historyResult.rows.length
+    });
+
+  } catch (error) {
+    logger.error('Error fetching prompt history:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/courses/:courseId/prompts/:mode/versions/:version
+ * @desc Get a specific version of a prompt
+ * @access Admin (Tanzania region pilot)
+ */
+router.get('/courses/:courseId/prompts/:mode/versions/:version', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const { courseId, mode, version } = req.params;
+    const rbacService = require('../services/rbac.service');
+
+    // Validate mode
+    if (mode !== 'regular' && mode !== 'socratic') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid mode. Must be "regular" or "socratic"'
+      });
+    }
+
+    // TANZANIA PILOT: Check region access
+    const isSuperAdmin = await rbacService.isSuperAdmin(req.user.id);
+
+    if (!isSuperAdmin) {
+      const regions = await rbacService.getAdminAssignedRegions(req.user.id);
+      const tanzaniaRegion = regions.find(r => r.region_code === 'TZ');
+
+      if (!tanzaniaRegion) {
+        return res.status(403).json({
+          success: false,
+          error: 'Prompt viewer is currently available only for Tanzania region admins'
+        });
+      }
+    }
+
+    // Fetch specific version from prompt_change_requests
+    const versionResult = await postgresService.pool.query(`
+      SELECT
+        pcr.id,
+        pcr.course_id,
+        pcr.mode,
+        pcr.new_prompt,
+        pcr.version_number,
+        pcr.change_reason,
+        pcr.status,
+        pcr.requested_by,
+        pcr.requested_at,
+        pcr.reviewed_by,
+        pcr.reviewed_at,
+        au1.name as requested_by_name,
+        au1.email as requested_by_email,
+        au2.name as reviewed_by_name,
+        au2.email as reviewed_by_email
+      FROM prompt_change_requests pcr
+      LEFT JOIN admin_users au1 ON pcr.requested_by = au1.id
+      LEFT JOIN admin_users au2 ON pcr.reviewed_by = au2.id
+      WHERE pcr.course_id = $1
+        AND pcr.mode = $2
+        AND pcr.version_number = $3
+    `, [courseId, mode, version]);
+
+    if (versionResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Version ${version} not found for ${mode} mode`
+      });
+    }
+
+    const versionData = versionResult.rows[0];
+
+    res.json({
+      success: true,
+      courseId: parseInt(courseId),
+      mode: mode,
+      version: parseInt(version),
+      prompt: versionData.new_prompt,
+      metadata: {
+        changeReason: versionData.change_reason,
+        status: versionData.status,
+        requestedBy: {
+          id: versionData.requested_by,
+          name: versionData.requested_by_name,
+          email: versionData.requested_by_email
+        },
+        requestedAt: versionData.requested_at,
+        reviewedBy: versionData.reviewed_by ? {
+          id: versionData.reviewed_by,
+          name: versionData.reviewed_by_name,
+          email: versionData.reviewed_by_email
+        } : null,
+        reviewedAt: versionData.reviewed_at
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching prompt version:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// SYSTEM PROMPT APPROVAL WORKFLOW - PHASE 2: WRITE OPERATIONS
+// ============================================================================
+
+/**
+ * @route POST /api/admin/courses/:courseId/prompts/change-requests
+ * @desc Create a new prompt change request (Regional admins submit, cannot approve)
+ * @access Regional Admin, Super Admin
+ */
+router.post('/courses/:courseId/prompts/change-requests', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const rbacService = require('../services/rbac.service');
+    const botConfigService = require('../services/bot-config.service');
+    const { courseId } = req.params;
+    const { mode, newPrompt, changeReason, newGreeting, newHelpText } = req.body;
+    const userId = req.user.id;
+
+    // Validation
+    if (!mode || !['regular', 'socratic'].includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid mode. Must be "regular" or "socratic"'
+      });
+    }
+
+    if (!newPrompt || newPrompt.length < 100 || newPrompt.length > 5000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Prompt must be between 100 and 5000 characters'
+      });
+    }
+
+    if (!changeReason || changeReason.length < 10) {
+      return res.status(400).json({
+        success: false,
+        error: 'Change reason must be at least 10 characters'
+      });
+    }
+
+    // RBAC Check
+    const isSuperAdmin = await rbacService.isSuperAdmin(userId);
+
+    if (!isSuperAdmin) {
+      // Regional admin - check if they have access to this course's region
+      const regions = await rbacService.getAdminAssignedRegions(userId);
+
+      if (!regions || regions.length === 0) {
+        return res.status(403).json({
+          success: false,
+          error: 'No regions assigned to your account'
+        });
+      }
+
+      // Check if course belongs to one of admin's regions
+      const courseRegionCheck = await postgresService.pool.query(
+        `SELECT c.id, c.region_id, r.name as region_name
+         FROM courses c
+         LEFT JOIN regions r ON c.region_id = r.id
+         WHERE c.id = $1`,
+        [courseId]
+      );
+
+      if (courseRegionCheck.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Course not found'
+        });
+      }
+
+      const courseRegion = courseRegionCheck.rows[0].region_id;
+      const hasAccess = regions.some(r => r.id === courseRegion);
+
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          error: 'You do not have access to this course\'s region'
+        });
+      }
+    }
+
+    // Get next version number for this mode
+    const versionQuery = await postgresService.pool.query(
+      `SELECT COALESCE(MAX(version_number), 0) + 1 as next_version
+       FROM prompt_change_requests
+       WHERE course_id = $1 AND mode = $2`,
+      [courseId, mode]
+    );
+    const versionNumber = versionQuery.rows[0].next_version;
+
+    // Get current prompt for comparison
+    const currentConfig = await botConfigService.getBotConfig(courseId);
+    const oldPrompt = mode === 'regular' ? currentConfig.regularPrompt : currentConfig.socraticPrompt;
+    const oldGreeting = currentConfig.greetingMessage;
+    const oldHelpText = currentConfig.helpMessage;
+
+    // Insert change request
+    const insertResult = await postgresService.pool.query(
+      `INSERT INTO prompt_change_requests (
+        course_id, mode, new_prompt, old_prompt, version_number,
+        change_reason, new_greeting, old_greeting, new_help_text, old_help_text,
+        status, requested_by, requested_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+      RETURNING id, status, version_number`,
+      [
+        courseId, mode, newPrompt, oldPrompt, versionNumber,
+        changeReason, newGreeting || null, oldGreeting || null,
+        newHelpText || null, oldHelpText || null,
+        'pending_approval', userId
+      ]
+    );
+
+    const requestId = insertResult.rows[0].id;
+
+    // Log the action
+    await postgresService.pool.query(
+      `INSERT INTO prompt_approval_history (
+        request_id, course_id, action, actor_id, actor_role,
+        notes, previous_status, new_status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      [
+        requestId, courseId, 'submitted', userId,
+        isSuperAdmin ? 'superadmin' : 'regional_admin',
+        changeReason, null, 'pending_approval'
+      ]
+    );
+
+    logger.info(`Prompt change request created: ID=${requestId}, Course=${courseId}, Mode=${mode}, User=${userId}`);
+
+    res.status(201).json({
+      success: true,
+      requestId: requestId,
+      status: 'pending_approval',
+      versionNumber: versionNumber,
+      message: 'Change request submitted. Awaiting superadmin approval.'
+    });
+
+  } catch (error) {
+    logger.error('Error creating prompt change request:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/prompt-change-requests
+ * @desc Get all prompt change requests (for approval dashboard)
+ * @access Super Admin (all requests), Regional Admin (own requests)
+ */
+router.get('/prompt-change-requests', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const rbacService = require('../services/rbac.service');
+    const { status, courseId } = req.query;
+    const userId = req.user.id;
+
+    const isSuperAdmin = await rbacService.isSuperAdmin(userId);
+
+    let query = `
+      SELECT
+        pcr.id,
+        pcr.course_id,
+        c.name as course_name,
+        pcr.mode,
+        pcr.version_number,
+        pcr.change_reason,
+        pcr.status,
+        pcr.requested_at,
+        pcr.reviewed_at,
+        pcr.activated_at,
+        SUBSTRING(pcr.new_prompt, 1, 100) as preview,
+        u.id as requester_id,
+        u.name as requester_name,
+        u.email as requester_email,
+        reviewer.id as reviewer_id,
+        reviewer.name as reviewer_name
+      FROM prompt_change_requests pcr
+      JOIN courses c ON pcr.course_id = c.id
+      JOIN admin_users u ON pcr.requested_by = u.id
+      LEFT JOIN admin_users reviewer ON pcr.reviewed_by = reviewer.id
+      WHERE 1=1
+    `;
+
+    const params = [];
+    let paramIndex = 1;
+
+    // Super admin sees all, regional admin sees only their requests
+    if (!isSuperAdmin) {
+      query += ` AND pcr.requested_by = $${paramIndex}`;
+      params.push(userId);
+      paramIndex++;
+    }
+
+    // Filter by status
+    if (status) {
+      query += ` AND pcr.status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    // Filter by course
+    if (courseId) {
+      query += ` AND pcr.course_id = $${paramIndex}`;
+      params.push(courseId);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY pcr.requested_at DESC`;
+
+    const result = await postgresService.pool.query(query, params);
+
+    const requests = result.rows.map(row => ({
+      id: row.id,
+      courseId: row.course_id,
+      courseName: row.course_name,
+      mode: row.mode,
+      versionNumber: row.version_number,
+      changeReason: row.change_reason,
+      status: row.status,
+      requestedBy: {
+        id: row.requester_id,
+        name: row.requester_name,
+        email: row.requester_email
+      },
+      requestedAt: row.requested_at,
+      reviewedAt: row.reviewed_at,
+      activatedAt: row.activated_at,
+      reviewedBy: row.reviewer_id ? {
+        id: row.reviewer_id,
+        name: row.reviewer_name
+      } : null,
+      preview: row.preview + '...'
+    }));
+
+    res.json({
+      success: true,
+      requests: requests,
+      totalRequests: requests.length,
+      userRole: isSuperAdmin ? 'superadmin' : 'regional_admin'
+    });
+
+  } catch (error) {
+    logger.error('Error fetching prompt change requests:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/admin/prompt-change-requests/:requestId
+ * @desc Get single change request with full details (for detail view)
+ * @access Super Admin, Regional Admin (own requests only)
+ */
+router.get('/prompt-change-requests/:requestId', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const rbacService = require('../services/rbac.service');
+    const { requestId } = req.params;
+    const userId = req.user.id;
+
+    const isSuperAdmin = await rbacService.isSuperAdmin(userId);
+
+    let query = `
+      SELECT
+        pcr.*,
+        c.name as course_name,
+        c.region_id,
+        r.name as region_name,
+        u.id as requester_id,
+        u.name as requester_name,
+        u.email as requester_email,
+        u.role_id as requester_role_id,
+        reviewer.id as reviewer_id,
+        reviewer.name as reviewer_name,
+        reviewer.email as reviewer_email
+      FROM prompt_change_requests pcr
+      JOIN courses c ON pcr.course_id = c.id
+      LEFT JOIN regions r ON c.region_id = r.id
+      JOIN admin_users u ON pcr.requested_by = u.id
+      LEFT JOIN admin_users reviewer ON pcr.reviewed_by = reviewer.id
+      WHERE pcr.id = $1
+    `;
+
+    const params = [requestId];
+
+    // Regional admin can only view their own requests
+    if (!isSuperAdmin) {
+      query += ` AND pcr.requested_by = $2`;
+      params.push(userId);
+    }
+
+    const result = await postgresService.pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Change request not found or access denied'
+      });
+    }
+
+    const row = result.rows[0];
+
+    // Get approval history
+    const historyResult = await postgresService.pool.query(
+      `SELECT
+        pah.*,
+        u.name as actor_name,
+        u.email as actor_email
+       FROM prompt_approval_history pah
+       LEFT JOIN admin_users u ON pah.actor_id = u.id
+       WHERE pah.request_id = $1
+       ORDER BY pah.created_at DESC`,
+      [requestId]
+    );
+
+    const request = {
+      id: row.id,
+      courseId: row.course_id,
+      courseName: row.course_name,
+      regionId: row.region_id,
+      regionName: row.region_name,
+      mode: row.mode,
+      versionNumber: row.version_number,
+      status: row.status,
+      newPrompt: row.new_prompt,
+      oldPrompt: row.old_prompt,
+      newGreeting: row.new_greeting,
+      oldGreeting: row.old_greeting,
+      newHelpText: row.new_help_text,
+      oldHelpText: row.old_help_text,
+      changeReason: row.change_reason,
+      reviewNotes: row.review_notes,
+      requestedBy: {
+        id: row.requester_id,
+        name: row.requester_name,
+        email: row.requester_email,
+        roleId: row.requester_role_id
+      },
+      requestedAt: row.requested_at,
+      reviewedBy: row.reviewer_id ? {
+        id: row.reviewer_id,
+        name: row.reviewer_name,
+        email: row.reviewer_email
+      } : null,
+      reviewedAt: row.reviewed_at,
+      activatedAt: row.activated_at,
+      history: historyResult.rows.map(h => ({
+        action: h.action,
+        actor: h.actor_name,
+        actorEmail: h.actor_email,
+        actorRole: h.actor_role,
+        notes: h.notes,
+        previousStatus: h.previous_status,
+        newStatus: h.new_status,
+        createdAt: h.created_at
+      }))
+    };
+
+    res.json({
+      success: true,
+      request: request
+    });
+
+  } catch (error) {
+    logger.error('Error fetching prompt change request details:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/admin/prompt-change-requests/:requestId/review
+ * @desc Approve or reject a prompt change request
+ * @access Super Admin ONLY
+ */
+router.post('/prompt-change-requests/:requestId/review', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const rbacService = require('../services/rbac.service');
+    const { requestId } = req.params;
+    const { action, notes } = req.body;
+    const userId = req.user.id;
+
+    // Validation
+    if (!action || !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid action. Must be "approve" or "reject"'
+      });
+    }
+
+    // RBAC Check - Only super admin can approve/reject
+    const isSuperAdmin = await rbacService.isSuperAdmin(userId);
+    if (!isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only super administrators can approve or reject change requests'
+      });
+    }
+
+    // Get current request
+    const requestResult = await postgresService.pool.query(
+      `SELECT * FROM prompt_change_requests WHERE id = $1`,
+      [requestId]
+    );
+
+    if (requestResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Change request not found'
+      });
+    }
+
+    const request = requestResult.rows[0];
+
+    // Check if request is in valid state for review
+    if (request.status !== 'pending_approval') {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot review request with status: ${request.status}. Only pending_approval requests can be reviewed.`
+      });
+    }
+
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+
+    // Update request status
+    await postgresService.pool.query(
+      `UPDATE prompt_change_requests
+       SET status = $1, reviewed_by = $2, reviewed_at = NOW(), review_notes = $3
+       WHERE id = $4`,
+      [newStatus, userId, notes || null, requestId]
+    );
+
+    // Log the action
+    await postgresService.pool.query(
+      `INSERT INTO prompt_approval_history (
+        request_id, course_id, action, actor_id, actor_role,
+        notes, previous_status, new_status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+      [
+        requestId, request.course_id, action, userId, 'superadmin',
+        notes || `Request ${action}d`, 'pending_approval', newStatus
+      ]
+    );
+
+    logger.info(`Prompt change request ${action}d: ID=${requestId}, User=${userId}`);
+
+    res.json({
+      success: true,
+      requestId: parseInt(requestId),
+      newStatus: newStatus,
+      message: action === 'approve'
+        ? 'Request approved. Ready for activation.'
+        : 'Request rejected.',
+      canActivateNow: action === 'approve'
+    });
+
+  } catch (error) {
+    logger.error('Error reviewing prompt change request:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route POST /api/admin/prompt-change-requests/:requestId/activate
+ * @desc Activate an approved prompt (make it live in course_bot_configs)
+ * @access Super Admin ONLY
+ */
+router.post('/prompt-change-requests/:requestId/activate', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const rbacService = require('../services/rbac.service');
+    const botConfigService = require('../services/bot-config.service');
+    const { requestId } = req.params;
+    const { notes } = req.body;
+    const userId = req.user.id;
+
+    // RBAC Check - Only super admin can activate
+    const isSuperAdmin = await rbacService.isSuperAdmin(userId);
+    if (!isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only super administrators can activate prompts'
+      });
+    }
+
+    // Get current request
+    const requestResult = await postgresService.pool.query(
+      `SELECT * FROM prompt_change_requests WHERE id = $1`,
+      [requestId]
+    );
+
+    if (requestResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Change request not found'
+      });
+    }
+
+    const request = requestResult.rows[0];
+
+    // Check if request is approved
+    if (request.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot activate request with status: ${request.status}. Only approved requests can be activated.`
+      });
+    }
+
+    const { course_id, mode, new_prompt, new_greeting, new_help_text, version_number } = request;
+
+    // Begin transaction
+    const client = await postgresService.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Update course_bot_configs
+      const updateFields = [];
+      const updateParams = [];
+      let paramIndex = 1;
+
+      if (mode === 'regular') {
+        updateFields.push(`regular_prompt = $${paramIndex++}`);
+        updateParams.push(new_prompt);
+        updateFields.push(`regular_version = $${paramIndex++}`);
+        updateParams.push(version_number);
+      } else if (mode === 'socratic') {
+        updateFields.push(`socratic_prompt = $${paramIndex++}`);
+        updateParams.push(new_prompt);
+        updateFields.push(`socratic_version = $${paramIndex++}`);
+        updateParams.push(version_number);
+      }
+
+      if (new_greeting) {
+        updateFields.push(`greeting_message = $${paramIndex++}`);
+        updateParams.push(new_greeting);
+      }
+
+      if (new_help_text) {
+        updateFields.push(`help_message = $${paramIndex++}`);
+        updateParams.push(new_help_text);
+      }
+
+      updateFields.push(`last_approved_at = NOW()`);
+      updateFields.push(`last_approved_by = $${paramIndex++}`);
+      updateParams.push(userId);
+
+      updateParams.push(course_id);
+
+      const updateQuery = `
+        UPDATE course_bot_configs
+        SET ${updateFields.join(', ')}
+        WHERE course_id = $${paramIndex}
+      `;
+
+      await client.query(updateQuery, updateParams);
+
+      // Update request status to activated
+      await client.query(
+        `UPDATE prompt_change_requests
+         SET status = 'activated', activated_at = NOW()
+         WHERE id = $1`,
+        [requestId]
+      );
+
+      // Log the action
+      await client.query(
+        `INSERT INTO prompt_approval_history (
+          request_id, course_id, action, actor_id, actor_role,
+          notes, previous_status, new_status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+        [
+          requestId, course_id, 'activated', userId, 'superadmin',
+          notes || `Prompt v${version_number} activated for ${mode} mode`,
+          'approved', 'activated'
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      // Clear bot config cache
+      await botConfigService.clearCache(course_id);
+
+      logger.info(`Prompt activated: Request=${requestId}, Course=${course_id}, Mode=${mode}, Version=${version_number}, User=${userId}`);
+
+      res.json({
+        success: true,
+        requestId: parseInt(requestId),
+        courseId: course_id,
+        mode: mode,
+        newVersion: version_number,
+        message: `Prompt v${version_number} is now LIVE for ${mode} mode`,
+        affectsActiveUsers: true
+      });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+  } catch (error) {
+    logger.error('Error activating prompt:', error);
     res.status(500).json({
       success: false,
       error: error.message
