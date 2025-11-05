@@ -454,9 +454,15 @@
         <!-- Controls -->
         <div class="controls">
             <div class="form-group">
+                <label class="form-label" for="regionSelect">Select Region</label>
+                <select id="regionSelect" class="form-select" onchange="filterCoursesByRegion()">
+                    <option value="">All Regions</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label class="form-label" for="courseSelect">Select Course</label>
                 <select id="courseSelect" class="form-select" onchange="loadPrompts()">
-                    <option value="">Loading courses...</option>
+                    <option value="">First select a region...</option>
                 </select>
             </div>
             <div class="action-buttons">
@@ -543,6 +549,8 @@
         let currentCourseId = null;
         let currentUser = null;
         let token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+        let allCourses = []; // Store all courses for filtering
+        let allRegions = []; // Store all regions
 
         // Check authentication
         if (!token) {
@@ -594,6 +602,21 @@
 
                 const data = await response.json();
                 if (data.success && data.regions && data.regions.length > 0) {
+                    allRegions = data.regions;
+
+                    // Populate region dropdown
+                    const regionSelect = document.getElementById('regionSelect');
+                    regionSelect.innerHTML = '<option value="">All Regions</option>';
+
+                    data.regions.forEach(region => {
+                        const option = document.createElement('option');
+                        option.value = region.id || region.region_id;
+                        const safeName = escapeHtml(region.name);
+                        option.textContent = safeName;
+                        regionSelect.appendChild(option);
+                    });
+
+                    // Show region info
                     const regionNames = data.regions.map(r => escapeHtml(r.name)).join(', ');
                     setSafeText(document.getElementById('regionNames'), `Your Regions: ${regionNames}`);
                     document.getElementById('regionInfo').style.display = 'block';
@@ -617,28 +640,15 @@
                 }
 
                 const data = await response.json();
-                const courses = data.courses || [];
-
-                const select = document.getElementById('courseSelect');
-                select.innerHTML = '<option value="">-- Select a course --</option>';
-
-                courses.forEach(course => {
-                    const option = document.createElement('option');
-                    option.value = course.id;
-                    const safeTitle = escapeHtml(course.title);
-                    const safeCode = escapeHtml(course.code);
-                    option.textContent = `${safeTitle} (${safeCode})`;
-                    select.appendChild(option);
-                });
+                allCourses = data.courses || [];
 
                 // Hide loading
                 document.getElementById('loadingState').classList.remove('active');
 
-                // Auto-select first course if available
-                if (courses.length > 0) {
-                    select.value = courses[0].id;
-                    loadPrompts();
-                } else {
+                // Show all courses initially
+                filterCoursesByRegion();
+
+                if (allCourses.length === 0) {
                     showAlert('No accessible courses found. You need to be assigned to a region with courses.', 'info');
                     document.getElementById('emptyState').style.display = 'block';
                 }
@@ -647,6 +657,35 @@
                 document.getElementById('loadingState').classList.remove('active');
                 showAlert('Error loading courses: ' + escapeHtml(error.message), 'error');
             }
+        }
+
+        function filterCoursesByRegion() {
+            const regionSelect = document.getElementById('regionSelect');
+            const courseSelect = document.getElementById('courseSelect');
+            const selectedRegionId = regionSelect.value;
+
+            // Filter courses
+            const filteredCourses = selectedRegionId
+                ? allCourses.filter(course => course.region_id == selectedRegionId)
+                : allCourses;
+
+            // Populate course dropdown
+            courseSelect.innerHTML = '<option value="">-- Select a course --</option>';
+
+            filteredCourses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.id;
+                const safeTitle = escapeHtml(course.title);
+                const safeCode = escapeHtml(course.code);
+                const safeRegion = course.region_name ? ` [${escapeHtml(course.region_name)}]` : '';
+                option.textContent = `${safeTitle} (${safeCode})${safeRegion}`;
+                courseSelect.appendChild(option);
+            });
+
+            // Clear prompts when filter changes
+            document.getElementById('promptContainer').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('btnCreate').disabled = true;
         }
 
         async function loadPrompts() {
