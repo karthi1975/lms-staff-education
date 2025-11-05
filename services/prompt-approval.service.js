@@ -275,6 +275,73 @@ class PromptApprovalService {
   }
 
   /**
+   * Get all default prompts (both regular and socratic) for a course
+   * @param {number} courseId - Course ID
+   * @returns {Promise<object>} - Both prompt modes with details
+   */
+  async getAllDefaultPrompts(courseId) {
+    try {
+      const result = await this.postgresService.query(
+        `SELECT
+          cbc.course_id,
+          cbc.regular_prompt,
+          cbc.regular_greeting,
+          cbc.regular_help_text,
+          cbc.regular_version,
+          cbc.socratic_prompt,
+          cbc.socratic_greeting,
+          cbc.socratic_help_text,
+          cbc.socratic_version,
+          cbc.last_approved_at,
+          cbc.last_approved_by,
+          cbc.updated_at,
+          au.name as updated_by_name,
+          au.email as updated_by_email
+         FROM course_bot_configs cbc
+         LEFT JOIN admin_users au ON cbc.last_approved_by = au.id
+         WHERE cbc.course_id = $1`,
+        [courseId]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error(`No bot configuration found for course ${courseId}`);
+      }
+
+      const config = result.rows[0];
+
+      return {
+        success: true,
+        courseId: courseId,
+        prompts: {
+          regular: {
+            prompt_text: config.regular_prompt,
+            greeting: config.regular_greeting,
+            help_text: config.regular_help_text,
+            version_number: config.regular_version,
+            updated_at: config.updated_at,
+            updated_by_name: config.updated_by_name,
+            updated_by_email: config.updated_by_email
+          },
+          socratic: {
+            prompt_text: config.socratic_prompt,
+            greeting: config.socratic_greeting,
+            help_text: config.socratic_help_text,
+            version_number: config.socratic_version,
+            updated_at: config.updated_at,
+            updated_by_name: config.updated_by_name,
+            updated_by_email: config.updated_by_email
+          }
+        },
+        lastApprovedAt: config.last_approved_at,
+        lastApprovedBy: config.last_approved_by
+      };
+    } catch (error) {
+      logger.error('Error getting all default prompts:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create draft prompt change request
    * @param {object} params - Request parameters
    * @param {number} params.courseId - Course ID

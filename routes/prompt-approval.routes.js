@@ -107,8 +107,8 @@ router.get('/prompt-approval/my-regions', authMiddleware.authenticateToken, asyn
 
 /**
  * GET /api/prompt-approval/courses/:courseId/default-prompt
- * Get current active prompt for a course
- * Query param: mode=regular|socratic
+ * Get current active prompt(s) for a course
+ * Query param: mode=regular|socratic (optional - if not provided, returns both)
  * Access: Any authenticated admin with course access
  */
 router.get('/prompt-approval/courses/:courseId/default-prompt',
@@ -117,8 +117,15 @@ router.get('/prompt-approval/courses/:courseId/default-prompt',
   async (req, res) => {
     try {
       const courseId = parseInt(req.params.courseId);
-      const mode = req.query.mode || 'regular';
+      const mode = req.query.mode;
 
+      // If no mode specified, return both prompts
+      if (!mode) {
+        const result = await promptApprovalService.getAllDefaultPrompts(courseId);
+        return res.json(result);
+      }
+
+      // If mode specified, return single prompt
       if (!['regular', 'socratic'].includes(mode)) {
         return res.status(400).json({
           success: false,
