@@ -96,6 +96,158 @@ class PromptApprovalService {
   }
 
   /**
+   * Get admin's assigned regions from admin_regions table
+   * @param {number} adminId - Admin user ID
+   * @returns {Promise<Array<number>>} - Array of region IDs
+   */
+  async getAdminRegions(adminId) {
+    try {
+      const result = await this.postgresService.query(
+        `SELECT region_id FROM admin_regions WHERE admin_user_id = $1`,
+        [adminId]
+      );
+
+      return result.rows.map(row => row.region_id);
+    } catch (error) {
+      logger.error('Error getting admin regions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if admin can access a specific course (based on region)
+   * @param {number} adminId - Admin user ID
+   * @param {number} courseId - Course ID
+   * @returns {Promise<boolean>} - True if admin can access course
+   */
+  async canAdminAccessCourse(adminId, courseId) {
+    try {
+      // Check if Super Admin
+      const isSuperAdmin = await this.verifySuperAdmin(adminId);
+      if (isSuperAdmin) {
+        return true;
+      }
+
+      // Get course region
+      const courseResult = await this.postgresService.query(
+        'SELECT region_id FROM courses WHERE id = $1',
+        [courseId]
+      );
+
+      if (courseResult.rows.length === 0) {
+        logger.warn(`Course ${courseId} not found`);
+        return false;
+      }
+
+      const courseRegionId = courseResult.rows[0].region_id;
+
+      if (!courseRegionId) {
+        logger.warn(`Course ${courseId} has no region assigned`);
+        return false;
+      }
+
+      // Check if admin has access to course's region
+      const adminRegions = await this.getAdminRegions(adminId);
+      return adminRegions.includes(courseRegionId);
+    } catch (error) {
+      logger.error('Error checking course access:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get courses accessible by admin (filtered by assigned regions)
+   * @param {number} adminId - Admin user ID
+   * @returns {Promise<Array>} - Array of accessible courses
+   */
+  async getAccessibleCourses(adminId) {
+    try {
+      // Check if Super Admin
+      const isSuperAdmin = await this.verifySuperAdmin(adminId);
+
+      if (isSuperAdmin) {
+        // Super Admin sees all courses
+        const result = await this.postgresService.query(
+          `SELECT id, title, code, region_id FROM courses WHERE is_active = true ORDER BY title`
+        );
+        return result.rows;
+      }
+
+      // Regional Admin: get only courses in assigned regions
+      const adminRegions = await this.getAdminRegions(adminId);
+
+      if (adminRegions.length === 0) {
+        logger.warn(`Admin ${adminId} has no assigned regions`);
+        return [];
+      }
+
+      const result = await this.postgresService.query(
+        `SELECT id, title, code, region_id
+         FROM courses
+         WHERE is_active = true AND region_id = ANY($1::int[])
+         ORDER BY title`,
+        [adminRegions]
+      );
+
+      return result.rows;
+    } catch (error) {
+      logger.error('Error getting accessible courses:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get default (current active) prompt for a course and mode
+   * @param {number} courseId - Course ID
+   * @param {string} mode - Coaching mode (regular/socratic)
+   * @returns {Promise<object>} - Current active prompt details
+   */
+  async getDefaultPrompt(courseId, mode) {
+    try {
+      if (!Object.values(this.MODES).includes(mode)) {
+        throw new Error(`Invalid mode: ${mode}`);
+      }
+
+      const column = mode === this.MODES.REGULAR ? 'regular' : 'socratic';
+
+      const result = await this.postgresService.query(
+        `SELECT
+          course_id,
+          ${column}_prompt as prompt,
+          ${column}_greeting as greeting,
+          ${column}_help_text as help_text,
+          ${column}_version as version,
+          last_approved_at,
+          last_approved_by
+         FROM course_bot_configs
+         WHERE course_id = $1`,
+        [courseId]
+      );
+
+      if (result.rows.length === 0) {
+        throw new Error(`No bot configuration found for course ${courseId}`);
+      }
+
+      const config = result.rows[0];
+
+      return {
+        success: true,
+        courseId: courseId,
+        mode: mode,
+        prompt: config.prompt,
+        greeting: config.greeting,
+        helpText: config.help_text,
+        version: config.version,
+        lastApprovedAt: config.last_approved_at,
+        lastApprovedBy: config.last_approved_by
+      };
+    } catch (error) {
+      logger.error('Error getting default prompt:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create draft prompt change request
    * @param {object} params - Request parameters
    * @param {number} params.courseId - Course ID
@@ -116,6 +268,13 @@ class PromptApprovalService {
 
       if (!changeReason || changeReason.trim().length < this.MIN_REASON_LENGTH) {
         throw new Error(`Change reason must be at least ${this.MIN_REASON_LENGTH} characters`);
+      }
+
+      // SECURITY: Verify admin can access this course (defense in depth)
+      const canAccess = await this.canAdminAccessCourse(requestedBy, courseId);
+      if (!canAccess) {
+        logger.warn(`Admin ${requestedBy} attempted to create request for unauthorized course ${courseId}`);
+        throw new Error('Access denied. You do not have permission to modify this course.');
       }
 
       // Verify course exists
@@ -436,24 +595,22 @@ class PromptApprovalService {
   }
 
   /**
-   * Get pending approval requests (Super Admin only)
-   * @param {number} superAdminId - Super Admin user ID
+   * Get pending approval requests (Super Admin sees all, Regional Admin sees only their regions)
+   * @param {number} adminId - Admin user ID
    * @param {object} filters - Optional filters
    * @returns {Promise<object>} - Pending requests
    */
-  async getPendingApprovals(superAdminId, filters = {}) {
+  async getPendingApprovals(adminId, filters = {}) {
     try {
-      // Verify Super Admin
-      const isSuperAdmin = await this.verifySuperAdmin(superAdminId);
-      if (!isSuperAdmin) {
-        throw new Error('Only Super Admins can view pending approvals');
-      }
+      // Check if Super Admin
+      const isSuperAdmin = await this.verifySuperAdmin(adminId);
 
       let query = `
         SELECT
           pcr.*,
           c.title as course_title,
           c.code as course_code,
+          c.region_id as course_region_id,
           au.name as requester_name,
           au.email as requester_email,
           EXTRACT(EPOCH FROM (NOW() - pcr.requested_at))/3600 as hours_pending
@@ -464,6 +621,23 @@ class PromptApprovalService {
       `;
 
       const params = [this.STATUS.PENDING];
+
+      // Regional Admin: filter by assigned regions
+      if (!isSuperAdmin) {
+        const adminRegions = await this.getAdminRegions(adminId);
+
+        if (adminRegions.length === 0) {
+          logger.warn(`Regional Admin ${adminId} has no assigned regions`);
+          return {
+            success: true,
+            count: 0,
+            requests: []
+          };
+        }
+
+        params.push(adminRegions);
+        query += ` AND c.region_id = ANY($${params.length}::int[])`;
+      }
 
       // Add filters
       if (filters.courseId) {
@@ -484,12 +658,14 @@ class PromptApprovalService {
         ...this.formatRequest(row),
         courseTitle: row.course_title,
         courseCode: row.course_code,
+        courseRegionId: row.course_region_id,
         requesterName: row.requester_name,
         requesterEmail: row.requester_email,
         hoursPending: parseFloat(row.hours_pending).toFixed(1)
       }));
 
-      logger.info(`Retrieved ${requests.length} pending approvals for Super Admin ${superAdminId}`);
+      const role = isSuperAdmin ? 'Super Admin' : 'Regional Admin';
+      logger.info(`Retrieved ${requests.length} pending approvals for ${role} ${adminId}`);
 
       return {
         success: true,
@@ -558,18 +734,22 @@ class PromptApprovalService {
   }
 
   /**
-   * Get admin's own prompt change requests
+   * Get admin's own prompt change requests (filtered by accessible courses)
    * @param {number} adminId - Admin user ID
    * @param {object} filters - Optional filters
    * @returns {Promise<object>} - Admin's requests
    */
   async getMyRequests(adminId, filters = {}) {
     try {
+      // Check if Super Admin
+      const isSuperAdmin = await this.verifySuperAdmin(adminId);
+
       let query = `
         SELECT
           pcr.*,
           c.title as course_title,
           c.code as course_code,
+          c.region_id as course_region_id,
           reviewer.name as reviewer_name,
           reviewer.email as reviewer_email
         FROM prompt_change_requests pcr
@@ -579,6 +759,23 @@ class PromptApprovalService {
       `;
 
       const params = [adminId];
+
+      // Regional Admin: filter by accessible courses only
+      if (!isSuperAdmin) {
+        const adminRegions = await this.getAdminRegions(adminId);
+
+        if (adminRegions.length === 0) {
+          logger.warn(`Regional Admin ${adminId} has no assigned regions`);
+          return {
+            success: true,
+            count: 0,
+            requests: []
+          };
+        }
+
+        params.push(adminRegions);
+        query += ` AND c.region_id = ANY($${params.length}::int[])`;
+      }
 
       // Add filters
       if (filters.status) {
@@ -599,6 +796,7 @@ class PromptApprovalService {
         ...this.formatRequest(row),
         courseTitle: row.course_title,
         courseCode: row.course_code,
+        courseRegionId: row.course_region_id,
         reviewerName: row.reviewer_name,
         reviewerEmail: row.reviewer_email
       }));

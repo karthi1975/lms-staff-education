@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prompt Viewer - Teachers Training System</title>
+    <title>View Prompts - Regional Admin</title>
 
     <!-- Material Design 3 Theme -->
     <link rel="stylesheet" href="/admin/css/m3-theme.css">
@@ -25,38 +25,83 @@
             animation: md3-fade-in var(--md-sys-motion-duration-medium4) var(--md-sys-motion-easing-emphasized);
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 30px;
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background: #004D40;
+            color: white;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+            z-index: 1000;
         }
 
-        .breadcrumb {
-            background: var(--md-sys-color-surface);
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: var(--md-sys-elevation-1);
+        .sidebar-header {
+            padding: 25px 20px;
+            background: #00352A;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #95a5a6;
+        }
+
+        .nav-menu {
+            padding: 20px 0;
+        }
+
+        .nav-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 14px;
-        }
-
-        .breadcrumb a {
-            color: var(--md-sys-color-primary);
+            padding: 12px 20px;
+            color: #ecf0f1;
             text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
         }
 
-        .breadcrumb a:hover {
-            text-decoration: underline;
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            padding-left: 23px;
         }
 
-        .breadcrumb span {
-            color: var(--md-sys-color-on-surface-variant);
+        .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            border-left: 3px solid var(--md-sys-color-secondary);
         }
 
-        header {
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+
+        .page-header {
             background: var(--md-sys-color-surface);
             padding: 24px;
             border-radius: 12px;
@@ -73,6 +118,20 @@
         .subtitle {
             color: var(--md-sys-color-on-surface-variant);
             font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .region-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 12px;
         }
 
         .controls {
@@ -83,7 +142,7 @@
             box-shadow: var(--md-sys-elevation-1);
             display: flex;
             gap: 16px;
-            align-items: center;
+            align-items: flex-end;
             flex-wrap: wrap;
         }
 
@@ -134,9 +193,16 @@
             box-shadow: var(--md-sys-elevation-1);
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             box-shadow: var(--md-sys-elevation-2);
             transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface-variant);
+            cursor: not-allowed;
+            opacity: 0.6;
         }
 
         .btn-primary {
@@ -147,13 +213,6 @@
         .btn-secondary {
             background: var(--md-sys-color-secondary);
             color: var(--md-sys-color-on-secondary);
-        }
-
-        .btn-outlined {
-            background: transparent;
-            color: var(--md-sys-color-primary);
-            border: 1px solid var(--md-sys-color-outline);
-            box-shadow: none;
         }
 
         .prompt-container {
@@ -233,7 +292,6 @@
             gap: 16px;
             padding: 16px 0;
             border-top: 1px solid var(--md-sys-color-outline-variant);
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
             margin-bottom: 16px;
         }
 
@@ -255,29 +313,6 @@
             font-size: 14px;
             font-weight: 600;
             color: var(--md-sys-color-on-surface);
-        }
-
-        .greeting-section,
-        .help-section {
-            margin-bottom: 16px;
-        }
-
-        .section-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--md-sys-color-on-surface-variant);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .section-text {
-            background: var(--md-sys-color-surface-container);
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            color: var(--md-sys-color-on-surface);
-            line-height: 1.5;
         }
 
         .loading {
@@ -349,32 +384,72 @@
             border: 1px solid var(--md-sys-color-error);
         }
 
+        .alert-info {
+            background: var(--md-sys-color-tertiary-container);
+            color: var(--md-sys-color-on-tertiary-container);
+            border: 1px solid var(--md-sys-color-tertiary);
+        }
+
         .action-buttons {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
+            margin-top: 12px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Breadcrumb -->
-        <nav class="breadcrumb">
-            <a href="dashboard.html">Dashboard</a>
-            <span>/</span>
-            <span>Prompt Management</span>
-            <span>/</span>
-            <span>Viewer</span>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Teachers Training</h2>
+            <p id="userEmail">Loading...</p>
+        </div>
+        <nav class="nav-menu">
+            <a href="dashboard.html" class="nav-item">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="user-management.html" class="nav-item">
+                <span class="nav-icon">👥</span>
+                <span>Users</span>
+            </a>
+            <a href="courses.html" class="nav-item">
+                <span class="nav-icon">📚</span>
+                <span>Courses</span>
+            </a>
+            <a href="prompt-viewer.html" class="nav-item active">
+                <span class="nav-icon">📖</span>
+                <span>View Prompts</span>
+            </a>
+            <a href="prompt-approvals.html" class="nav-item" id="navApprovals" style="display: none;">
+                <span class="nav-icon">✅</span>
+                <span>Prompt Approvals</span>
+            </a>
+            <a href="#" class="nav-item" onclick="logout()">
+                <span class="nav-icon">🚪</span>
+                <span>Logout</span>
+            </a>
         </nav>
+    </div>
 
-        <!-- Header -->
-        <header>
-            <h1>Prompt Viewer</h1>
-            <p class="subtitle">View current live prompts for coaching bot (Regular vs Socratic mode)</p>
-        </header>
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>View Coaching Bot Prompts</h1>
+            <p class="subtitle">View current active prompts for Regular vs Socratic teaching modes</p>
+            <div id="regionInfo" style="display: none;">
+                <div class="region-info">
+                    <span>🌍</span>
+                    <span id="regionNames">Loading regions...</span>
+                </div>
+            </div>
+        </div>
 
         <!-- Alert Messages -->
         <div id="alertError" class="alert alert-error"></div>
+        <div id="alertInfo" class="alert alert-info"></div>
 
         <!-- Controls -->
         <div class="controls">
@@ -384,14 +459,10 @@
                     <option value="">Loading courses...</option>
                 </select>
             </div>
-            <div class="action-buttons" style="margin-top: auto;">
-                <button class="btn btn-secondary" onclick="viewHistory()" id="btnHistory" disabled>
-                    <span>📜</span>
-                    <span>View Version History</span>
-                </button>
-                <button class="btn btn-primary" onclick="proposeChange()" id="btnPropose" disabled>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="createCustomPrompt()" id="btnCreate" disabled>
                     <span>✏️</span>
-                    <span>Propose Change</span>
+                    <span>Create Custom Prompt</span>
                 </button>
             </div>
         </div>
@@ -411,7 +482,7 @@
                     <span class="version-badge" id="regularVersion">v0</span>
                 </div>
                 <div class="prompt-body">
-                    <div class="section-label">System Prompt</div>
+                    <div class="meta-label" style="margin-bottom: 8px;">System Prompt</div>
                     <div class="prompt-text" id="regularPrompt">No prompt available</div>
 
                     <div class="prompt-meta">
@@ -428,16 +499,6 @@
                             <span class="meta-value" id="regularUser">-</span>
                         </div>
                     </div>
-
-                    <div class="greeting-section">
-                        <div class="section-label">Greeting Message</div>
-                        <div class="section-text" id="regularGreeting">No greeting configured</div>
-                    </div>
-
-                    <div class="help-section">
-                        <div class="section-label">Help Text</div>
-                        <div class="section-text" id="regularHelp">No help text configured</div>
-                    </div>
                 </div>
             </div>
 
@@ -448,7 +509,7 @@
                     <span class="version-badge" id="socraticVersion">v0</span>
                 </div>
                 <div class="prompt-body">
-                    <div class="section-label">System Prompt</div>
+                    <div class="meta-label" style="margin-bottom: 8px;">System Prompt</div>
                     <div class="prompt-text" id="socraticPrompt">No prompt available</div>
 
                     <div class="prompt-meta">
@@ -465,16 +526,6 @@
                             <span class="meta-value" id="socraticUser">-</span>
                         </div>
                     </div>
-
-                    <div class="greeting-section">
-                        <div class="section-label">Greeting Message</div>
-                        <div class="section-text" id="socraticGreeting">No greeting configured</div>
-                    </div>
-
-                    <div class="help-section">
-                        <div class="section-label">Help Text</div>
-                        <div class="section-text" id="socraticHelp">No help text configured</div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -488,21 +539,44 @@
     </div>
 
     <script>
-        const API_BASE = '/api/admin';
+        const API_BASE = '/api';
         let currentCourseId = null;
-        let token = localStorage.getItem('adminToken');
+        let currentUser = null;
+        let token = localStorage.getItem('adminToken') || localStorage.getItem('token');
 
         // Check authentication
         if (!token) {
             window.location.href = '/admin/login.html';
         }
 
-        // Load courses on page load
-        document.addEventListener('DOMContentLoaded', loadCourses);
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', initializePage);
 
-        async function loadCourses() {
+        async function initializePage() {
+            await loadUserInfo();
+            await loadRegions();
+            await loadAccessibleCourses();
+        }
+
+        async function loadUserInfo() {
             try {
-                const response = await fetch(`${API_BASE}/courses/pilot`, {
+                currentUser = JSON.parse(localStorage.getItem('adminUser') || localStorage.getItem('user'));
+                if (currentUser && currentUser.email) {
+                    setSafeText(document.getElementById('userEmail'), currentUser.email);
+
+                    // Show approval nav for super admins
+                    if (currentUser.role_id === 1) {
+                        document.getElementById('navApprovals').style.display = 'flex';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        async function loadRegions() {
+            try {
+                const response = await fetch(`${API_BASE}/chatbot-prompts/my-regions`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -511,14 +585,39 @@
                 if (!response.ok) {
                     if (response.status === 401) {
                         localStorage.removeItem('adminToken');
+                        localStorage.removeItem('token');
                         window.location.href = '/admin/login.html';
                         return;
                     }
+                    throw new Error('Failed to load regions');
+                }
+
+                const data = await response.json();
+                if (data.success && data.regions && data.regions.length > 0) {
+                    const regionNames = data.regions.map(r => escapeHtml(r.name)).join(', ');
+                    setSafeText(document.getElementById('regionNames'), `Your Regions: ${regionNames}`);
+                    document.getElementById('regionInfo').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading regions:', error);
+                // Continue without regions - might be super admin
+            }
+        }
+
+        async function loadAccessibleCourses() {
+            try {
+                const response = await fetch(`${API_BASE}/chatbot-prompts/accessible-courses`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
                     throw new Error('Failed to load courses');
                 }
 
                 const data = await response.json();
-                const courses = data.data || [];
+                const courses = data.courses || [];
 
                 const select = document.getElementById('courseSelect');
                 select.innerHTML = '<option value="">-- Select a course --</option>';
@@ -526,18 +625,27 @@
                 courses.forEach(course => {
                     const option = document.createElement('option');
                     option.value = course.id;
-                    option.textContent = `${course.title} (${course.code})`;
+                    const safeTitle = escapeHtml(course.title);
+                    const safeCode = escapeHtml(course.code);
+                    option.textContent = `${safeTitle} (${safeCode})`;
                     select.appendChild(option);
                 });
 
-                // Auto-load first course if available
+                // Hide loading
+                document.getElementById('loadingState').classList.remove('active');
+
+                // Auto-select first course if available
                 if (courses.length > 0) {
                     select.value = courses[0].id;
                     loadPrompts();
+                } else {
+                    showAlert('No accessible courses found. You need to be assigned to a region with courses.', 'info');
+                    document.getElementById('emptyState').style.display = 'block';
                 }
             } catch (error) {
                 console.error('Error loading courses:', error);
-                showAlert('Error loading courses: ' + error.message);
+                document.getElementById('loadingState').classList.remove('active');
+                showAlert('Error loading courses: ' + escapeHtml(error.message), 'error');
             }
         }
 
@@ -545,11 +653,9 @@
             const courseId = document.getElementById('courseSelect').value;
 
             if (!courseId) {
-                document.getElementById('loadingState').classList.remove('active');
                 document.getElementById('promptContainer').style.display = 'none';
                 document.getElementById('emptyState').style.display = 'none';
-                document.getElementById('btnHistory').disabled = true;
-                document.getElementById('btnPropose').disabled = true;
+                document.getElementById('btnCreate').disabled = true;
                 return;
             }
 
@@ -561,7 +667,7 @@
             document.getElementById('emptyState').style.display = 'none';
 
             try {
-                const response = await fetch(`${API_BASE}/courses/${courseId}/prompts`, {
+                const response = await fetch(`${API_BASE}/chatbot-prompts/courses/${courseId}/default-prompt`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -573,34 +679,24 @@
 
                 const data = await response.json();
 
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to load prompts');
-                }
-
                 // Hide loading
                 document.getElementById('loadingState').classList.remove('active');
 
-                // Check if prompts exist
-                if (!data.prompts.regular && !data.prompts.socratic) {
-                    document.getElementById('emptyState').style.display = 'block';
-                    document.getElementById('btnHistory').disabled = true;
-                    document.getElementById('btnPropose').disabled = true;
-                    return;
+                if (!data.success || !data.prompts) {
+                    throw new Error(data.error || 'No prompts found');
                 }
 
                 // Display prompts
                 displayPrompts(data.prompts);
                 document.getElementById('promptContainer').style.display = 'grid';
-                document.getElementById('btnHistory').disabled = false;
-                document.getElementById('btnPropose').disabled = false;
+                document.getElementById('btnCreate').disabled = false;
 
             } catch (error) {
                 console.error('Error loading prompts:', error);
                 document.getElementById('loadingState').classList.remove('active');
                 document.getElementById('emptyState').style.display = 'block';
-                showAlert('Error loading prompts: ' + error.message);
-                document.getElementById('btnHistory').disabled = true;
-                document.getElementById('btnPropose').disabled = true;
+                showAlert('Error loading prompts: ' + escapeHtml(error.message), 'error');
+                document.getElementById('btnCreate').disabled = false; // Still allow creating
             }
         }
 
@@ -613,8 +709,6 @@
                 setSafeText(document.getElementById('regularChars'), (regular.prompt_text || '').length);
                 setSafeText(document.getElementById('regularDate'), formatDate(regular.updated_at));
                 setSafeText(document.getElementById('regularUser'), regular.updated_by_name || 'System');
-                setSafeText(document.getElementById('regularGreeting'), regular.greeting_text || 'No greeting configured');
-                setSafeText(document.getElementById('regularHelp'), regular.help_text || 'No help text configured');
             }
 
             // Socratic Mode
@@ -625,8 +719,6 @@
                 setSafeText(document.getElementById('socraticChars'), (socratic.prompt_text || '').length);
                 setSafeText(document.getElementById('socraticDate'), formatDate(socratic.updated_at));
                 setSafeText(document.getElementById('socraticUser'), socratic.updated_by_name || 'System');
-                setSafeText(document.getElementById('socraticGreeting'), socratic.greeting_text || 'No greeting configured');
-                setSafeText(document.getElementById('socraticHelp'), socratic.help_text || 'No help text configured');
             }
         }
 
@@ -642,30 +734,34 @@
             });
         }
 
-        function viewHistory() {
-            if (currentCourseId) {
-                window.location.href = `prompt-history.html?courseId=${currentCourseId}`;
-            }
-        }
-
-        function proposeChange() {
+        function createCustomPrompt() {
             if (currentCourseId) {
                 window.location.href = `prompt-editor.html?courseId=${currentCourseId}`;
             }
         }
 
-        function showAlert(message) {
-            const alertEl = document.getElementById('alertError');
+        function showAlert(message, type = 'error') {
+            const alertId = type === 'info' ? 'alertInfo' : 'alertError';
+            const alertEl = document.getElementById(alertId);
             setSafeText(alertEl, message);
             alertEl.classList.add('active');
+
+            // Hide other alert
+            const otherId = type === 'info' ? 'alertError' : 'alertInfo';
+            document.getElementById(otherId).classList.remove('active');
 
             setTimeout(() => {
                 alertEl.classList.remove('active');
             }, 5000);
         }
-    </script>
 
-    <!-- Moodle-style Sidebar Navigation -->
-    <script src="/js/sidebar-nav.js"></script>
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('token');
+            localStorage.removeItem('adminUser');
+            localStorage.removeItem('user');
+            window.location.href = '/admin/login.html';
+        }
+    </script>
 </body>
 </html>

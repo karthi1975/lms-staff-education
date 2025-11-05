@@ -745,6 +745,10 @@
                 <span class="nav-icon">📚</span>
                 <span>Courses</span>
             </a>
+            <a href="prompt-viewer.html" class="nav-item">
+                <span class="nav-icon">📖</span>
+                <span>View Prompts</span>
+            </a>
             <a href="prompt-approvals.html" class="nav-item active">
                 <span class="nav-icon">✅</span>
                 <span>Prompt Approvals</span>
@@ -812,11 +816,16 @@
         <div class="section">
             <div class="section-header">
                 <h2 class="section-title">Pending Requests</h2>
-                <select class="filter-select" id="filterMode" onchange="loadPendingRequests()">
-                    <option value="">All Modes</option>
-                    <option value="regular">Regular Mode</option>
-                    <option value="socratic">Socratic Mode</option>
-                </select>
+                <div style="display: flex; gap: 12px;">
+                    <select class="filter-select" id="filterMode" onchange="loadPendingRequests()">
+                        <option value="">All Modes</option>
+                        <option value="regular">Regular Mode</option>
+                        <option value="socratic">Socratic Mode</option>
+                    </select>
+                    <select class="filter-select" id="filterRegion" onchange="loadPendingRequests()">
+                        <option value="">All Regions</option>
+                    </select>
+                </div>
             </div>
             <div id="pendingRequestsContainer">
                 <div class="empty-state">
@@ -992,6 +1001,7 @@
             const safePrompt = escapeHtml(request.newPrompt || '');
             const safeVersion = request.versionNumber || '?';
             const hoursPending = request.hoursPending || '0';
+            const safeRegion = escapeHtml(request.regionName || 'No Region');
 
             return `
                 <div class="request-card">
@@ -999,10 +1009,10 @@
                         <div>
                             <div class="request-title">${safeTitle} - ${safeModeDisplay} Mode</div>
                             <div class="request-meta">
-                                ${safeCode} | Version ${safeVersion} | By ${safeRequester} (${safeEmail})
+                                ${safeCode} | Version ${safeVersion} | Region: ${safeRegion}
                             </div>
                             <div class="request-meta" style="margin-top: 4px;">
-                                Pending for ${hoursPending} hours
+                                By ${safeRequester} (${safeEmail}) | Pending for ${hoursPending} hours
                             </div>
                         </div>
                         <span class="status-badge pending">Pending</span>

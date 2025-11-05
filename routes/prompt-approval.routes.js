@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
 const authMiddleware = require('../middleware/auth.middleware');
+const regionAccessMiddleware = require('../middleware/region-access.middleware');
 const postgresService = require('../services/database/postgres.service');
 const PromptApprovalService = require('../services/prompt-approval.service');
 
@@ -19,11 +20,134 @@ const promptApprovalService = new PromptApprovalService(postgresService);
  */
 
 /**
- * POST /api/prompt-approval/requests
- * Create draft prompt change request
+ * GET /api/prompt-approval/accessible-courses
+ * Get courses accessible to current admin (filtered by region)
  * Access: Any authenticated admin
  */
-router.post('/prompt-approval/requests', authMiddleware.authenticateToken, async (req, res) => {
+router.get('/prompt-approval/accessible-courses', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    const courses = await promptApprovalService.getAccessibleCourses(req.user.id);
+
+    res.json({
+      success: true,
+      count: courses.length,
+      courses: courses
+    });
+  } catch (error) {
+    logger.error('Error getting accessible courses:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get accessible courses'
+    });
+  }
+});
+
+/**
+ * GET /api/prompt-approval/my-regions
+ * Get admin's assigned regions with region details
+ * Access: Any authenticated admin
+ */
+router.get('/prompt-approval/my-regions', authMiddleware.authenticateToken, async (req, res) => {
+  try {
+    // Check if Super Admin
+    if (req.user.role_id === 1) {
+      // Super Admin has access to all regions
+      const allRegions = await postgresService.query(
+        'SELECT id, code, name, description FROM regions WHERE is_active = true ORDER BY name'
+      );
+
+      return res.json({
+        success: true,
+        isSuperAdmin: true,
+        regions: allRegions.rows,
+        message: 'Super Admin has access to all regions'
+      });
+    }
+
+    // Regional Admin: get assigned regions
+    const query = `
+      SELECT
+        ar.region_id,
+        r.code,
+        r.name,
+        r.description,
+        ar.assigned_at,
+        ar.assigned_by,
+        assigner.name as assigned_by_name
+      FROM admin_regions ar
+      JOIN regions r ON ar.region_id = r.id
+      LEFT JOIN admin_users assigner ON ar.assigned_by = assigner.id
+      WHERE ar.admin_user_id = $1 AND r.is_active = true
+      ORDER BY r.name
+    `;
+
+    const result = await postgresService.query(query, [req.user.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'No regions assigned to your account. Contact Super Admin.'
+      });
+    }
+
+    res.json({
+      success: true,
+      isSuperAdmin: false,
+      count: result.rows.length,
+      regions: result.rows
+    });
+  } catch (error) {
+    logger.error('Error getting admin regions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get admin regions'
+    });
+  }
+});
+
+/**
+ * GET /api/prompt-approval/courses/:courseId/default-prompt
+ * Get current active prompt for a course
+ * Query param: mode=regular|socratic
+ * Access: Any authenticated admin with course access
+ */
+router.get('/prompt-approval/courses/:courseId/default-prompt',
+  authMiddleware.authenticateToken,
+  regionAccessMiddleware.verifyCourseAccess((req) => req.params.courseId),
+  async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const mode = req.query.mode || 'regular';
+
+      if (!['regular', 'socratic'].includes(mode)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid mode. Must be "regular" or "socratic"'
+        });
+      }
+
+      const result = await promptApprovalService.getDefaultPrompt(courseId, mode);
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error getting default prompt:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to get default prompt'
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/prompt-approval/requests
+ * Create draft prompt change request
+ * Access: Any authenticated admin with course access
+ */
+router.post('/prompt-approval/requests',
+  authMiddleware.authenticateToken,
+  regionAccessMiddleware.verifyCourseAccess((req) => req.body.courseId),
+  async (req, res) => {
   try {
     const { courseId, mode, newPrompt, changeReason, changeDescription } = req.body;
 
@@ -192,34 +316,30 @@ router.get('/prompt-approval/requests/:id', authMiddleware.authenticateToken, as
 /**
  * GET /api/prompt-approval/pending
  * Get pending approval requests
- * Access: Super Admin only
+ * Access: Super Admin (all requests) or Regional Admin (filtered by region)
  */
-router.get('/prompt-approval/pending', authMiddleware.authenticateToken, async (req, res) => {
-  try {
-    // Verify Super Admin
-    if (req.user.role_id !== 1) {
-      return res.status(403).json({
+router.get('/prompt-approval/pending',
+  authMiddleware.authenticateToken,
+  regionAccessMiddleware.attachAdminRegions,
+  async (req, res) => {
+    try {
+      const filters = {
+        courseId: req.query.courseId ? parseInt(req.query.courseId) : undefined,
+        mode: req.query.mode
+      };
+
+      const result = await promptApprovalService.getPendingApprovals(req.user.id, filters);
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error getting pending approvals:', error);
+      res.status(500).json({
         success: false,
-        error: 'Access denied. Only Super Admins can view pending approvals.'
+        error: error.message || 'Failed to get pending approvals'
       });
     }
-
-    const filters = {
-      courseId: req.query.courseId ? parseInt(req.query.courseId) : undefined,
-      mode: req.query.mode
-    };
-
-    const result = await promptApprovalService.getPendingApprovals(req.user.id, filters);
-
-    res.json(result);
-  } catch (error) {
-    logger.error('Error getting pending approvals:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to get pending approvals'
-    });
   }
-});
+);
 
 /**
  * POST /api/prompt-approval/requests/:id/approve
