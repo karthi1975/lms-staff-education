@@ -650,18 +650,22 @@ class CourseOrchestratorService {
 
       logger.info(`RAG+GraphDB query: "${query}" for module ID: ${moduleId}, name: ${moduleName}`);
 
-      // Step 1: Search ChromaDB - first try with module filter, then without
+      // Step 1: Enhance query with module topic context for better semantic search
+      // This helps ChromaDB find content relevant to the current module even without metadata filtering
+      const enhancedQuery = `${query} [context: ${moduleName}]`;
+
+      // Search ChromaDB - try with module_id filter first, then fall back to enhanced query
       let searchResults = await chromaService.searchSimilar(query, {
-        module_id: moduleId,  // Use module_id instead of module name
+        module_id: moduleId,  // Try module_id filter first (may not work if chunks lack metadata)
         nResults: 3
       });
 
-      // Step 1.5: If no results in current module, search across ALL content
+      // Step 1.5: If no results with module filter, use enhanced query without filter
       let crossModuleSearch = false;
       if (searchResults.length === 0) {
-        logger.info(`No results in module ${moduleId}, searching across all content...`);
-        searchResults = await chromaService.searchSimilar(query, {
-          nResults: 3  // No module filter - search everything
+        logger.info(`No results with module_id filter. Using enhanced query with module context...`);
+        searchResults = await chromaService.searchSimilar(enhancedQuery, {
+          nResults: 3  // Search with semantic module context
         });
         crossModuleSearch = true;
       }
@@ -741,8 +745,11 @@ class CourseOrchestratorService {
         // Will use default prompt from VertexAI service
       }
 
-      // Step 5: Generate response with Vertex AI (RAG + Graph context + Approved Prompt)
-      const enrichedContext = ragContext + graphContext;
+      // Step 5: Generate response with Vertex AI (RAG + Graph context + Module Context + Approved Prompt)
+      // Add module topic context to help focus responses on the current learning module
+      const moduleContext = `\n\n[LEARNING CONTEXT: The user is currently studying "${moduleName}" (Module ${moduleId})]`;
+      const enrichedContext = ragContext + graphContext + moduleContext;
+
       const response = await vertexAIService.generateEducationalResponse(
         query,
         enrichedContext,
