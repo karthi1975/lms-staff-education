@@ -713,11 +713,13 @@ class PromptApprovalService {
           c.title as course_title,
           c.code as course_code,
           c.region_id as course_region_id,
+          r.name as region_name,
           au.name as requester_name,
           au.email as requester_email,
           EXTRACT(EPOCH FROM (NOW() - pcr.requested_at))/3600 as hours_pending
         FROM prompt_change_requests pcr
         JOIN courses c ON pcr.course_id = c.id
+        LEFT JOIN regions r ON c.region_id = r.id
         JOIN admin_users au ON pcr.requested_by = au.id
         WHERE pcr.status = $1
       `;
@@ -761,6 +763,7 @@ class PromptApprovalService {
         courseTitle: row.course_title,
         courseCode: row.course_code,
         courseRegionId: row.course_region_id,
+        regionName: row.region_name || 'No Region',
         requesterName: row.requester_name,
         requesterEmail: row.requester_email,
         hoursPending: parseFloat(row.hours_pending).toFixed(1)

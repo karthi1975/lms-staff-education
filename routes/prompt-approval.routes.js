@@ -365,7 +365,22 @@ router.post('/prompt-approval/requests/:id/approve', authMiddleware.authenticate
       });
     }
 
+    if (!req.params.id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Request ID is required'
+      });
+    }
+
     const requestId = parseInt(req.params.id);
+
+    if (isNaN(requestId)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid request ID: ${req.params.id}`
+      });
+    }
+
     const { reviewNotes } = req.body;
 
     const result = await promptApprovalService.approveRequest({
@@ -399,7 +414,22 @@ router.post('/prompt-approval/requests/:id/reject', authMiddleware.authenticateT
       });
     }
 
+    if (!req.params.id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Request ID is required'
+      });
+    }
+
     const requestId = parseInt(req.params.id);
+
+    if (isNaN(requestId)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid request ID: ${req.params.id}`
+      });
+    }
+
     const { rejectionFeedback } = req.body;
 
     if (!rejectionFeedback) {
