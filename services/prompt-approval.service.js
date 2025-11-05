@@ -148,6 +148,13 @@ class PromptApprovalService {
 
       // Check if admin has access to course's region
       const adminRegions = await this.getAdminRegions(adminId);
+
+      // Check if admin has "All Regions" access (region_id = 5)
+      const ALL_REGIONS_ID = 5;
+      if (adminRegions.includes(ALL_REGIONS_ID)) {
+        return true; // Access to all courses
+      }
+
       return adminRegions.includes(courseRegionId);
     } catch (error) {
       logger.error('Error checking course access:', error);
@@ -168,12 +175,16 @@ class PromptApprovalService {
       if (isSuperAdmin) {
         // Super Admin sees all courses
         const result = await this.postgresService.query(
-          `SELECT id, title, code, region_id FROM courses WHERE is_active = true ORDER BY title`
+          `SELECT c.id, c.title, c.code, c.region_id, r.name as region_name
+           FROM courses c
+           LEFT JOIN regions r ON c.region_id = r.id
+           WHERE c.is_active = true
+           ORDER BY c.title`
         );
         return result.rows;
       }
 
-      // Regional Admin: get only courses in assigned regions
+      // Regional Admin: get assigned regions
       const adminRegions = await this.getAdminRegions(adminId);
 
       if (adminRegions.length === 0) {
@@ -181,11 +192,27 @@ class PromptApprovalService {
         return [];
       }
 
+      // Check if admin has "All Regions" access (region_id = 5)
+      const ALL_REGIONS_ID = 5;
+      if (adminRegions.includes(ALL_REGIONS_ID)) {
+        // Admin with "All Regions" assignment sees all courses
+        const result = await this.postgresService.query(
+          `SELECT c.id, c.title, c.code, c.region_id, r.name as region_name
+           FROM courses c
+           LEFT JOIN regions r ON c.region_id = r.id
+           WHERE c.is_active = true
+           ORDER BY c.title`
+        );
+        return result.rows;
+      }
+
+      // Regular Regional Admin: filter by assigned regions
       const result = await this.postgresService.query(
-        `SELECT id, title, code, region_id
-         FROM courses
-         WHERE is_active = true AND region_id = ANY($1::int[])
-         ORDER BY title`,
+        `SELECT c.id, c.title, c.code, c.region_id, r.name as region_name
+         FROM courses c
+         LEFT JOIN regions r ON c.region_id = r.id
+         WHERE c.is_active = true AND c.region_id = ANY($1::int[])
+         ORDER BY c.title`,
         [adminRegions]
       );
 
