@@ -113,6 +113,7 @@ router.get('/prompt-approval/my-regions', authMiddleware.authenticateToken, asyn
  */
 router.get('/prompt-approval/courses/:courseId/default-prompt',
   authMiddleware.authenticateToken,
+  regionAccessMiddleware.attachAdminRegions,
   regionAccessMiddleware.verifyCourseAccess((req) => req.params.courseId),
   async (req, res) => {
     try {
@@ -153,6 +154,7 @@ router.get('/prompt-approval/courses/:courseId/default-prompt',
  */
 router.post('/prompt-approval/requests',
   authMiddleware.authenticateToken,
+  regionAccessMiddleware.attachAdminRegions,
   regionAccessMiddleware.verifyCourseAccess((req) => req.body.courseId),
   async (req, res) => {
   try {
