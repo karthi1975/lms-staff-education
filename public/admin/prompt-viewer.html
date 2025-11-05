@@ -576,7 +576,7 @@
 
         async function loadRegions() {
             try {
-                const response = await fetch(`${API_BASE}/chatbot-prompts/my-regions`, {
+                const response = await fetch(`${API_BASE}/prompt-approval/my-regions`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -606,7 +606,7 @@
 
         async function loadAccessibleCourses() {
             try {
-                const response = await fetch(`${API_BASE}/chatbot-prompts/accessible-courses`, {
+                const response = await fetch(`${API_BASE}/prompt-approval/accessible-courses`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -667,7 +667,7 @@
             document.getElementById('emptyState').style.display = 'none';
 
             try {
-                const response = await fetch(`${API_BASE}/chatbot-prompts/courses/${courseId}/default-prompt`, {
+                const response = await fetch(`${API_BASE}/prompt-approval/courses/${courseId}/default-prompt`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }

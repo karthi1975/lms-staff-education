@@ -686,7 +686,7 @@
 
         async function loadAccessibleCourses() {
             try {
-                const response = await fetch(`${API_BASE}/chatbot-prompts/accessible-courses`, {
+                const response = await fetch(`${API_BASE}/prompt-approval/accessible-courses`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -772,7 +772,7 @@
             hideEditor();
 
             try {
-                const response = await fetch(`${API_BASE}/chatbot-prompts/courses/${currentCourseId}/default-prompt?mode=${currentMode}`, {
+                const response = await fetch(`${API_BASE}/prompt-approval/courses/${currentCourseId}/default-prompt?mode=${currentMode}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
