@@ -11,7 +11,12 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:e2e": "playwright test tests/e2e/",
+    "test:e2e:regional": "playwright test tests/e2e/regional-admin-prompt-workflow.spec.js",
+    "test:e2e:regional:headed": "playwright test tests/e2e/regional-admin-prompt-workflow.spec.js --headed",
+    "test:e2e:regional:debug": "playwright test tests/e2e/regional-admin-prompt-workflow.spec.js --debug",
+    "test:setup:regional": "node tests/e2e/setup-regional-workflow-tests.js"
   },
   "keywords": [
     "education",
