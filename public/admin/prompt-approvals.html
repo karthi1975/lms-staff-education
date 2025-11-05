@@ -1017,11 +1017,21 @@
         async function loadPendingRequests() {
             const container = document.getElementById('pendingRequestsContainer');
             const filterMode = document.getElementById('filterMode').value;
+            const filterRegion = document.getElementById('filterRegion').value;
 
             try {
                 let url = `${API_BASE}/prompt-approval/pending`;
+                const params = [];
+
                 if (filterMode) {
-                    url += `?mode=${filterMode}`;
+                    params.push(`mode=${filterMode}`);
+                }
+                if (filterRegion) {
+                    params.push(`region=${filterRegion}`);
+                }
+
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
                 }
 
                 const response = await fetch(url, {
@@ -1033,7 +1043,15 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    if (data.requests.length === 0) {
+                    // Filter by region on client-side if needed (backend might not support it yet)
+                    let filteredRequests = data.requests;
+                    if (filterRegion && filteredRequests) {
+                        filteredRequests = filteredRequests.filter(req =>
+                            req.regionId == filterRegion || req.region_id == filterRegion
+                        );
+                    }
+
+                    if (filteredRequests.length === 0) {
                         container.innerHTML = `
                             <div class="empty-state">
                                 <div class="empty-state-icon">✅</div>
@@ -1042,7 +1060,7 @@
                             </div>
                         `;
                     } else {
-                        container.innerHTML = data.requests.map(request => createRequestCard(request)).join('');
+                        container.innerHTML = filteredRequests.map(request => createRequestCard(request)).join('');
                     }
                 } else {
                     throw new Error(data.error);
@@ -1456,10 +1474,51 @@
             window.location.href = '/admin/login.html';
         }
 
+        // Load region filters for dropdown
+        async function loadRegionFilters() {
+            try {
+                const response = await fetch(`${API_BASE}/prompt-approval/my-regions`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (data.success && data.regions && data.regions.length > 0) {
+                    const filterRegion = document.getElementById('filterRegion');
+                    filterRegion.innerHTML = '';
+
+                    // Check if user is Super Admin
+                    const isSuperAdmin = data.isSuperAdmin;
+
+                    // Only Super Admin gets "All Regions" option
+                    if (isSuperAdmin) {
+                        const allOption = document.createElement('option');
+                        allOption.value = '';
+                        allOption.textContent = 'All Regions';
+                        filterRegion.appendChild(allOption);
+                    }
+
+                    // Add region options
+                    data.regions.forEach(region => {
+                        const option = document.createElement('option');
+                        option.value = region.id || region.region_id;
+                        option.textContent = escapeHtml(region.name);
+                        filterRegion.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading region filters:', error);
+            }
+        }
+
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             loadUserInfo();
             loadStats();
+            loadRegionFilters();
             loadPendingRequests();
             updateNotificationBadge();
 

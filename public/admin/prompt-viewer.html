@@ -606,7 +606,26 @@
 
                     // Populate region dropdown
                     const regionSelect = document.getElementById('regionSelect');
-                    regionSelect.innerHTML = '<option value="">All Regions</option>';
+                    regionSelect.innerHTML = '';
+
+                    // Check if user is Super Admin
+                    const isSuperAdmin = data.isSuperAdmin || (currentUser && currentUser.role_id === 1);
+
+                    // Super Admin gets "All Regions" option, Regional Admin doesn't
+                    if (isSuperAdmin) {
+                        const allOption = document.createElement('option');
+                        allOption.value = '';
+                        allOption.textContent = 'All Regions';
+                        regionSelect.appendChild(allOption);
+                    } else {
+                        // Regional Admin: Add placeholder option
+                        const placeholder = document.createElement('option');
+                        placeholder.value = '';
+                        placeholder.textContent = '-- Select a region --';
+                        placeholder.disabled = true;
+                        placeholder.selected = true;
+                        regionSelect.appendChild(placeholder);
+                    }
 
                     data.regions.forEach(region => {
                         const option = document.createElement('option');
@@ -615,6 +634,11 @@
                         option.textContent = safeName;
                         regionSelect.appendChild(option);
                     });
+
+                    // Auto-select first region for Regional Admins (not Super Admin)
+                    if (!isSuperAdmin && data.regions.length === 1) {
+                        regionSelect.value = data.regions[0].id || data.regions[0].region_id;
+                    }
 
                     // Show region info
                     const regionNames = data.regions.map(r => escapeHtml(r.name)).join(', ');
