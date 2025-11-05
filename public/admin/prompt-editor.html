@@ -925,7 +925,7 @@
                     throw new Error(data.error || 'Failed to save draft');
                 }
 
-                showAlert(`Draft saved successfully! Request ID: #${data.requestId}`, 'success');
+                showAlert(`Draft saved successfully! Request ID: #${data.request.id}`, 'success');
 
                 // Reset after 2 seconds
                 setTimeout(() => {
@@ -991,7 +991,7 @@
                     throw new Error(draftData.error || 'Failed to create request');
                 }
 
-                const requestId = draftData.requestId;
+                const requestId = draftData.request.id;
 
                 // Then submit for approval
                 const submitResponse = await fetch(`${API_BASE}/prompt-approval/requests/${requestId}/submit`, {
