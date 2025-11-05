@@ -3354,7 +3354,7 @@ router.post('/prompt-change-requests/:requestId/review', authMiddleware.authenti
         notes, previous_status, new_status, created_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
       [
-        requestId, request.course_id, action, userId, 'superadmin',
+        requestId, request.course_id, newStatus, userId, 'superadmin',
         notes || `Request ${action}d`, 'pending_approval', newStatus
       ]
     );
