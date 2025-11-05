@@ -897,7 +897,7 @@
     <script>
         const API_BASE = '/api';
         let currentRequestId = null;
-        let token = localStorage.getItem('token');
+        let token = localStorage.getItem('adminToken');
 
         // Check authentication
         if (!token) {
@@ -907,7 +907,7 @@
         // Get user info
         async function loadUserInfo() {
             try {
-                const user = JSON.parse(localStorage.getItem('user'));
+                const user = JSON.parse(localStorage.getItem('adminUser'));
                 if (user) {
                     setSafeText(document.getElementById('adminEmail'), user.email);
 
