@@ -239,15 +239,18 @@ class PromptApprovalService {
 
       const result = await this.postgresService.query(
         `SELECT
-          course_id,
-          ${column}_prompt as prompt,
-          ${column}_greeting as greeting,
-          ${column}_help_text as help_text,
-          ${column}_version as version,
-          last_approved_at,
-          last_approved_by
-         FROM course_bot_configs
-         WHERE course_id = $1`,
+          cbc.course_id,
+          cbc.${column}_prompt as prompt,
+          cbc.${column}_greeting as greeting,
+          cbc.${column}_help_text as help_text,
+          cbc.${column}_version as version,
+          cbc.last_approved_at,
+          cbc.last_approved_by,
+          au.name as updated_by_name,
+          au.email as updated_by_email
+         FROM course_bot_configs cbc
+         LEFT JOIN admin_users au ON cbc.last_approved_by = au.id
+         WHERE cbc.course_id = $1`,
         [courseId]
       );
 
@@ -261,10 +264,15 @@ class PromptApprovalService {
         success: true,
         courseId: courseId,
         mode: mode,
-        prompt: config.prompt,
-        greeting: config.greeting,
-        helpText: config.help_text,
-        version: config.version,
+        prompt: {
+          prompt_text: config.prompt,
+          greeting: config.greeting,
+          help_text: config.help_text,
+          version_number: config.version,
+          updated_at: config.last_approved_at,
+          updated_by_name: config.updated_by_name,
+          updated_by_email: config.updated_by_email
+        },
         lastApprovedAt: config.last_approved_at,
         lastApprovedBy: config.last_approved_by
       };
