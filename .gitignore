@@ -100,3 +100,8 @@ credentials/
 
 TWILIO_*.md
 USER_ADDITION_GUIDE.md
+
+# Scripts with sensitive credentials
+create-super-admin-*.sh
+deploy-create-super-admin-*.sh
+scripts/create-super-admin-*.js

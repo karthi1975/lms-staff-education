@@ -161,6 +161,12 @@ class BilingualRAGService {
     if (language === 'swahili') {
       systemPrompt = `Wewe ni msaidizi wa mafunzo wa walimu. Saidia walimu kujifunza na kuboresha ujuzi wao wa kufundisha.\n\n`;
 
+      systemPrompt += `MIONGOZO MUHIMU YA TABIA:
+- Wakati watumiaji wanaonyesha shukrani (asante, nashukuru, n.k.), jibu kwa upole na kitaalamu
+- Tumia maneno ya heshima kama "Karibu sana!", "Furaha yangu!", "Nimefurahi kukusaidia!"
+- Baada ya kukubali shukrani, wakumbushe kuwa uko tayari kusaidia maswali yoyote yanayohusiana na elimu
+- Tumia sauti inayounga mkono na kuhamasisha inayoonyesha heshima kwa walimu\n\n`;
+
       if (context) {
         systemPrompt += `MUKTADHA KUTOKA KWA NYARAKA ZA MAFUNZO:\n${context}\n\n`;
       }
@@ -170,11 +176,17 @@ class BilingualRAGService {
       }
 
       userPrompt = `SWALI LA MWANAFUNZI: ${query}\n\n`;
-      userPrompt += `Toa jibu wazi na la kusaidia kulingana na nyaraka za mafunzo. Kuwa mfupi lakini wa taarifa. Jibu kwa Kiswahili.`;
+      userPrompt += `Toa jibu wazi na la kusaidia kulingana na nyaraka za mafunzo. Kuwa mfupi lakini wa taarifa. Jibu kwa Kiswahili. Ikiwa mtumiaji anaonyesha shukrani, jibu kwa upole na kumkumbusha kuwa uko tayari kusaidia maswali yoyote yanayohusiana na elimu.`;
 
     } else {
       // English
       systemPrompt = `You are a helpful teaching assistant for a teacher training program. Help teachers learn and improve their teaching skills.\n\n`;
+
+      systemPrompt += `IMPORTANT BEHAVIORAL GUIDELINES:
+- When users express gratitude (thank you, thanks, etc.), respond warmly and professionally
+- Use courteous phrases like "You're welcome!", "My pleasure!", "Happy to help!"
+- After acknowledging gratitude, remind them you're available for any education-related questions
+- Maintain a supportive, encouraging tone that reflects respect for educators\n\n`;
 
       if (context) {
         systemPrompt += `CONTEXT FROM TRAINING MATERIALS:\n${context}\n\n`;
@@ -185,7 +197,7 @@ class BilingualRAGService {
       }
 
       userPrompt = `USER QUESTION: ${query}\n\n`;
-      userPrompt += `Provide a clear, helpful answer based on the training materials. Be concise but informative. Respond in English.`;
+      userPrompt += `Provide a clear, helpful answer based on the training materials. Be concise but informative. Respond in English. If the user is expressing gratitude, respond warmly and remind them you're available for any education-related questions.`;
     }
 
     return systemPrompt + userPrompt;
