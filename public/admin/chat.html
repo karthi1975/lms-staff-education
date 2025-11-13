@@ -1087,14 +1087,16 @@
                     return s.filename || s.file_name || s.original_name || 'Unknown';
                 }) : [];
 
-                // Show detected language badge
-                let languageBadge = '';
+                // Show detected language badge (pass separately to avoid HTML escaping)
+                let languageInfo = null;
                 if (result.language) {
-                    const langEmoji = result.language === 'english' ? '🇬🇧' : result.language === 'swahili' ? '🇹🇿' : '🌍';
-                    languageBadge = `<div style="display: inline-block; background: rgba(0,137,123,0.1); padding: 4px 12px; border-radius: 12px; margin-bottom: 8px; font-size: 11px; font-weight: 600; color: #00897B;">${langEmoji} ${result.language.charAt(0).toUpperCase() + result.language.slice(1)}</div>`;
+                    languageInfo = {
+                        emoji: result.language === 'english' ? '🇬🇧' : result.language === 'swahili' ? '🇹🇿' : '🌍',
+                        name: result.language.charAt(0).toUpperCase() + result.language.slice(1)
+                    };
                 }
 
-                addMessage(languageBadge + result.answer, 'assistant', sources);
+                addMessage(result.answer, 'assistant', sources, languageInfo);
 
             } catch (error) {
                 hideTypingIndicator();
@@ -1103,7 +1105,7 @@
             }
         }
 
-        function addMessage(text, sender, sources = null) {
+        function addMessage(text, sender, sources = null, languageInfo = null) {
             const messagesContainer = document.getElementById('messagesContainer');
 
             const messageDiv = document.createElement('div');
@@ -1118,6 +1120,12 @@
                         📚 Sources: ${sources.map(s => `<span class="source-tag">${s}</span>`).join('')}
                     </div>
                 `;
+            }
+
+            // Language badge HTML (rendered separately, not escaped)
+            let languageBadgeHtml = '';
+            if (languageInfo) {
+                languageBadgeHtml = `<div style="display: inline-block; background: rgba(0,137,123,0.1); padding: 4px 12px; border-radius: 12px; margin-bottom: 8px; font-size: 11px; font-weight: 600; color: #00897B;">${languageInfo.emoji} ${languageInfo.name}</div>`;
             }
 
             // Convert markdown-style formatting to HTML
@@ -1135,7 +1143,7 @@
                 messageDiv.innerHTML = `
                     <div class="message-avatar">${avatar[0]}</div>
                     <div class="message-content">
-                        <div class="message-text">${formattedText}</div>
+                        <div class="message-text">${languageBadgeHtml}${formattedText}</div>
                         ${sourcesHtml}
                         <div class="message-time">${formatTime(new Date())}</div>
                     </div>
