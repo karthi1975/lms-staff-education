@@ -26,6 +26,7 @@ class BilingualRAGService {
         language = 'auto',
         courseId,
         moduleId,
+        moduleName,
         userId,
         limit = 3,
         includeGraph = true
@@ -83,7 +84,7 @@ class BilingualRAGService {
         query,
         context,
         queryLanguage,
-        { courseId, moduleId }
+        { courseId, moduleId, moduleName }
       );
 
       // Step 6: Track interaction in Neo4j
@@ -153,7 +154,7 @@ class BilingualRAGService {
    * Build language-appropriate prompt
    */
   buildBilingualPrompt(query, context, language, metadata = {}) {
-    const { courseId, moduleId } = metadata;
+    const { courseId, moduleId, moduleName } = metadata;
 
     let systemPrompt = '';
     let userPrompt = '';
@@ -171,7 +172,9 @@ class BilingualRAGService {
         systemPrompt += `MUKTADHA KUTOKA KWA NYARAKA ZA MAFUNZO:\n${context}\n\n`;
       }
 
-      if (moduleId) {
+      if (moduleName) {
+        systemPrompt += `Swali hili linahusiana na "${moduleName}".\n\n`;
+      } else if (moduleId) {
         systemPrompt += `Swali hili linahusiana na Moduli ${moduleId}.\n\n`;
       }
 
@@ -192,7 +195,9 @@ class BilingualRAGService {
         systemPrompt += `CONTEXT FROM TRAINING MATERIALS:\n${context}\n\n`;
       }
 
-      if (moduleId) {
+      if (moduleName) {
+        systemPrompt += `This question is related to "${moduleName}".\n\n`;
+      } else if (moduleId) {
         systemPrompt += `This question is related to Module ${moduleId}.\n\n`;
       }
 
