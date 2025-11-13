@@ -62,6 +62,9 @@ const passwordResetRoutes = require('./routes/password-reset.routes');
 // Prompt Approval Routes (Dual Coaching Bot - Phase 2)
 const promptApprovalRoutes = require('./routes/prompt-approval.routes');
 
+// File Download Routes (Citations & Downloads Feature)
+const fileDownloadRoutes = require('./routes/file-download.routes');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -151,6 +154,9 @@ app.use('/api', passwordResetRoutes);
 
 // Add prompt approval routes (Dual Coaching Bot - Phase 2)
 app.use('/api', promptApprovalRoutes);
+
+// File Download Routes (Citations & Downloads Feature)
+app.use('/api/files', fileDownloadRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {

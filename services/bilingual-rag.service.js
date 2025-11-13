@@ -2,6 +2,7 @@ const bilingualChroma = require('./bilingual-chroma.service');
 const neo4jService = require('./neo4j.service');
 const vertexAI = require('./vertexai.service');
 const translationService = require('./translation.service');
+const citationBuilder = require('./citation-builder.service');
 const logger = require('../utils/logger');
 
 /**
@@ -98,9 +99,20 @@ class BilingualRAGService {
         });
       }
 
+      // Step 7: Build citations with download links
+      const { citations, citationText } = citationBuilder.buildCitations(relevantDocs, {
+        format: options.format || 'web',
+        whatsappId: options.whatsappId,
+        userId: userId
+      });
+
+      // Append citations to AI response
+      const answerWithCitations = aiResponse + citationText;
+
       return {
-        answer: aiResponse,
+        answer: answerWithCitations,
         sources: sources,
+        citations: citations,  // Structured citation data
         hasContext: relevantDocs.length > 0,
         language: queryLanguage,
         graphEnhanced: !!graphContext

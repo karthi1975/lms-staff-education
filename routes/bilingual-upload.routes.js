@@ -151,33 +151,8 @@ async function processFile({ file, courseId, moduleId, language, adminUserId }) 
 
     logger.info(`[BilingualUpload] Detected language: ${detectedLanguage} (${file.originalname})`);
 
-    // Step 3: Store each chunk in appropriate ChromaDB collection
-    const chromaIds = [];
-
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-
-      const chromaResult = await bilingualRAG.addDocument({
-        content: chunk.content,
-        language: detectedLanguage,
-        courseId,
-        moduleId,
-        metadata: {
-          filename: file.originalname,
-          file_size: file.size,
-          chunk_index: i,
-          total_chunks: chunks.length,
-          source: 'admin_upload',
-          uploaded_by: adminUserId,
-          content_type: chunk.metadata.content_type || 'narrative'
-        }
-      });
-
-      chromaIds.push(chromaResult.id);
-    }
-
-    // Step 4: Record in PostgreSQL
-    await postgresService.pool.query(`
+    // Step 3: Record in PostgreSQL FIRST and get file_id
+    const fileInsertResult = await postgresService.pool.query(`
       INSERT INTO course_content (
         course_id,
         file_name,
@@ -191,6 +166,7 @@ async function processFile({ file, courseId, moduleId, language, adminUserId }) 
         processed_at,
         uploaded_by
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10)
+      RETURNING id
     `, [
       courseId,
       file.filename,
@@ -203,6 +179,36 @@ async function processFile({ file, courseId, moduleId, language, adminUserId }) 
       chunks.length,
       adminUserId
     ]);
+
+    const fileId = fileInsertResult.rows[0].id;
+
+    // Step 4: Store each chunk in ChromaDB with file_id for download links
+    const chromaIds = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+
+      const chromaResult = await bilingualRAG.addDocument({
+        content: chunk.content,
+        language: detectedLanguage,
+        courseId,
+        moduleId,
+        metadata: {
+          file_id: fileId,  // CRITICAL: Store file_id for download links
+          filename: file.originalname,
+          file_size: file.size,
+          chunk_index: i,
+          total_chunks: chunks.length,
+          source: 'admin_upload',
+          uploaded_by: adminUserId,
+          content_type: chunk.metadata.content_type || 'narrative'
+        }
+      });
+
+      chromaIds.push(chromaResult.id);
+    }
+
+    logger.info(`[BilingualUpload] Stored ${chunks.length} chunks with file_id ${fileId} for ${file.originalname}`);
 
     // Step 5: Clean up uploaded file
     cleanupNeeded = true;
