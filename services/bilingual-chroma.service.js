@@ -279,7 +279,21 @@ class BilingualChromaService {
         return [];
       }
 
-      const whereClause = Object.keys(where).length > 0 ? where : undefined;
+      // Convert simple where clause to ChromaDB filter format
+      // ChromaDB requires: { field: { "$eq": value } } format
+      let whereClause = undefined;
+      if (Object.keys(where).length > 0) {
+        whereClause = {};
+        for (const [key, value] of Object.entries(where)) {
+          if (value !== undefined && value !== null) {
+            whereClause[key] = { "$eq": value };
+          }
+        }
+        // If no valid filters after processing, set to undefined
+        if (Object.keys(whereClause).length === 0) {
+          whereClause = undefined;
+        }
+      }
 
       const results = await collection.query({
         queryEmbeddings: [queryEmbedding],
