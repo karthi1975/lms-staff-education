@@ -65,6 +65,9 @@ const promptApprovalRoutes = require('./routes/prompt-approval.routes');
 // File Download Routes (Citations & Downloads Feature)
 const fileDownloadRoutes = require('./routes/file-download.routes');
 
+// Migration Routes (One-time data migrations)
+const migrationRoutes = require('./routes/migration.routes');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -157,6 +160,9 @@ app.use('/api', promptApprovalRoutes);
 
 // File Download Routes (Citations & Downloads Feature)
 app.use('/api/files', fileDownloadRoutes);
+
+// Migration Routes (One-time data migrations - Admin only)
+app.use('/api/migrations', migrationRoutes);
 
 // Health check - now includes PostgreSQL status
 app.get('/health', async (req, res) => {
