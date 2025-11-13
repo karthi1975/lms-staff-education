@@ -187,7 +187,13 @@ class BilingualRAGService {
       }
 
       userPrompt = `SWALI LA MWANAFUNZI: ${query}\n\n`;
-      userPrompt += `Toa jibu wazi na la kusaidia kulingana na nyaraka za mafunzo. Kuwa mfupi lakini wa taarifa. Jibu kwa Kiswahili. Ikiwa mtumiaji anaonyesha shukrani, jibu kwa upole na kumkumbusha kuwa uko tayari kusaidia maswali yoyote yanayohusiana na elimu.`;
+      userPrompt += `Toa jibu wazi na la kusaidia kulingana na nyaraka za mafunzo. Kuwa mfupi lakini wa taarifa. Jibu kwa Kiswahili.
+
+MIONGOZO MUHIMU:
+- Ikiwa unapata taarifa zinazohusiana lakini si jibu la moja kwa moja, fupisha jibu la kusaidia kutoka kwa kile ulichonacho
+- Ikiwa nyaraka zinaelekeza dhana bila kuziorodhesha waziwazi, eleza kulingana na muktadha
+- Tumia ujuzi wako wa elimu na mfumo wa CBC kuboresha maelezo yako
+- Ikiwa mtumiaji anaonyesha shukrani, jibu kwa upole na kumkumbusha kuwa uko tayari kusaidia maswali yoyote yanayohusiana na elimu.`;
 
     } else {
       // English
@@ -218,7 +224,13 @@ class BilingualRAGService {
       }
 
       userPrompt = `USER QUESTION: ${query}\n\n`;
-      userPrompt += `Provide a clear, helpful answer based on the training materials. Be concise but informative. Respond in English. If the user is expressing gratitude, respond warmly and remind them you're available for any education-related questions.`;
+      userPrompt += `Provide a clear, helpful answer based on the training materials. Be concise but informative. Respond in English.
+
+IMPORTANT GUIDELINES:
+- If you find related information but not a direct answer, synthesize a helpful response from what you have
+- If the materials reference concepts without explicitly listing them, explain based on context
+- Use your knowledge of education and the CBC framework to enhance your explanations
+- If the user is expressing gratitude, respond warmly and remind them you're available for any education-related questions.`;
     }
 
     return systemPrompt + userPrompt;
