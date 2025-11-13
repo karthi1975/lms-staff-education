@@ -366,8 +366,23 @@ class VertexAIService {
   }
 
   async generateEducationalResponse(query, context, language = 'swahili', userId = 'anonymous', customPrompt = null) {
-    // Use prompt service to format the prompt in the specified language
-    const formattedPrompt = promptService.formatPrompt(query, context, language);
+    // Check if query is already a pre-formatted prompt from bilingual-rag
+    // Pre-formatted prompts contain system instructions and context already
+    const isPreformatted = query.includes('CONTEXT FROM TRAINING MATERIALS') ||
+                          query.includes('MUKTADHA KUTOKA KWA NYARAKA') ||
+                          query.includes('You are a helpful teaching assistant') ||
+                          query.includes('Wewe ni msaidizi wa mafunzo');
+
+    let formattedPrompt;
+    if (isPreformatted) {
+      // Use the pre-formatted prompt directly without modification
+      formattedPrompt = query;
+      logger.debug('Using pre-formatted prompt from bilingual-rag');
+    } else {
+      // Legacy behavior: Format using prompt service
+      formattedPrompt = promptService.formatPrompt(query, context, language);
+      logger.debug('Formatting prompt using prompt service');
+    }
 
     // Use custom prompt if provided (from course_bot_configs), otherwise use default
     // This allows approved prompts (Regular/Socratic) from the approval workflow
@@ -377,7 +392,7 @@ class VertexAIService {
     const messages = [
       {
         role: "system",
-        content: systemPrompt
+        content: isPreformatted ? "You are an educational AI assistant." : systemPrompt
       },
       {
         role: "user",
