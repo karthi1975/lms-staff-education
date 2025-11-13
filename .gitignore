@@ -105,3 +105,7 @@ USER_ADDITION_GUIDE.md
 create-super-admin-*.sh
 deploy-create-super-admin-*.sh
 scripts/create-super-admin-*.js
+
+# Security test results (local only)
+test_result.txt
+vulnerability_details.txt
