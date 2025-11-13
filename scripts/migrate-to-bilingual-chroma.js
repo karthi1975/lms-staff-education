@@ -59,17 +59,23 @@ async function migrateToMultilingualCollections() {
             language = metadata.language;
           }
 
-          // Add to appropriate bilingual collection
-          await bilingualChroma.addDocument(
-            content,
-            {
+          // Extract course_id and module_id from metadata
+          const courseId = metadata?.course_id || metadata?.courseId;
+          const moduleId = metadata?.module_id || metadata?.moduleId;
+
+          // Add to appropriate bilingual collection (using object parameter)
+          await bilingualChroma.addDocument({
+            content: content,
+            language: language,
+            metadata: {
               ...metadata,
               original_id: id, // Keep reference to old ID
               migrated_at: new Date().toISOString()
             },
-            language,
-            embedding // Reuse existing embedding if available
-          );
+            embedding: embedding, // Reuse existing embedding if available
+            courseId: courseId,
+            moduleId: moduleId
+          });
 
           migratedCount[language]++;
 

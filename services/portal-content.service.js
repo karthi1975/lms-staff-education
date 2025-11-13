@@ -203,18 +203,19 @@ class PortalContentService {
           const language = chunk.metadata?.language || 'english';
 
           // Store in BilingualChroma for RAG (multilingual support)
-          const embeddingId = await bilingualChroma.addDocument(
-            chunk.content,
-            {
+          const embeddingId = await bilingualChroma.addDocument({
+            content: chunk.content,
+            language: language, // Store in appropriate language collection
+            metadata: {
               ...chunk.metadata,
-              module_id: String(moduleId), // BilingualChroma uses string IDs
               content_id: contentId,
               chunk_index: i,
               source: 'portal'
             },
-            language, // Store in appropriate language collection
-            chunk.embedding // Pass embedding if already generated
-          );
+            embedding: chunk.embedding, // Pass embedding if already generated
+            courseId: courseId,
+            moduleId: moduleId
+          });
 
           // Collect for Neo4j graph
           chunksWithIds.push({
