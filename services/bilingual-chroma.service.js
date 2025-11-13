@@ -244,26 +244,17 @@ class BilingualChromaService {
         results = await this.searchInCollection(queryLanguage, queryEmbedding, where, limit);
       }
 
-      // Fallback: If moduleId filter returned no results, retry with only courseId
-      if (results.length === 0 && moduleId && courseId) {
-        logger.info(`[BilingualChroma] No results with moduleId=${moduleId}, retrying with courseId=${courseId} only`);
-        const whereCourseLevelOnly = { course_id: String(courseId) };
+      // ARCHITECTURE NOTE: We use pure semantic search without metadata filters
+      // because migrated documents have incorrect course_id/module_id metadata.
+      // The AI will use module context from the prompt to provide relevant answers.
 
-        if (queryLanguage === 'mixed') {
-          const [englishResults, swahiliResults, mixedResults] = await Promise.all([
-            this.searchInCollection('english', queryEmbedding, whereCourseLevelOnly, limit),
-            this.searchInCollection('swahili', queryEmbedding, whereCourseLevelOnly, limit),
-            this.searchInCollection('mixed', queryEmbedding, whereCourseLevelOnly, limit)
-          ]);
-          results = [...englishResults, ...swahiliResults, ...mixedResults]
-            .sort((a, b) => a.distance - b.distance)
-            .slice(0, limit);
-        } else {
-          results = await this.searchInCollection(queryLanguage, queryEmbedding, whereCourseLevelOnly, limit);
-        }
+      if (results.length > 0) {
+        logger.info(`[BilingualChroma] Found ${results.length} results via semantic search`);
+        logger.info(`[BilingualChroma] Sample result: "${results[0].content.substring(0, 100)}..."`);
+      } else {
+        logger.warn(`[BilingualChroma] No results found for query: "${query.substring(0, 50)}"`);
       }
 
-      logger.info(`[BilingualChroma] Found ${results.length} results for query in ${queryLanguage}`);
       return results;
 
     } catch (error) {
