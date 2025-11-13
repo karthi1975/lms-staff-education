@@ -279,26 +279,14 @@ class BilingualChromaService {
         return [];
       }
 
-      // Convert simple where clause to ChromaDB filter format
-      // ChromaDB requires: { field: { "$eq": value } } format
-      let whereClause = undefined;
-      if (Object.keys(where).length > 0) {
-        whereClause = {};
-        for (const [key, value] of Object.entries(where)) {
-          if (value !== undefined && value !== null) {
-            whereClause[key] = { "$eq": value };
-          }
-        }
-        // If no valid filters after processing, set to undefined
-        if (Object.keys(whereClause).length === 0) {
-          whereClause = undefined;
-        }
-      }
+      // TEMPORARY: Skip where clause to test if basic search works
+      // TODO: Fix ChromaDB where clause format for v0.4+
+      logger.info(`[BilingualChroma] Searching ${language} collection (where filters: ${JSON.stringify(where)})`);
 
       const results = await collection.query({
         queryEmbeddings: [queryEmbedding],
-        nResults: limit,
-        where: whereClause
+        nResults: limit
+        // where: undefined  // Temporarily disabled until we fix the format
       });
 
       if (!results || !results.documents || !results.documents[0]) {
@@ -315,7 +303,11 @@ class BilingualChromaService {
       }));
 
     } catch (error) {
-      logger.error(`[BilingualChroma] Error searching ${language} collection:`, error.message);
+      logger.error(`[BilingualChroma] Error searching ${language} collection:`, {
+        message: error.message,
+        stack: error.stack?.split('\n')[0],
+        name: error.name
+      });
       return [];
     }
   }
