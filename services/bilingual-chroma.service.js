@@ -210,7 +210,7 @@ class BilingualChromaService {
         language = 'auto',
         courseId,
         moduleId,
-        limit = 3
+        limit = 8
       } = options;
 
       // Auto-detect query language
@@ -244,10 +244,6 @@ class BilingualChromaService {
         results = await this.searchInCollection(queryLanguage, queryEmbedding, where, limit);
       }
 
-      // ARCHITECTURE NOTE: We use pure semantic search without metadata filters
-      // because migrated documents have incorrect course_id/module_id metadata.
-      // The AI will use module context from the prompt to provide relevant answers.
-
       if (results.length > 0) {
         logger.info(`[BilingualChroma] Found ${results.length} results via semantic search`);
         logger.info(`[BilingualChroma] Sample result: "${results[0].content.substring(0, 100)}..."`);
@@ -270,15 +266,24 @@ class BilingualChromaService {
         return [];
       }
 
-      // TEMPORARY: Skip where clause to test if basic search works
-      // TODO: Fix ChromaDB where clause format for v0.4+
       logger.info(`[BilingualChroma] Searching ${language} collection (where filters: ${JSON.stringify(where)})`);
 
-      const results = await collection.query({
+      // Build query options
+      const queryOptions = {
         queryEmbeddings: [queryEmbedding],
         nResults: limit
-        // where: undefined  // Temporarily disabled until we fix the format
-      });
+      };
+
+      // Add where clause only if filters are provided
+      // ChromaDB v0.4+ requires proper $eq format for filtering
+      if (where && Object.keys(where).length > 0) {
+        queryOptions.where = where;
+        logger.info(`[BilingualChroma] Applying filters: ${JSON.stringify(where)}`);
+      } else {
+        logger.info(`[BilingualChroma] No filters - searching all ${language} documents`);
+      }
+
+      const results = await collection.query(queryOptions);
 
       if (!results || !results.documents || !results.documents[0]) {
         return [];

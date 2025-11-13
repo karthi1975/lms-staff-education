@@ -333,7 +333,7 @@ router.post('/courses/:courseId/query-bilingual',
         moduleId: moduleId ? parseInt(moduleId) : null,
         moduleName: moduleName,
         userId: req.user.id,
-        limit: 5, // Increased from 3 to 5 for better context coverage
+        limit: 8, // Increased from 3 to 8 for better context coverage
         includeGraph: true
       });
 

@@ -29,7 +29,7 @@ class BilingualRAGService {
         moduleId,
         moduleName,
         userId,
-        limit = 3,
+        limit = 8,
         includeGraph = true
       } = options;
 
