@@ -5,7 +5,8 @@
 
 const postgresService = require('./database/postgres.service');
 const documentProcessor = require('./document-processor.service');
-const chromaService = require('./chroma.service');
+const chromaService = require('./chroma.service'); // Legacy - keep for backward compatibility
+const bilingualChroma = require('./bilingual-chroma.service'); // NEW: Multilingual support
 const neo4jService = require('./neo4j.service');
 const vertexAIService = require('./vertexai.service');
 const logger = require('../utils/logger');
@@ -198,16 +199,21 @@ class PortalContentService {
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         try {
-          // Store in ChromaDB for RAG
-          const embeddingId = await chromaService.addDocument(
+          // Detect language (default to english for existing content)
+          const language = chunk.metadata?.language || 'english';
+
+          // Store in BilingualChroma for RAG (multilingual support)
+          const embeddingId = await bilingualChroma.addDocument(
             chunk.content,
             {
               ...chunk.metadata,
-              module_id: moduleId,
+              module_id: String(moduleId), // BilingualChroma uses string IDs
               content_id: contentId,
               chunk_index: i,
               source: 'portal'
-            }
+            },
+            language, // Store in appropriate language collection
+            chunk.embedding // Pass embedding if already generated
           );
 
           // Collect for Neo4j graph
