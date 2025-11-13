@@ -244,6 +244,25 @@ class BilingualChromaService {
         results = await this.searchInCollection(queryLanguage, queryEmbedding, where, limit);
       }
 
+      // Fallback: If moduleId filter returned no results, retry with only courseId
+      if (results.length === 0 && moduleId && courseId) {
+        logger.info(`[BilingualChroma] No results with moduleId=${moduleId}, retrying with courseId=${courseId} only`);
+        const whereCourseLevelOnly = { course_id: String(courseId) };
+
+        if (queryLanguage === 'mixed') {
+          const [englishResults, swahiliResults, mixedResults] = await Promise.all([
+            this.searchInCollection('english', queryEmbedding, whereCourseLevelOnly, limit),
+            this.searchInCollection('swahili', queryEmbedding, whereCourseLevelOnly, limit),
+            this.searchInCollection('mixed', queryEmbedding, whereCourseLevelOnly, limit)
+          ]);
+          results = [...englishResults, ...swahiliResults, ...mixedResults]
+            .sort((a, b) => a.distance - b.distance)
+            .slice(0, limit);
+        } else {
+          results = await this.searchInCollection(queryLanguage, queryEmbedding, whereCourseLevelOnly, limit);
+        }
+      }
+
       logger.info(`[BilingualChroma] Found ${results.length} results for query in ${queryLanguage}`);
       return results;
 
