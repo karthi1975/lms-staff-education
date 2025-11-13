@@ -304,6 +304,16 @@ router.post('/courses/:courseId/query-bilingual',
         });
       }
 
+      // Fetch course name
+      let courseName = null;
+      const courseResult = await postgresService.pool.query(
+        'SELECT title FROM courses WHERE id = $1',
+        [courseId]
+      );
+      if (courseResult.rows.length > 0) {
+        courseName = courseResult.rows[0].title;
+      }
+
       // Fetch module name if moduleId is provided
       let moduleName = null;
       if (moduleId) {
@@ -319,6 +329,7 @@ router.post('/courses/:courseId/query-bilingual',
       const result = await bilingualRAG.queryContent(query, {
         language: language || 'auto',
         courseId: parseInt(courseId),
+        courseName: courseName,
         moduleId: moduleId ? parseInt(moduleId) : null,
         moduleName: moduleName,
         userId: req.user.id,

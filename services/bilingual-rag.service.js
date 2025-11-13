@@ -25,6 +25,7 @@ class BilingualRAGService {
       const {
         language = 'auto',
         courseId,
+        courseName,
         moduleId,
         moduleName,
         userId,
@@ -84,7 +85,7 @@ class BilingualRAGService {
         query,
         context,
         queryLanguage,
-        { courseId, moduleId, moduleName }
+        { courseId, courseName, moduleId, moduleName }
       );
 
       // Step 6: Track interaction in Neo4j
@@ -154,7 +155,7 @@ class BilingualRAGService {
    * Build language-appropriate prompt
    */
   buildBilingualPrompt(query, context, language, metadata = {}) {
-    const { courseId, moduleId, moduleName } = metadata;
+    const { courseId, courseName, moduleId, moduleName } = metadata;
 
     let systemPrompt = '';
     let userPrompt = '';
@@ -172,7 +173,14 @@ class BilingualRAGService {
         systemPrompt += `MUKTADHA KUTOKA KWA NYARAKA ZA MAFUNZO:\n${context}\n\n`;
       }
 
-      if (moduleName) {
+      // Add course and module context
+      if (courseName && moduleName) {
+        systemPrompt += `MUKTADHA WA KOZI: Wewe unasaidia walimu katika kozi ya "${courseName}".\n`;
+        systemPrompt += `MODULI YA SASA: "${moduleName}"\n\n`;
+        systemPrompt += `Toa majibu kulingana na maudhui ya kozi hii. Ikiwa mtu anauliza kuhusu kozi au moduli, eleza kwa undani.\n\n`;
+      } else if (courseName) {
+        systemPrompt += `MUKTADHA WA KOZI: Wewe unasaidia walimu katika kozi ya "${courseName}".\n\n`;
+      } else if (moduleName) {
         systemPrompt += `Swali hili linahusiana na "${moduleName}".\n\n`;
       } else if (moduleId) {
         systemPrompt += `Swali hili linahusiana na Moduli ${moduleId}.\n\n`;
@@ -195,7 +203,15 @@ class BilingualRAGService {
         systemPrompt += `CONTEXT FROM TRAINING MATERIALS:\n${context}\n\n`;
       }
 
-      if (moduleName) {
+      // Add course and module context
+      if (courseName && moduleName) {
+        systemPrompt += `COURSE CONTEXT: You are helping teachers with the course "${courseName}".\n`;
+        systemPrompt += `CURRENT MODULE: "${moduleName}"\n\n`;
+        systemPrompt += `IMPORTANT: When asked about the course or module itself, explain what it covers based on the training materials provided. The materials you have ARE the content of this course.\n\n`;
+      } else if (courseName) {
+        systemPrompt += `COURSE CONTEXT: You are helping teachers with the course "${courseName}".\n`;
+        systemPrompt += `IMPORTANT: When asked about this course, explain what it covers based on the training materials. The materials you have ARE the content of this course.\n\n`;
+      } else if (moduleName) {
         systemPrompt += `This question is related to "${moduleName}".\n\n`;
       } else if (moduleId) {
         systemPrompt += `This question is related to Module ${moduleId}.\n\n`;
