@@ -14,6 +14,7 @@ const orchestratorService = require('./services/orchestrator'); // SOLID-refacto
 const whatsappService = require('./services/whatsapp-adapter.service'); // Use adapter for both Meta and Twilio
 const whatsappHandler = require('./services/whatsapp-handler.service');
 const chromaService = require('./services/chroma.service');
+const bilingualChroma = require('./services/bilingual-chroma.service');
 const neo4jService = require('./services/neo4j.service');
 const vertexAIService = require('./services/vertexai.service');
 const documentProcessor = require('./services/document-processor.service');
@@ -923,6 +924,10 @@ async function startServer() {
 
     // Initialize orchestrator (which initializes other services)
     await orchestratorService.initialize();
+
+    // Initialize BilingualChroma service (multilingual RAG content retrieval)
+    await bilingualChroma.initialize();
+    logger.info('✅ BilingualChroma service initialized (English/Swahili collections)');
 
     // Initialize course orchestrator (loads quiz questions and M3 formatting)
     const courseOrchestrator = require('./services/course-orchestrator.service');
