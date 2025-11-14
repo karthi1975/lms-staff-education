@@ -40,6 +40,12 @@ class CitationBuilderService {
         .filter(doc => doc.metadata?.file_id && !doc.metadata?.filename)
         .map(doc => doc.metadata.file_id);
 
+      // Log documents without file_id
+      const docsWithoutFileId = uniqueFiles.filter(doc => !doc.metadata?.file_id);
+      if (docsWithoutFileId.length > 0) {
+        logger.warn(`[CitationBuilder] ${docsWithoutFileId.length} documents have no file_id in metadata`);
+      }
+
       // Fetch missing filenames from database
       const filenameMap = await this.fetchFilenames(fileIdsNeedingLookup);
 
@@ -102,6 +108,8 @@ class CitationBuilderService {
     }
 
     try {
+      logger.info(`[CitationBuilder] Looking up ${fileIds.length} file_ids: [${fileIds.join(', ')}]`);
+
       const query = `
         SELECT id, original_name
         FROM course_content
@@ -115,8 +123,12 @@ class CitationBuilderService {
         filenameMap[row.id] = row.original_name;
       });
 
-      if (Object.keys(filenameMap).length > 0) {
-        logger.info(`[CitationBuilder] Fetched ${Object.keys(filenameMap).length} filenames from database`);
+      const foundCount = Object.keys(filenameMap).length;
+      const notFound = fileIds.filter(id => !filenameMap[id]);
+
+      logger.info(`[CitationBuilder] Found ${foundCount}/${fileIds.length} filenames`);
+      if (notFound.length > 0) {
+        logger.warn(`[CitationBuilder] File IDs not found in database: [${notFound.join(', ')}]`);
       }
 
       return filenameMap;
