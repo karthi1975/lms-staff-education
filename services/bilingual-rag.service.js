@@ -40,13 +40,28 @@ class BilingualRAGService {
 
       logger.info(`[BilingualRAG] Query: "${query.substring(0, 50)}..." (${queryLanguage})`);
 
-      // Step 1: Vector search in ChromaDB
-      const relevantDocs = await bilingualChroma.searchSimilar(query, {
+      // Step 1: Vector search in ChromaDB with module filter
+      let relevantDocs = await bilingualChroma.searchSimilar(query, {
         language: queryLanguage,
         courseId,
         moduleId,
         limit
       });
+
+      // Step 1b: Fallback - if no results and moduleId was specified, retry without module filter
+      // This allows finding course-level content (module_id: NONE) when user is in a specific module
+      if ((!relevantDocs || relevantDocs.length === 0) && moduleId) {
+        logger.warn(`[BilingualRAG] No results with module filter (moduleId: ${moduleId}), retrying course-level search`);
+        relevantDocs = await bilingualChroma.searchSimilar(query, {
+          language: queryLanguage,
+          courseId,
+          moduleId: null,  // Remove module filter
+          limit
+        });
+        if (relevantDocs && relevantDocs.length > 0) {
+          logger.info(`[BilingualRAG] Found ${relevantDocs.length} course-level results`);
+        }
+      }
 
       // Step 2: Get graph context from Neo4j (optional)
       let graphContext = null;
