@@ -304,12 +304,12 @@ class TranslationService {
 
       // QUIZ SECTION
       ready_test_knowledge: {
-        en: "📊 *Ready to Test Your Knowledge?*",
-        sw: "📊 *Tayari Kutathmini Ujuzi Wako?*"
+        en: "📝 *Take the Quiz!*",
+        sw: "📝 *Fanya Jaribio!*"
       },
       type_quiz: {
-        en: "Type: *\"quiz\"* or *\"start quiz\"*",
-        sw: "Andika: *\"jaribio\"* au *\"anza jaribio\"*"
+        en: "Type: *quiz* please",
+        sw: "Andika: *jaribio* tafadhali"
       },
       need_help: {
         en: "🔄 *Need Help?*",
