@@ -1007,7 +1007,7 @@ class CourseOrchestratorService {
 
       return {
         type: 'quiz_intro',
-        text: `📝 *Quiz Started!*\n\nYou'll answer ${numQuestions} questions. Pass threshold: 70%`,
+        text: `📝 *Quiz Started!*\n\nYou'll answer ${numQuestions} questions. Pass threshold: 40%`,
         question: firstQ,
         questionNum: 1,
         totalQuestions: numQuestions
@@ -1283,7 +1283,7 @@ class CourseOrchestratorService {
     const score = answers.filter(a => a.correct === true).length;
     const total = questions.length;
     const percentage = (score / total) * 100;
-    const passed = percentage >= 70;
+    const passed = percentage >= 40;
 
     // Get quiz and module info
     const contextData = this.parseContextData(context);
@@ -1361,7 +1361,7 @@ class CourseOrchestratorService {
         feedback += `\n\n📜 Download your certificate:\n${certificateUrl}`;
       }
     } else {
-      feedback = 'You need 70% to pass. Review the material and try again! Type *"quiz"* to retake.';
+      feedback = 'You need 40% to pass. Review the material and try again! Type *"quiz"* to retake.';
     }
 
     const formattedMessage = m3Formatter.formatQuizResults({

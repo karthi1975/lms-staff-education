@@ -72,7 +72,7 @@ class QuizService {
       }
     ];
 
-    this.QUIZ_PASS_THRESHOLD = 0.7; // 70% = 4 out of 5 correct
+    this.QUIZ_PASS_THRESHOLD = 0.4; // 40% = 2 out of 5 correct
     this.MAX_ATTEMPTS = 999; // Unlimited attempts for WhatsApp users
   }
 

@@ -555,7 +555,7 @@ class ReflectionService {
   static async identifyImprovementAreas(userId, userStats) {
     const areas = [];
     
-    if (userStats.progress.pass_rate < 70) {
+    if (userStats.progress.pass_rate < 40) {
       areas.push('Quiz preparation strategies');
     }
     
