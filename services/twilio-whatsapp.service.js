@@ -160,7 +160,6 @@ class TwilioWhatsAppService {
       logger.info(`   To: ${toNumber}`);
       logger.info(`   Body length: ${text.length} chars`);
       logger.info(`   Body preview: ${text.substring(0, 100)}...`);
-      logger.info(`   Contains "quiz": ${text.toLowerCase().includes('quiz')}`);
 
       const message = await this.client.messages.create({
         body: text,
