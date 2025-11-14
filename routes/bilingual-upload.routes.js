@@ -340,7 +340,8 @@ router.post('/courses/:courseId/query-bilingual',
         moduleName: moduleName,
         userId: req.user.id,
         limit: 8, // Increased from 3 to 8 for better context coverage
-        includeGraph: true
+        includeGraph: true,
+        format: 'web' // Generate Markdown citations with clickable links
       });
 
       res.json({
