@@ -7,9 +7,11 @@
  * - WhatsApp format (with full download URLs)
  * - Deduplication by file_id
  * - RBAC-aware download URLs
+ * - Auto-fetches missing filenames from database
  */
 
 const logger = require('../utils/logger');
+const postgresService = require('./database/postgres.service');
 
 class CitationBuilderService {
   constructor() {
@@ -20,9 +22,9 @@ class CitationBuilderService {
    * Build citations from retrieved document chunks
    * @param {Array} documents - Array of retrieved document chunks with metadata
    * @param {Object} options - { format: 'web'|'whatsapp', whatsappId, userId }
-   * @returns {Object} { citations: Array, citationText: string }
+   * @returns {Promise<Object>} { citations: Array, citationText: string }
    */
-  buildCitations(documents, options = {}) {
+  async buildCitations(documents, options = {}) {
     try {
       const { format = 'web', whatsappId, userId } = options;
 
@@ -33,11 +35,27 @@ class CitationBuilderService {
       // Deduplicate by file_id
       const uniqueFiles = this.deduplicateByFileId(documents);
 
+      // Collect file_ids that need filename lookup
+      const fileIdsNeedingLookup = uniqueFiles
+        .filter(doc => doc.metadata?.file_id && !doc.metadata?.filename)
+        .map(doc => doc.metadata.file_id);
+
+      // Fetch missing filenames from database
+      const filenameMap = await this.fetchFilenames(fileIdsNeedingLookup);
+
       // Build citation objects
       const citations = uniqueFiles.map((doc, index) => {
         const metadata = doc.metadata || {};
         const fileId = metadata.file_id;
-        const filename = metadata.filename || 'Document';
+
+        // Get filename: from metadata, or from database lookup, or default
+        let filename = metadata.filename;
+        if (!filename && fileId && filenameMap[fileId]) {
+          filename = filenameMap[fileId];
+        }
+        if (!filename) {
+          filename = 'Document';
+        }
 
         let downloadUrl = '';
         if (fileId) {
@@ -70,6 +88,42 @@ class CitationBuilderService {
     } catch (error) {
       logger.error('[CitationBuilder] Error building citations:', error);
       return { citations: [], citationText: '' };
+    }
+  }
+
+  /**
+   * Fetch filenames from database for file_ids
+   * @param {Array} fileIds - Array of file_ids
+   * @returns {Promise<Object>} Map of file_id -> filename
+   */
+  async fetchFilenames(fileIds) {
+    if (!fileIds || fileIds.length === 0) {
+      return {};
+    }
+
+    try {
+      const query = `
+        SELECT id, original_name
+        FROM course_content
+        WHERE id = ANY($1::int[])
+      `;
+
+      const result = await postgresService.query(query, [fileIds]);
+
+      const filenameMap = {};
+      result.rows.forEach(row => {
+        filenameMap[row.id] = row.original_name;
+      });
+
+      if (Object.keys(filenameMap).length > 0) {
+        logger.info(`[CitationBuilder] Fetched ${Object.keys(filenameMap).length} filenames from database`);
+      }
+
+      return filenameMap;
+
+    } catch (error) {
+      logger.error('[CitationBuilder] Error fetching filenames:', error);
+      return {};
     }
   }
 

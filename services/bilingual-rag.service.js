@@ -115,7 +115,7 @@ class BilingualRAGService {
       }
 
       // Step 7: Build citations with download links
-      const { citations, citationText } = citationBuilder.buildCitations(relevantDocs, {
+      const { citations, citationText } = await citationBuilder.buildCitations(relevantDocs, {
         format: options.format || 'web',
         whatsappId: options.whatsappId,
         userId: userId
