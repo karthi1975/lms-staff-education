@@ -762,35 +762,45 @@
 
         function getModuleExamples(title) {
             const examples = {
-                'Production': [
-                    '"What is production in small business?"',
-                    '"How do I manage quality control?"',
-                    '"Tell me about production planning"'
+                'Pedagogical Standards': [
+                    '"What are the pedagogical standards in CBC?"',
+                    '"How do I apply CBC framework in Business Studies?"',
+                    '"Tell me about competency-based teaching"'
                 ],
-                'Financing': [
-                    '"What are sources of business finance?"',
-                    '"How to prepare a budget?"',
-                    '"Tell me about financial management"'
+                'CBC': [
+                    '"What is CBC in Business Studies?"',
+                    '"How to implement competency-based curriculum?"',
+                    '"Tell me about CBC assessment methods"'
                 ],
-                'Management': [
-                    '"What is business management?"',
-                    '"How to manage employees effectively?"',
-                    '"Tell me about leadership skills"'
+                'Assigning': [
+                    '"How do I design Business Studies projects?"',
+                    '"What makes a good project assignment?"',
+                    '"Tell me about project objectives"'
                 ],
-                'Warehousing': [
-                    '"What is warehousing and inventory?"',
-                    '"How to manage stock levels?"',
-                    '"Tell me about storage systems"'
+                'Practical Project': [
+                    '"How to implement practical projects?"',
+                    '"What activities should students do?"',
+                    '"Tell me about hands-on learning"'
                 ],
-                'Opportunity': [
-                    '"What is entrepreneurship?"',
-                    '"How to identify opportunities?"',
-                    '"Tell me about market research"'
+                'Presentation': [
+                    '"How to assess student presentations?"',
+                    '"What makes an effective project presentation?"',
+                    '"Tell me about presentation skills"'
                 ],
-                'default': [
-                    '"What topics are covered in this module?"',
-                    '"Give me key concepts"',
-                    '"How can I apply this knowledge?"'
+                'Project-based Learning': [
+                    '"What is PBA assessment?"',
+                    '"How to use project-based learning?"',
+                    '"Tell me about authentic assessment"'
+                ],
+                'Assessment': [
+                    '"What are PBA assessment methods?"',
+                    '"How to evaluate student projects?"',
+                    '"Tell me about performance-based assessment"'
+                ],
+                'Introduction': [
+                    '"What will I learn in this course?"',
+                    '"Tell me about the course structure"',
+                    '"What are the key topics covered?"'
                 ]
             };
 
@@ -800,7 +810,13 @@
                     return examples[key];
                 }
             }
-            return examples['default'];
+
+            // If no match found, return generic helpful questions
+            return [
+                '"What are the main concepts in this module?"',
+                '"How can I apply this in my classroom?"',
+                '"Tell me more about the learning objectives"'
+            ];
         }
 
         function getWelcomeMessage(title, description) {
