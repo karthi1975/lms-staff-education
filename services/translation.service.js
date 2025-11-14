@@ -231,6 +231,77 @@ class TranslationService {
         sw: "Niambie kuhusu uchanganuzi wa soko"
       },
 
+      // MODULE-SPECIFIC EXAMPLES - Business Studies Orientation Modules
+      // Module 1: Introduction to Pedagogical Standards
+      example_cbc_standards_1: {
+        en: "What are the pedagogical standards in CBC?",
+        sw: "Ni vigezo gani vya kufundishia katika CBC?"
+      },
+      example_cbc_standards_2: {
+        en: "How do I apply CBC framework in Business Studies?",
+        sw: "Ninawezaje kutumia mfumo wa CBC katika Masomo ya Biashara?"
+      },
+      example_cbc_standards_3: {
+        en: "Tell me about competency-based teaching",
+        sw: "Niambie kuhusu ufundishaji kulingana na ujuzi"
+      },
+
+      // Module 2: Assigning Business Studies Projects
+      example_assign_projects_1: {
+        en: "How do I assign effective Business Studies projects?",
+        sw: "Ninawezeaje kupangia miradi bora ya Masomo ya Biashara?"
+      },
+      example_assign_projects_2: {
+        en: "What makes a good project assignment?",
+        sw: "Ni nini kinachofanya kazi ya mradi kuwa nzuri?"
+      },
+      example_assign_projects_3: {
+        en: "Tell me about project rubrics and criteria",
+        sw: "Niambie kuhusu vigezo vya kupima miradi"
+      },
+
+      // Module 3: Practical Project Work
+      example_practical_work_1: {
+        en: "How do students conduct practical project work?",
+        sw: "Wanafunzi wanafanyaje kazi za vitendo za miradi?"
+      },
+      example_practical_work_2: {
+        en: "What skills do students develop through projects?",
+        sw: "Ni ujuzi gani wanafunzi wanajifunza kupitia miradi?"
+      },
+      example_practical_work_3: {
+        en: "Tell me about monitoring student progress",
+        sw: "Niambie kuhusu kufuatilia maendeleo ya wanafunzi"
+      },
+
+      // Module 4: Project Presentations
+      example_presentations_1: {
+        en: "How should students present their projects?",
+        sw: "Wanafunzi wanapaswa kuzinduaje miradi yao?"
+      },
+      example_presentations_2: {
+        en: "What makes an effective presentation?",
+        sw: "Ni nini kinachofanya uwasilishaji kuwa mzuri?"
+      },
+      example_presentations_3: {
+        en: "Tell me about assessing presentations",
+        sw: "Niambie kuhusu kutathmini mawasilisho"
+      },
+
+      // Module 5: Project-based Learning and Assessment Guidelines
+      example_pba_guidelines_1: {
+        en: "What is Performance-Based Assessment?",
+        sw: "Tathmini kulingana na Utendaji ni nini?"
+      },
+      example_pba_guidelines_2: {
+        en: "How do I grade project-based work fairly?",
+        sw: "Ninawezaje kukadiria kazi za miradi kwa usawa?"
+      },
+      example_pba_guidelines_3: {
+        en: "Tell me about PBA rubrics and guidelines",
+        sw: "Niambie kuhusu vigezo na miongozo ya PBA"
+      },
+
       // QUIZ SECTION
       ready_test_knowledge: {
         en: "📊 *Ready to Test Your Knowledge?*",

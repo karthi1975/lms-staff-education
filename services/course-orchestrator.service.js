@@ -486,12 +486,34 @@ class CourseOrchestratorService {
     const moduleName = module.name.toLowerCase();
     const courseName = course.name.toLowerCase();
 
-    const isTeacherTraining = courseName.includes('orientation') ||
-                               courseName.includes('teacher') ||
-                               moduleName.includes('teacher');
-
-    if (isTeacherTraining) {
-      // Teacher Training examples (bilingual)
+    // Business Studies Orientation - Module-specific examples
+    if (moduleName.includes('pedagogical standards') || moduleName.includes('cbc')) {
+      // Module 1: Introduction to Pedagogical Standards
+      responseText += `   • ${translationService.t('example_cbc_standards_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_cbc_standards_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_cbc_standards_3', language)}\n`;
+    } else if (moduleName.includes('assigning') && moduleName.includes('project')) {
+      // Module 2: Assigning Business Studies Projects
+      responseText += `   • ${translationService.t('example_assign_projects_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_assign_projects_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_assign_projects_3', language)}\n`;
+    } else if (moduleName.includes('practical project work')) {
+      // Module 3: Practical Project Work
+      responseText += `   • ${translationService.t('example_practical_work_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_practical_work_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_practical_work_3', language)}\n`;
+    } else if (moduleName.includes('project presentation')) {
+      // Module 4: Project Presentations
+      responseText += `   • ${translationService.t('example_presentations_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_presentations_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_presentations_3', language)}\n`;
+    } else if (moduleName.includes('pba') || moduleName.includes('assessment guidelines') || moduleName.includes('project-based learning')) {
+      // Module 5: Project-based Learning and Assessment Guidelines
+      responseText += `   • ${translationService.t('example_pba_guidelines_1', language)}\n`;
+      responseText += `   • ${translationService.t('example_pba_guidelines_2', language)}\n`;
+      responseText += `   • ${translationService.t('example_pba_guidelines_3', language)}\n`;
+    } else if (courseName.includes('orientation') || courseName.includes('teacher') || moduleName.includes('teacher')) {
+      // Generic Teacher Training examples (fallback for other teacher training modules)
       responseText += `   • ${translationService.t('example_lesson_plans', language)}\n`;
       responseText += `   • ${translationService.t('example_classroom_mgmt', language)}\n`;
       responseText += `   • ${translationService.t('example_assessment', language)}\n`;
